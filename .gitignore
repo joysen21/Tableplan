@@ -1,6 +1,13 @@
-# Zugangsdaten je Installation
+# Abhängigkeiten & Build
+node_modules/
+dist/
+test-results/
+playwright-report/
+# Lokale Zugangsdaten
+.env.local
+.env.*.local
 config.js
+prototype/config.js
 # System
 .DS_Store
 Thumbs.db
-node_modules/

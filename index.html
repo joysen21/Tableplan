@@ -1,23 +1,15 @@
 <!doctype html>
 <html lang="de">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tischplan</title>
-<link rel="stylesheet" href="css/app.css">
-</head>
-<body>
-<div id="app"><p style="padding:20px;font-family:system-ui">Tischplan wird geladen…</p></div>
-<div id="printArea"></div>
-<!-- Zugangsdaten für Supabase (optional, nicht im Repository – siehe config.example.js) -->
-<script src="config.js"></script>
-<script src="vendor/supabase.js"></script>
-<script src="js/core.js"></script>
-<script src="js/demo.js"></script>
-<script src="js/ui.js"></script>
-<script src="js/views.js"></script>
-<script src="js/admin.js"></script>
-<script src="js/cloud.js"></script>
-<script src="js/main.js"></script>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#1f6feb" />
+    <title>Tischplan</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='9' fill='%231f6feb'/><circle cx='16' cy='3.5' r='3' fill='%231f6feb'/><circle cx='16' cy='28.5' r='3' fill='%231f6feb'/><circle cx='3.5' cy='16' r='3' fill='%231f6feb'/><circle cx='28.5' cy='16' r='3' fill='%231f6feb'/></svg>" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <div id="print-root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
