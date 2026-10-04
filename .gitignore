@@ -1,0 +1,6 @@
+# Zugangsdaten je Installation
+config.js
+# System
+.DS_Store
+Thumbs.db
+node_modules/
