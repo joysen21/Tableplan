@@ -10,7 +10,7 @@ import { downloadBlob } from '../lib/download';
 import { today } from '../lib/time';
 import { useApp } from '../store/app';
 import { useData } from '../store/hooks';
-import { confirmDialog, toast } from '../ui/feedback';
+import { confirmDialog, toast } from '../ui/notify';
 
 function Field({ label, value, type = 'text', onCommit, placeholder }: { label: string; value: string | number; type?: string; placeholder?: string; onCommit: (v: string) => void }) {
   const [v, setV] = useState(String(value));

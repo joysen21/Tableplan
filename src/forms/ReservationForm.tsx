@@ -10,7 +10,7 @@ import { useApp } from '../store/app';
 import { useData, useRoomId, useServiceId } from '../store/hooks';
 import { useUi } from '../store/ui';
 import { closeDialog } from '../store/dialogs';
-import { confirmDialog, toast } from '../ui/feedback';
+import { confirmDialog, toast } from '../ui/notify';
 import { Modal } from '../ui/Modal';
 
 export function ReservationForm({ r, preset }: { r?: Reservation; preset?: Partial<Reservation> }) {

@@ -1,4 +1,4 @@
-import { closeConfirm, useFeedback } from './feedback';
+import { closeConfirm, useFeedback } from './notify';
 import { Modal } from './Modal';
 
 export function Feedback() {

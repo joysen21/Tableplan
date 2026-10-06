@@ -10,7 +10,7 @@ import { useApp } from '../store/app';
 import { useData } from '../store/hooks';
 import { useUi } from '../store/ui';
 import { closeDialog } from '../store/dialogs';
-import { confirmDialog, toast } from '../ui/feedback';
+import { confirmDialog, toast } from '../ui/notify';
 import { Modal } from '../ui/Modal';
 
 /** Festen Tisch zuweisen – mit Hinweis auf Nächte, in denen der Tisch schon belegt ist */

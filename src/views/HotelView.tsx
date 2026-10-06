@@ -6,7 +6,7 @@ import { useData, useRoomId } from '../store/hooks';
 import { useUi } from '../store/ui';
 import { openDialog } from '../store/dialogs';
 import { dropTableId, startDrag } from '../ui/drag';
-import { toast } from '../ui/feedback';
+import { toast } from '../ui/notify';
 import { FloorPlan } from '../ui/FloorPlan';
 import { assignStayTable } from '../forms/HotelForms';
 

@@ -11,7 +11,7 @@ import { useApp } from '../store/app';
 import { useData } from '../store/hooks';
 import { useUi } from '../store/ui';
 import { svgPoint } from '../ui/drag';
-import { confirmDialog, toast } from '../ui/feedback';
+import { confirmDialog, toast } from '../ui/notify';
 import { FloorPlan } from '../ui/FloorPlan';
 
 const SHAPES: TableShape[] = ['round', 'square', 'rect', 'bench'];

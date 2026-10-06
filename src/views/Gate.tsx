@@ -4,7 +4,7 @@ import { repo } from '../data';
 import { DEMO_USERS } from '../data/demoRepo';
 import { t } from '../lib/i18n';
 import { useApp } from '../store/app';
-import { toast } from '../ui/feedback';
+import { toast } from '../ui/notify';
 
 function Box({ title, children }: { title: string; children: ReactNode }) {
   return <div className="login panel"><h3>{title}</h3><div className="body">{children}</div></div>;

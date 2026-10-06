@@ -10,7 +10,7 @@ import { useApp } from '../store/app';
 import { useData, useRoomId, useServiceId } from '../store/hooks';
 import { useUi } from '../store/ui';
 import { closeDialog, openDialog } from '../store/dialogs';
-import { toast } from '../ui/feedback';
+import { toast } from '../ui/notify';
 import { Modal } from '../ui/Modal';
 import { saveChecked } from './actions';
 

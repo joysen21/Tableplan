@@ -10,7 +10,7 @@ import { OPEN_STATES } from '../domain/constants';
 import { planStay } from '../domain/logic';
 import type { Reservation, ResStatus, SessionUser, Stay, VenueData } from '../domain/types';
 import { nowMin, today } from '../lib/time';
-import { toast } from '../ui/feedback';
+import { toast } from '../ui/notify';
 
 export type Phase = 'init' | 'login' | 'setpw' | 'loading' | 'select' | 'novenue' | 'empty' | 'ready' | 'error';
 

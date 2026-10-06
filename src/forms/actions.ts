@@ -2,7 +2,7 @@
 import { checkReservation } from '../domain/logic';
 import type { Reservation } from '../domain/types';
 import { useApp } from '../store/app';
-import { confirmDialog, toast } from '../ui/feedback';
+import { confirmDialog, toast } from '../ui/notify';
 
 export async function saveChecked(draft: Reservation, original: Reservation | undefined, logText: [string, string], okLabel = 'Trotzdem speichern'): Promise<boolean> {
   const st = useApp.getState();
