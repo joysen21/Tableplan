@@ -1,15 +1,16 @@
 /** Hotelaufenthalt bearbeiten, CSV-Import und Zuweisung eines festen Tisches */
 import { useState } from 'react';
+import { Trash2 } from 'lucide-react';
 import { newId } from '../domain/demo';
 import { BOARDS } from '../domain/constants';
-import { byId, capacity, needsTable, stayTableConflicts, tableNames } from '../domain/logic';
+import { byId, capacity, isInHouse, needsTable, stayTableConflicts, tableNames } from '../domain/logic';
 import type { Board, ServiceKind, Stay, VenueData } from '../domain/types';
 import { t } from '../lib/i18n';
 import { addDays, fmtShort, parseDate } from '../lib/time';
 import { useApp } from '../store/app';
 import { useData } from '../store/hooks';
 import { useUi } from '../store/ui';
-import { closeDialog } from '../store/dialogs';
+import { closeDialog, openDialog } from '../store/dialogs';
 import { confirmDialog, toast } from '../ui/notify';
 import { Modal } from '../ui/Modal';
 
@@ -23,6 +24,27 @@ export async function assignStayTable(d: VenueData, stay: Stay, tableIds: string
   const res = await useApp.getState().saveStay({ ...stay, tableIds }, { resetManual: true, logText: ['Fester Tisch zugewiesen', `Zi. ${stay.roomNo} ${stay.name} → ${tableNames(d, tableIds) || 'keiner'}`] });
   if (res.ok) toast(res.skipped.length ? `Gespeichert – ohne Tisch: ${res.skipped.join(', ')}` : 'Fester Tisch gespeichert', res.skipped.length ? 'err' : 'ok');
   return res.ok;
+}
+
+/** Freien Tisch antippen (Hotel-Plan): Hotelgast ohne festen Tisch auswählen – Alternative zum Ziehen */
+export function StayTablePicker({ tableId }: { tableId: string }) {
+  const d = useData();
+  const D = useUi(s => s.hotelDate);
+  const tb = byId(d.tables, tableId);
+  if (!tb) return null;
+  const open = d.stays.filter(s => isInHouse(s, D) && needsTable(d, s) && !s.tableIds.length)
+    .sort((a, b) => a.roomNo.localeCompare(b.roomNo, 'de', { numeric: true }));
+  return (
+    <Modal title={`Tisch ${tb.name} · fester Tisch`} onClose={closeDialog} width={520} footer={<button className="btn" onClick={closeDialog}>Schließen</button>}>
+      <p className="muted" style={{ marginTop: 0 }}>{tb.minPersons}–{tb.maxPersons} Personen · {byId(d.rooms, tb.roomId)?.name} · frei am {fmtShort(D)}</p>
+      <h4 style={{ margin: '0 0 6px' }}>Hotelgast ohne festen Tisch hier platzieren</h4>
+      <div className="sugg">{open.length ? open.map(s => (
+        <button key={s.id} className="btn" onClick={async () => { if (await assignStayTable(d, s, [tb.id])) closeDialog(); }}>
+          Zi. {s.roomNo} · {s.name} · {s.adults + s.children}P{s.adults + s.children > tb.maxPersons ? ' ⚠' : ''}</button>
+      )) : <span className="muted">Alle Gäste mit Verpflegung haben einen Tisch. ✓</span>}</div>
+      <button className="btn mt12" onClick={() => openDialog({ type: 'stay' })}>Neuer Aufenthalt…</button>
+    </Modal>
+  );
 }
 
 export function StayForm({ stay }: { stay?: Stay }) {
@@ -64,7 +86,7 @@ export function StayForm({ stay }: { stay?: Stay }) {
   }
   return (
     <Modal title={isNew ? 'Neuer Aufenthalt' : `Zi. ${stay.roomNo} – ${stay.name}`} onClose={closeDialog}
-      footer={<>{!isNew && <button className="btn danger" onClick={remove}>Löschen</button>}<span className="spacer" />
+      footer={<>{!isNew && <button className="btn danger" onClick={remove}><Trash2 />Löschen</button>}<span className="spacer" />
         <button className="btn" onClick={closeDialog}>Abbrechen</button><button className="btn primary" disabled={busy} onClick={save}>Speichern</button></>}>
       <div className="grid3">
         <label>Zimmer *<input value={s.roomNo} onChange={e => upd({ roomNo: e.target.value })} autoFocus={isNew} /></label>

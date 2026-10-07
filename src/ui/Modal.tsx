@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react';
+import { X } from 'lucide-react';
 
 export function Modal({ title, onClose, children, footer, width }: { title: string; onClose: () => void; children: ReactNode; footer?: ReactNode; width?: number }) {
   const down = useRef(false);
@@ -9,7 +10,7 @@ export function Modal({ title, onClose, children, footer, width }: { title: stri
   return (
     <div className="modal-bg" onPointerDown={e => { down.current = e.target === e.currentTarget; }} onClick={e => { if (e.target === e.currentTarget && down.current) onClose(); }}>
       <div className="modal" role="dialog" aria-modal="true" aria-label={title} style={width ? { maxWidth: width } : undefined}>
-        <div className="mh"><h2>{title}</h2><button className="btn small" onClick={onClose} aria-label="Schließen">✕</button></div>
+        <div className="mh"><h2>{title}</h2><button className="btn ghost icon" onClick={onClose} aria-label="Schließen" title="Schließen"><X /></button></div>
         <div className="mb">{children}</div>
         {footer && <div className="mf">{footer}</div>}
       </div>

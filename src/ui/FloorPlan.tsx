@@ -71,7 +71,7 @@ export function FloorPlan(p: Props) {
     }
   }
   return (
-    <svg className="plan" viewBox={`0 0 ${room.width} ${room.height}`} ref={p.svgRef} onPointerDown={e => { if (e.target === e.currentTarget || (e.target as Element).classList.contains('plan-bg')) p.onBackgroundDown?.(e); }}>
+    <svg className={'plan mode-' + mode} viewBox={`0 0 ${room.width} ${room.height}`} ref={p.svgRef} onPointerDown={e => { if (e.target === e.currentTarget || (e.target as Element).classList.contains('plan-bg')) p.onBackgroundDown?.(e); }}>
       <style>{'.chair{fill:var(--panel);stroke:var(--muted);stroke-width:1.5}.benchseat{fill:var(--decor)}.tbody{stroke:rgba(0,0,0,.25);stroke-width:1.5}'}</style>
       <defs><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" fill="none" stroke="var(--plan-grid)" strokeWidth={1} /></pattern></defs>
       <rect className="plan-bg" width={room.width} height={room.height} fill="url(#grid)" />

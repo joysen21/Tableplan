@@ -9,7 +9,8 @@ export type Dialog =
   | { type: 'walkin'; tableId?: string }
   | { type: 'block'; tableId: string }
   | { type: 'stay'; stay?: Stay }
-  | { type: 'stayimport' };
+  | { type: 'stayimport' }
+  | { type: 'staytable'; tableId: string };
 
 interface DialogState { dialog: Dialog | null; open: (d: Dialog) => void; close: () => void }
 export const useDialogs = create<DialogState>(set => ({ dialog: null, open: dialog => set({ dialog }), close: () => set({ dialog: null }) }));

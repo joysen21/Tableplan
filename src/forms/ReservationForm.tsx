@@ -1,5 +1,6 @@
 /** Reservierung anlegen / bearbeiten */
 import { useState } from 'react';
+import { Trash2, X } from 'lucide-react';
 import { newId } from '../domain/demo';
 import { ALL_STATUS, FEATURES, OCCASIONS, SOURCES } from '../domain/constants';
 import { byId, capacity, checkReservation, isInHouse, persons, resEnd, resStart, suggestTables, tableBusy, tableNames, turnTime } from '../domain/logic';
@@ -77,7 +78,7 @@ export function ReservationForm({ r, preset }: { r?: Reservation; preset?: Parti
 
   return (
     <Modal title={isNew ? 'Neue Reservierung' : 'Reservierung bearbeiten'} onClose={closeDialog}
-      footer={<>{!isNew && <button className="btn danger" onClick={remove}>Löschen</button>}<span className="spacer" />
+      footer={<>{!isNew && <button className="btn danger" onClick={remove}><Trash2 />Löschen</button>}<span className="spacer" />
         <button className="btn" onClick={closeDialog}>Abbrechen</button><button className="btn primary" onClick={save} disabled={busy}>Speichern</button></>}>
       <div className="grid3">
         <label>Datum<input type="date" value={draft.date} onChange={e => e.target.value && upd({ date: e.target.value })} /></label>
@@ -121,7 +122,7 @@ export function ReservationForm({ r, preset }: { r?: Reservation; preset?: Parti
       <h4 style={{ margin: '14px 0 6px' }}>Tisch(e)</h4>
       <div className="row">
         {draft.tableIds.length ? <>{draft.tableIds.map(id => <span key={id} className="badge" style={{ fontSize: 14, padding: '6px 10px' }}>{byId(d.tables, id)?.name}{' '}
-          <button className="link" aria-label="Tisch entfernen" onClick={() => upd({ tableIds: draft.tableIds.filter(x => x !== id) })}>✕</button></span>)}
+          <button className="link" aria-label="Tisch entfernen" onClick={() => upd({ tableIds: draft.tableIds.filter(x => x !== id) })}><X size={14} /></button></span>)}
           <span className="muted">Kapazität {capacity(d, draft.tableIds).max} P</span></>
           : <span className="muted">Noch kein Tisch – Vorschlag wählen oder später im Plan zuweisen.</span>}
       </div>

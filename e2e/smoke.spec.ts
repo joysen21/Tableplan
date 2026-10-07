@@ -22,7 +22,7 @@ test('Admin: alle Ansichten laden', async ({ page }) => {
 
 test('Reservierung anlegen, Konflikt wird verhindert', async ({ page }) => {
   await loginDemo(page);
-  await page.getByRole('button', { name: '＋ Reservierung' }).click();
+  await page.getByRole('button', { name: 'Reservierung', exact: true }).click();
   await page.getByLabel('Name *').fill('E2E Gast');
   await page.locator('#root ~ * .sugg .btn, .modal .sugg .btn').filter({ hasText: 'P ·' }).first().click();
   await page.getByRole('button', { name: 'Speichern' }).click();
@@ -34,7 +34,7 @@ test('Reservierung anlegen, Konflikt wird verhindert', async ({ page }) => {
   const venue = Object.values(res.data)[0] as any;
   const mine = venue.reservations.find((r: any) => r.name === 'E2E Gast');
   expect(mine.tableIds.length).toBeGreaterThan(0);
-  await page.getByRole('button', { name: '＋ Reservierung' }).click();
+  await page.getByRole('button', { name: 'Reservierung', exact: true }).click();
   await page.getByLabel('Name *').fill('Doppelt');
   await page.locator('.modal input[type=time]').fill(mine.time);
   const tname = venue.tables.find((t: any) => t.id === mine.tableIds[0]).name;
@@ -48,7 +48,7 @@ test('Reservierung anlegen, Konflikt wird verhindert', async ({ page }) => {
 
 test('Walk-in platzieren und Status ändern', async ({ page }) => {
   await loginDemo(page);
-  await page.getByRole('button', { name: '🚶 Walk-in' }).click();
+  await page.getByRole('button', { name: 'Walk-in', exact: true }).click();
   const first = page.locator('.modal .sugg .btn').first();
   if (await first.isVisible().catch(() => false)) {
     await first.click();
@@ -64,6 +64,8 @@ test('Walk-in platzieren und Status ändern', async ({ page }) => {
 test('Zeitleiste: Balken verschieben', async ({ page }) => {
   await loginDemo(page);
   await page.getByRole('link', { name: 'Zeitleiste' }).click();
+  // fest den Abendservice wählen – morgens (Frühstück) gäbe es keine Balken
+  await page.getByLabel('Service').selectOption({ label: 'Abendessen' });
   const bar = page.locator('.g-row[data-table-id] .g-bar').last();
   await bar.scrollIntoViewIfNeeded();
   const box = (await bar.boundingBox())!;
@@ -107,9 +109,10 @@ test('Editor: Tisch verschieben wird gespeichert', async ({ page }) => {
 
 test('Rollen: Küche sieht nur Berichte, Service ändert nur Status', async ({ page }) => {
   await loginDemo(page, 'Karl (Küche)');
-  await expect(page.locator('nav a')).toHaveCount(1);
+  await expect(page.locator('.topnav a')).toHaveCount(1);
   await page.getByRole('button', { name: /Karl/ }).click();
+  await page.getByRole('menuitem', { name: 'Abmelden' }).click();
   await page.getByRole('button', { name: /Toni/ }).click();
-  await expect(page.locator('nav a')).toHaveCount(3);
-  await expect(page.getByRole('button', { name: '＋ Reservierung' })).toHaveCount(0);
+  await expect(page.locator('.topnav a')).toHaveCount(3);
+  await expect(page.getByRole('button', { name: 'Reservierung', exact: true })).toHaveCount(0);
 });

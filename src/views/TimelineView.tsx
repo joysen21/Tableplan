@@ -1,5 +1,6 @@
 /** Zeitleiste (Gantt): Tische × Uhrzeit, Balken verschieben / Dauer ändern */
 import { useRef, type PointerEvent as RPE } from 'react';
+import { Plus } from 'lucide-react';
 import { canEdit, RES_STATUS_COLOR } from '../domain/constants';
 import { byId, checkReservation, isBlocked, occupies, persons, resEnd, resStart } from '../domain/logic';
 import type { Reservation } from '../domain/types';
@@ -8,7 +9,7 @@ import { useApp } from '../store/app';
 import { useData, useServiceId, useTick } from '../store/hooks';
 import { useUi } from '../store/ui';
 import { openDialog } from '../store/dialogs';
-import { dragState } from '../ui/drag';
+import { dragState, startDragOrTap } from '../ui/drag';
 import { saveChecked } from '../forms/actions';
 
 const PX = 2.2; // Pixel pro Minute
@@ -33,6 +34,8 @@ export function TimelineView() {
   const nowLine = ui.date === today() && nm > from && nm < to ? <div className="g-now" style={{ left: x(nm) }} /> : null;
 
   function onBarDown(e: RPE<HTMLDivElement>, r: Reservation, fromTable: string) {
+    // Touch: Wischen scrollt die Zeitleiste, Antippen öffnet die Reservierung (Ändern dann im Dialog)
+    if (e.pointerType === 'touch') return startDragOrTap(e, { label: r.name, onClick: () => openDialog(edit ? { type: 'reservation', r } : { type: 'resinfo', id: r.id }) });
     const el = e.currentTarget;
     if (!edit) { const up = () => { window.removeEventListener('pointerup', up); openDialog({ type: 'resinfo', id: r.id }); }; window.addEventListener('pointerup', up); return; }
     e.preventDefault();
@@ -83,8 +86,8 @@ export function TimelineView() {
     <div className="panel">
       <div className="row" style={{ padding: '10px 14px', borderBottom: '1px solid var(--line)' }}>
         <b>{svc.name} · {fmtDate(ui.date)}</b>
-        <span className="muted" style={{ fontSize: 13 }}>{edit ? 'Balken ziehen = Uhrzeit/Tisch ändern · rechten Rand ziehen = Dauer · Klick = bearbeiten' : 'Klick auf Balken = Details'}</span>
-        <span className="spacer" />{edit && <button className="btn primary" onClick={() => openDialog({ type: 'reservation', preset: {} })}>＋ Reservierung</button>}
+        <span className="muted" style={{ fontSize: 13 }}>{edit ? <><span className="tip-desktop">Balken ziehen = Uhrzeit/Tisch ändern · rechten Rand ziehen = Dauer · Klick = bearbeiten</span><span className="tip-touch">Balken antippen = bearbeiten</span></> : 'Klick auf Balken = Details'}</span>
+        <span className="spacer" />{edit && <button className="btn primary" onClick={() => openDialog({ type: 'reservation', preset: {} })}><Plus />Reservierung</button>}
       </div>
       <div className="gantt" ref={scroller}>
         <div className="g-head"><div className="g-label muted">Tisch</div><div className="g-track" style={{ width: W }}><Ticks labels /></div></div>

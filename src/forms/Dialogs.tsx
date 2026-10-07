@@ -1,5 +1,5 @@
 import { useDialogs } from '../store/dialogs';
-import { StayForm, StayImport } from './HotelForms';
+import { StayForm, StayImport, StayTablePicker } from './HotelForms';
 import { ReservationForm } from './ReservationForm';
 import { BlockDialog, ResInfo, TablePopup, WalkIn } from './TableDialogs';
 
@@ -15,5 +15,6 @@ export function Dialogs() {
     case 'block': return <BlockDialog tableId={dlg.tableId} />;
     case 'stay': return <StayForm key={dlg.stay?.id ?? 'new'} stay={dlg.stay} />;
     case 'stayimport': return <StayImport />;
+    case 'staytable': return <StayTablePicker tableId={dlg.tableId} />;
   }
 }
