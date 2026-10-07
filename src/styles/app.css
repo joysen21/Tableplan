@@ -254,8 +254,10 @@ table.list tr.clickable:hover td{background:var(--panel2)}
   header .spacer{display:none}
   header .pagetitle{display:block;flex:1;margin:0 4px;font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .ctx{flex:1;flex-wrap:nowrap;gap:4px;min-width:0}
-  .ctx input[type=date]{flex:1 1 auto;min-width:0;padding:6px 8px}
-  .ctx select{flex:0 1 auto;min-width:0;max-width:42%;padding:6px 4px 6px 8px}
+  .ctx input[type=date]{flex:1 1 0;min-width:0;padding:6px 8px}
+  /* Am Handy öffnet Antippen die Datumsauswahl – das Symbol kostet nur Platz */
+  .ctx input[type=date]::-webkit-calendar-picker-indicator{display:none}
+  .ctx select{flex:1 1 0;min-width:0;padding:6px 4px 6px 8px}
   .ctx .btn.icon{width:38px;min-width:38px}
   .ctx .today.is-today{display:none}
   .sync{border:0;padding:0 4px;background:none}
