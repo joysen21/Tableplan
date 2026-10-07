@@ -1,6 +1,7 @@
 import { useDialogs } from '../store/dialogs';
 import { StayForm, StayImport, StayTablePicker } from './HotelForms';
 import { ReservationForm } from './ReservationForm';
+import { DishForm, IngredientForm, MenuEditor } from './MenuForms';
 import { BlockDialog, ResInfo, TablePopup, WalkIn } from './TableDialogs';
 
 /** Rendert den jeweils offenen Dialog */
@@ -16,5 +17,8 @@ export function Dialogs() {
     case 'stay': return <StayForm key={dlg.stay?.id ?? 'new'} stay={dlg.stay} />;
     case 'stayimport': return <StayImport />;
     case 'staytable': return <StayTablePicker tableId={dlg.tableId} />;
+    case 'menu': return <MenuEditor key={dlg.date + dlg.serviceId} date={dlg.date} serviceId={dlg.serviceId} />;
+    case 'dish': return <DishForm key={(dlg.dish?.id ?? 'new') + (dlg.dish?.ingredients.length ?? 0)} dish={dlg.dish} />;
+    case 'ingredient': return <IngredientForm key={dlg.ing?.id ?? 'new'} ing={dlg.ing} back={dlg.back} />;
   }
 }

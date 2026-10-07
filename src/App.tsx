@@ -14,6 +14,7 @@ import { HotelView } from './views/HotelView';
 import { ReportsView } from './views/ReportsView';
 import { EditorView } from './views/EditorView';
 import { SettingsView } from './views/SettingsView';
+import { MenuView } from './views/MenuView';
 
 
 export function App() {
@@ -25,7 +26,7 @@ export function App() {
 
   if (phase !== 'ready' || !role) return <><Gate /><Feedback /></>;
   const views = ROLE_VIEWS[role];
-  const el = { live: <LiveView />, zeit: <TimelineView />, res: <ReservationsView />, hotel: <HotelView />, berichte: <ReportsView />, editor: <EditorView />, settings: <SettingsView /> };
+  const el = { live: <LiveView />, zeit: <TimelineView />, res: <ReservationsView />, hotel: <HotelView />, menue: <MenuView />, berichte: <ReportsView />, editor: <EditorView />, settings: <SettingsView /> };
   return (
     <>
       <Routes>

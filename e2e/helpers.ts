@@ -1,6 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 
-export const VIEWS = ['Live-Plan', 'Zeitleiste', 'Reservierungen', 'Hotelgäste', 'Berichte', 'Raumplan-Editor', 'Einstellungen'];
+export const VIEWS = ['Live-Plan', 'Zeitleiste', 'Reservierungen', 'Hotelgäste', 'Menü', 'Berichte', 'Raumplan-Editor', 'Einstellungen'];
 
 /** Demo-Modus mit frischen Daten starten und als Demo-Benutzer anmelden */
 export async function loginDemo(page: Page, who = 'Anna (Admin)', theme?: 'light' | 'dark') {

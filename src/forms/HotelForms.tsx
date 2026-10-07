@@ -1,5 +1,7 @@
 /** Hotelaufenthalt bearbeiten, CSV-Import und Zuweisung eines festen Tisches */
 import { useState } from 'react';
+import { guessAllergens } from '../domain/menu';
+import { AllergenPicker } from '../ui/AllergenPicker';
 import { Trash2 } from 'lucide-react';
 import { newId } from '../domain/demo';
 import { BOARDS } from '../domain/constants';
@@ -52,9 +54,9 @@ export function StayForm({ stay }: { stay?: Stay }) {
   const ui = useUi();
   const store = useApp();
   const isNew = !stay;
-  const [s, setS] = useState<Stay>(() => stay ? { ...stay, times: { ...stay.times } } : {
+  const [s, setS] = useState<Stay>(() => stay ? { ...stay, allergens: stay.allergens ?? [], times: { ...stay.times } } : {
     id: newId(), roomNo: '', name: '', adults: 2, children: 0, arrival: ui.hotelDate, departure: addDays(ui.hotelDate, 3), board: 'HP',
-    phone: '', allergies: '', notes: '', vip: false, times: {}, tableIds: []
+    phone: '', allergies: '', allergens: [], notes: '', vip: false, times: {}, tableIds: []
   });
   const [busy, setBusy] = useState(false);
   const upd = (p: Partial<Stay>) => setS(prev => ({ ...prev, ...p }));
@@ -102,7 +104,8 @@ export function StayForm({ stay }: { stay?: Stay }) {
           {d.tables.map(x => <option key={x.id} value={x.id}>{x.name} ({x.minPersons}–{x.maxPersons}P, {byId(d.rooms, x.roomId)?.name})</option>)}</select></label>
       </div>
       <div className="grid2 mt8">{timeSel('mittag')}{timeSel('abend')}</div>
-      <label className="mt8">Allergien<input value={s.allergies} onChange={e => upd({ allergies: e.target.value })} /></label>
+      <div className="mt8"><AllergenPicker value={s.allergens} text={s.allergies} onChange={allergens => upd({ allergens })} label="Allergene (laut Gast)" /></div>
+      <label className="mt8">Weitere Unverträglichkeiten / Notiz<input value={s.allergies} onChange={e => upd({ allergies: e.target.value })} /></label>
       <label className="mt8">Notizen<textarea value={s.notes} onChange={e => upd({ notes: e.target.value })} /></label>
       <label className="chk mt8"><input type="checkbox" checked={s.vip} onChange={e => upd({ vip: e.target.checked })} /> VIP / Stammgast</label>
       <p className="muted" style={{ fontSize: 12 }}>Halbpension = Abendessen, Vollpension = Mittag + Abend, All-Inclusive = alle Services mit Tischzuweisung. Reservierungen werden automatisch für jede Nacht angelegt.
@@ -132,7 +135,7 @@ export function StayImport() {
       if (!c[0] || !c[1] || !arrival || !departure || departure <= arrival || !BOARDS.includes(board)) { errs.push(`Zeile ${i + 2}: ungültig`); continue; }
       const ex = useApp.getState().data!.stays.find(x => x.roomNo === c[0] && x.arrival === arrival);
       const stay: Stay = { ...(ex ?? { id: newId(), tableIds: [], vip: false, phone: '', times: {} }), roomNo: c[0], name: c[1], adults: +c[2] || 1, children: +c[3] || 0,
-        arrival, departure, board, allergies: c[7] || '', notes: c[8] || '' } as Stay;
+        arrival, departure, board, allergies: c[7] || '', allergens: guessAllergens(c[7] || ''), notes: c[8] || '' } as Stay;
       const res = await store.saveStay(stay);
       if (!res.ok) failed++; else if (ex) updated++; else created++;
     }

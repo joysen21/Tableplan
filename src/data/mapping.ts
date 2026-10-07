@@ -1,6 +1,6 @@
 /** Umwandlung Datenbankzeile (snake_case) ↔ Fachobjekt (camelCase) */
 import type {
-  AuditEntry, Decor, DiningTable, Layout, Member, Reservation, Room, Service, Station, Stay, TableBlock, TableCombo
+  AuditEntry, Decor, DiningTable, Dish, Ingredient, Layout, Member, Menu, Reservation, Room, Service, Station, Stay, TableBlock, TableCombo
 } from '../domain/types';
 import type { EntityKey, EntityMap } from './repo';
 import { hhmm } from '../lib/time';
@@ -9,7 +9,7 @@ type Row = Record<string, any>;
 
 export const TABLE_OF: Record<EntityKey | 'stays' | 'reservations' | 'reservation_tables' | 'audit', string> = {
   rooms: 'rooms', stations: 'stations', tables: 'dining_tables', decor: 'decor', combos: 'table_combos', layouts: 'layouts',
-  services: 'services', blocks: 'table_blocks', stays: 'stays', reservations: 'reservations', reservation_tables: 'reservation_tables', audit: 'audit_log'
+  services: 'services', blocks: 'table_blocks', ingredients: 'ingredients', dishes: 'dishes', menus: 'menus', stays: 'stays', reservations: 'reservations', reservation_tables: 'reservation_tables', audit: 'audit_log'
 };
 export const KIND_OF: Record<string, keyof typeof TABLE_OF> =
   Object.fromEntries(Object.entries(TABLE_OF).map(([k, v]) => [v, k as keyof typeof TABLE_OF]));
@@ -31,15 +31,24 @@ export const fromDb = {
   blocks: (r: Row): TableBlock => ({ id: r.id, tableId: r.table_id, date: r.date, serviceId: r.service_id ?? null, reason: r.reason ?? '' }),
   stays: (r: Row): Stay => ({
     id: r.id, roomNo: r.room_no, name: r.name, adults: r.adults, children: r.children, arrival: r.arrival, departure: r.departure,
-    board: r.board, phone: r.phone ?? '', allergies: r.allergies ?? '', notes: r.notes ?? '', vip: !!r.vip, times: r.times ?? {}, tableIds: r.table_ids ?? []
+    board: r.board, phone: r.phone ?? '', allergies: r.allergies ?? '', allergens: r.allergens ?? [], notes: r.notes ?? '', vip: !!r.vip, times: r.times ?? {}, tableIds: r.table_ids ?? []
   }),
   reservation: (r: Row): Reservation => ({
     id: r.id, date: r.date, serviceId: r.service_id, time: hhmm(r.time), duration: r.duration, adults: r.adults, children: r.children,
-    name: r.name, phone: r.phone ?? '', email: r.email ?? '', occasion: r.occasion ?? '', allergies: r.allergies ?? '', notes: r.notes ?? '',
+    name: r.name, phone: r.phone ?? '', email: r.email ?? '', occasion: r.occasion ?? '', allergies: r.allergies ?? '', allergens: r.allergens ?? [], notes: r.notes ?? '',
     highchair: !!r.highchair, vip: !!r.vip, source: r.source ?? '', status: r.status, wishes: r.wishes ?? [], stayId: r.stay_id ?? null,
     manualTable: !!r.manual_table, seriesId: r.series_id ?? null, seatedAt: r.seated_at ?? null, finishedAt: r.finished_at ?? null,
     tableIds: Array.isArray(r.table_ids) ? r.table_ids : Array.isArray(r.reservation_tables) ? r.reservation_tables.map((x: Row) => x.table_id) : [],
     updatedAt: r.updated_at
+  }),
+  ingredients: (r: Row): Ingredient => ({ id: r.id, name: r.name, unit: r.unit, allergens: r.allergens ?? [], traces: r.traces ?? [] }),
+  dishes: (r: Row): Dish => ({
+    id: r.id, name: r.name, nameIt: r.name_it ?? '', nameEn: r.name_en ?? '', course: r.course, diet: r.diet ?? [], notes: r.notes ?? '',
+    ingredients: (r.ingredients ?? []).map((l: Row) => ({ ingredientId: l.ingredientId, qty: +l.qty || 0 }))
+  }),
+  menus: (r: Row): Menu => ({
+    id: r.id, date: r.date, serviceId: r.service_id, portions: r.portions ?? null, bufferPct: r.buffer_pct ?? 0, notes: r.notes ?? '',
+    items: (r.items ?? []).map((i: Row) => ({ course: i.course, dishId: i.dishId, share: i.share ?? null, name: i.name ?? '', allergens: i.allergens ?? [] }))
   }),
   audit: (r: Row): AuditEntry => ({ id: String(r.id), ts: r.ts, userName: r.user_name ?? '', action: r.action, details: r.details ?? '' }),
   member: (r: Row): Member => ({ userId: r.user_id, role: r.role, name: r.name ?? '', email: r.email ?? '' })
@@ -64,13 +73,20 @@ export const toDb = {
     free_seating: x.freeSeating, pacing: x.pacing, turn_times: x.turnTimes, seatings: x.seatings, sort: x.sort
   }),
   blocks: (x: TableBlock, v: string) => ({ id: x.id, venue_id: v, table_id: x.tableId, date: x.date, service_id: x.serviceId, reason: x.reason }),
+  ingredients: (x: Ingredient, v: string) => ({ id: x.id, venue_id: v, name: x.name, unit: x.unit, allergens: x.allergens, traces: x.traces }),
+  dishes: (x: Dish, v: string) => ({
+    id: x.id, venue_id: v, name: x.name, name_it: x.nameIt, name_en: x.nameEn, course: x.course, diet: x.diet, notes: x.notes, ingredients: x.ingredients
+  }),
+  menus: (x: Menu, v: string) => ({
+    id: x.id, venue_id: v, date: x.date, service_id: x.serviceId, portions: x.portions, buffer_pct: x.bufferPct, notes: x.notes, items: x.items
+  }),
   stays: (x: Stay, v: string) => ({
     id: x.id, venue_id: v, room_no: x.roomNo, name: x.name, adults: x.adults, children: x.children, arrival: x.arrival, departure: x.departure,
-    board: x.board, phone: x.phone, allergies: x.allergies, notes: x.notes, vip: x.vip, times: x.times, table_ids: x.tableIds
+    board: x.board, phone: x.phone, allergies: x.allergies, allergens: x.allergens, notes: x.notes, vip: x.vip, times: x.times, table_ids: x.tableIds
   }),
   reservation: (x: Reservation) => ({
     id: x.id, date: x.date, service_id: x.serviceId, time: x.time, duration: x.duration, adults: x.adults, children: x.children, name: x.name,
-    phone: x.phone, email: x.email, occasion: x.occasion, allergies: x.allergies, notes: x.notes, highchair: x.highchair, vip: x.vip,
+    phone: x.phone, email: x.email, occasion: x.occasion, allergies: x.allergies, allergens: x.allergens, notes: x.notes, highchair: x.highchair, vip: x.vip,
     source: x.source, status: x.status, wishes: x.wishes, stay_id: x.stayId, manual_table: x.manualTable, series_id: x.seriesId,
     seated_at: x.seatedAt, finished_at: x.finishedAt, table_ids: x.tableIds
   })

@@ -18,7 +18,7 @@ function base(): { d: VenueData; t1: string; t2: string; svc: string } {
 }
 const res = (p: Partial<Reservation> & { serviceId: string }): Reservation => ({
   id: newId(), date: '2026-10-10', time: '19:00', duration: 120, adults: 2, children: 0, name: 'Gast', phone: '', email: '', occasion: '',
-  allergies: '', notes: '', highchair: false, vip: false, source: 'Telefon', status: 'bestaetigt', wishes: [], stayId: null, manualTable: false,
+  allergies: '', allergens: [], notes: '', highchair: false, vip: false, source: 'Telefon', status: 'bestaetigt', wishes: [], stayId: null, manualTable: false,
   seriesId: null, seatedAt: null, finishedAt: null, tableIds: [], ...p
 });
 
@@ -82,7 +82,7 @@ describe('Hotel', () => {
   it('legt je Nacht eine Reservierung an und lässt belegte Nächte ohne Tisch', () => {
     const { d, t1, svc } = base();
     const stay = { id: newId(), roomNo: '101', name: 'Huber', adults: 2, children: 0, arrival: '2026-10-10', departure: '2026-10-13',
-      board: 'HP' as const, phone: '', allergies: '', notes: '', vip: false, times: {}, tableIds: [t1] };
+      board: 'HP' as const, phone: '', allergies: '', allergens: [], notes: '', vip: false, times: {}, tableIds: [t1] };
     d.reservations.push(res({ serviceId: svc, date: '2026-10-11', tableIds: [t1], name: 'Extern' }));
     expect(stayTableConflicts(d, stay, [t1]).length).toBe(1);
     const plan = planStay(d, stay, newId);
@@ -94,7 +94,7 @@ describe('Hotel', () => {
   it('entfernt offene Reservierungen bei verkürztem Aufenthalt', () => {
     const { d, svc } = base();
     const stay = { id: newId(), roomNo: '101', name: 'Huber', adults: 2, children: 0, arrival: '2026-10-10', departure: '2026-10-13',
-      board: 'HP' as const, phone: '', allergies: '', notes: '', vip: false, times: {}, tableIds: [] };
+      board: 'HP' as const, phone: '', allergies: '', allergens: [], notes: '', vip: false, times: {}, tableIds: [] };
     d.reservations.push(...planStay(d, stay, newId).upserts);
     const shorter = { ...stay, departure: '2026-10-11' };
     const plan = planStay(d, shorter, newId);

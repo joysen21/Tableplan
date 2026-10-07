@@ -13,6 +13,7 @@ import { useUi } from '../store/ui';
 import { closeDialog } from '../store/dialogs';
 import { confirmDialog, toast } from '../ui/notify';
 import { Modal } from '../ui/Modal';
+import { AllergenPicker } from '../ui/AllergenPicker';
 
 export function ReservationForm({ r, preset }: { r?: Reservation; preset?: Partial<Reservation> }) {
   const d = useData();
@@ -22,11 +23,11 @@ export function ReservationForm({ r, preset }: { r?: Reservation; preset?: Parti
   const store = useApp();
   const isNew = !r;
   const [draft, setDraft] = useState<Reservation>(() => {
-    if (r) return { ...r };
+    if (r) return { ...r, allergens: r.allergens ?? [] };
     const svc = byId(d.services, preset?.serviceId || currentSvc) ?? d.services[0];
     const base: Reservation = {
       id: newId(), date: ui.date, serviceId: svc.id, time: svc.hotelTime || svc.start, duration: 0, adults: 2, children: 0,
-      name: '', phone: '', email: '', occasion: '', allergies: '', notes: '', highchair: false, vip: false, source: 'Telefon',
+      name: '', phone: '', email: '', occasion: '', allergies: '', allergens: [], notes: '', highchair: false, vip: false, source: 'Telefon',
       status: 'bestaetigt', wishes: [], stayId: null, manualTable: false, seriesId: null, seatedAt: null, finishedAt: null, tableIds: [], ...preset
     };
     base.duration = base.duration || turnTime(d, base.serviceId, persons(base));
@@ -105,12 +106,13 @@ export function ReservationForm({ r, preset }: { r?: Reservation; preset?: Parti
         <select value={draft.stayId ?? ''} onChange={e => {
           const st = byId(d.stays, e.target.value);
           if (!st) return upd({ stayId: null });
-          upd({ stayId: st.id, name: `${st.name} · Zi. ${st.roomNo}`, adults: st.adults, children: st.children, allergies: st.allergies || draft.allergies, source: 'Hotel', vip: st.vip });
+          upd({ stayId: st.id, name: `${st.name} · Zi. ${st.roomNo}`, adults: st.adults, children: st.children, allergies: st.allergies || draft.allergies, allergens: st.allergens?.length ? [...st.allergens] : draft.allergens, source: 'Hotel', vip: st.vip });
         }}>
           <option value="">– kein Hotelgast –</option>
           {inHouse.map(s => <option key={s.id} value={s.id}>Zi. {s.roomNo} · {s.name} ({s.adults + s.children}P, {s.board})</option>)}
         </select></label>
-      <label className="mt8">Allergien / Unverträglichkeiten<input value={draft.allergies} placeholder="z. B. Gluten, Nüsse" onChange={e => upd({ allergies: e.target.value })} /></label>
+      <div className="mt8"><AllergenPicker value={draft.allergens} text={draft.allergies} onChange={allergens => upd({ allergens })} label="Allergene (laut Gast)" /></div>
+      <label className="mt8">Weitere Unverträglichkeiten / Notiz<input value={draft.allergies} placeholder="z. B. vegetarisch, keine Zwiebeln" onChange={e => upd({ allergies: e.target.value })} /></label>
       <label className="mt8">Notizen<textarea value={draft.notes} onChange={e => upd({ notes: e.target.value })} /></label>
       <div className="row mt8">
         <label className="chk"><input type="checkbox" checked={draft.highchair} onChange={e => upd({ highchair: e.target.checked })} /> Kinderstuhl</label>

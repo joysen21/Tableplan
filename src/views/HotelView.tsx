@@ -1,5 +1,6 @@
 /** Hotelgäste: Anreise/Abreise, Gäste ohne Tisch, feste Tische per Ziehen */
 import { ChevronLeft, ChevronRight, Plus, Upload } from 'lucide-react';
+import { allergyText, hasAllergy } from '../domain/menu';
 import { byId, isBlocked, isInHouse, needsTable, occupies, tableNames, type TableStatus } from '../domain/logic';
 import type { DiningTable, Stay } from '../domain/types';
 import { addDays, fmtShort, today } from '../lib/time';
@@ -22,7 +23,7 @@ export function HotelView() {
   const dinner = d.services.find(s => s.kind === 'abend') ?? d.services[0];
   const status = (tb: DiningTable): TableStatus => {
     const st = inHouse.find(s => s.tableIds.includes(tb.id));
-    if (st) return { st: 'reserviert', r: { id: st.id, name: st.name, time: 'Zi.' + st.roomNo, adults: st.adults, children: st.children, stayId: st.id, allergies: st.allergies, vip: st.vip, tableIds: st.tableIds } as any };
+    if (st) return { st: 'reserviert', r: { id: st.id, name: st.name, time: 'Zi.' + st.roomNo, adults: st.adults, children: st.children, stayId: st.id, allergies: st.allergies, allergens: st.allergens, vip: st.vip, tableIds: st.tableIds } as any };
     const ext = d.reservations.find(r => r.date === D && r.serviceId === dinner?.id && occupies(r) && !r.stayId && r.tableIds.includes(tb.id));
     if (ext) return { st: 'bald', r: ext };
     if (dinner && isBlocked(d, tb.id, D, dinner.id)) return { st: 'gesperrt' };
@@ -35,7 +36,7 @@ export function HotelView() {
           <td><b>{s.roomNo}</b></td><td>{s.vip ? '★ ' : ''}{s.name}</td><td>{s.adults}{s.children ? '+' + s.children : ''}</td>
           <td><span className="badge">{s.board}</span></td><td style={{ fontSize: 12 }}>{fmtShort(s.arrival)} – {fmtShort(s.departure)}</td>
           <td>{s.tableIds.length ? tableNames(d, s.tableIds) : needsTable(d, s) ? <b style={{ color: 'var(--danger)' }}>fehlt</b> : <span className="muted">frei</span>}</td>
-          <td style={{ fontSize: 12 }}>{s.allergies && '⚠ ' + s.allergies}</td>
+          <td style={{ fontSize: 12 }}>{hasAllergy(s) && '⚠ ' + allergyText(s)}</td>
         </tr>))}</tbody></table></div>
   ) : <p className="muted" style={{ padding: '0 14px' }}>{empty}</p>;
 

@@ -1,6 +1,6 @@
 /** Globale Dialoge (Formulare, Popups) – damit jede Ansicht sie öffnen kann */
 import { create } from 'zustand';
-import type { Reservation, Stay } from '../domain/types';
+import type { Dish, Ingredient, Reservation, Stay } from '../domain/types';
 
 export type Dialog =
   | { type: 'reservation'; r?: Reservation; preset?: Partial<Reservation> }
@@ -10,7 +10,10 @@ export type Dialog =
   | { type: 'block'; tableId: string }
   | { type: 'stay'; stay?: Stay }
   | { type: 'stayimport' }
-  | { type: 'staytable'; tableId: string };
+  | { type: 'staytable'; tableId: string }
+  | { type: 'menu'; date: string; serviceId: string }
+  | { type: 'dish'; dish?: Dish }
+  | { type: 'ingredient'; ing?: Ingredient; back?: { type: 'dish'; dish: Dish } };
 
 interface DialogState { dialog: Dialog | null; open: (d: Dialog) => void; close: () => void }
 export const useDialogs = create<DialogState>(set => ({ dialog: null, open: dialog => set({ dialog }), close: () => set({ dialog: null }) }));

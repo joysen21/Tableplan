@@ -3,7 +3,7 @@
  * Tabs desselben Browsers werden über BroadcastChannel live synchronisiert.
  * Doppelbuchungsschutz und Rollenrechte werden wie in der Datenbank nachgebildet.
  */
-import { demoVenueData, newId } from '../domain/demo';
+import { demoVenueData, newId, normalizeVenueData } from '../domain/demo';
 import { occupies, tableBusy, resEnd, resStart } from '../domain/logic';
 import type { Member, Reservation, Role, Stay, VenueData } from '../domain/types';
 import { RepoError, type AuthUser, type ChangeEvent, type EntityKey, type EntityMap, type LiveState, type Membership, type Repo } from './repo';
@@ -19,7 +19,7 @@ export const DEMO_USERS: { email: string; name: string; role: Role }[] = [
   { email: 'kueche@demo.local', name: 'Karl (Küche)', role: 'kueche' }
 ];
 const WRITE: Record<Role, string[]> = {
-  admin: ['*'], empfang: ['reservations', 'stays', 'blocks', 'audit'], service: ['status', 'audit'], kueche: []
+  admin: ['*'], empfang: ['reservations', 'stays', 'blocks', 'audit'], service: ['status', 'audit'], kueche: ['ingredients', 'dishes', 'menus']
 };
 
 export class DemoRepo implements Repo {
@@ -87,7 +87,7 @@ export class DemoRepo implements Repo {
     const u = this.user(); if (!u) throw new RepoError('auth', 'Nicht angemeldet');
     const db = this.read(); const id = newId();
     db.venues.push({ id, name }); db.members.push({ ...u, venueId: id, role: 'admin' });
-    db.data[id] = { venue: { id, name }, rooms: [], stations: [], tables: [], decor: [], combos: [], layouts: [], services: [], blocks: [], stays: [], reservations: [], audit: [] };
+    db.data[id] = normalizeVenueData({ venue: { id, name } } as VenueData);
     this.write(db); return id;
   }
   async renameVenue(venueId: string, name: string) {
@@ -116,7 +116,7 @@ export class DemoRepo implements Repo {
   async loadVenue(venueId: string): Promise<VenueData> {
     const d = this.read().data[venueId];
     if (!d) throw new RepoError('other', 'Betrieb nicht gefunden');
-    return structuredClone(d);
+    return normalizeVenueData(structuredClone(d));
   }
 
   /* ---------- Schreiben ---------- */
@@ -185,7 +185,7 @@ export class DemoRepo implements Repo {
   async upsert<K extends EntityKey>(venueId: string, kind: K, rows: EntityMap[K][]) {
     this.guard(venueId, kind);
     this.mutate(venueId, d => {
-      const list = d[kind] as unknown as { id: string }[];
+      const list = ((d as any)[kind] ??= []) as { id: string }[];
       for (const r of rows) { const i = list.findIndex(x => x.id === r.id); if (i >= 0) list[i] = { ...r }; else list.push({ ...r }); }
     });
     this.emit(rows.map(row => ({ kind, type: 'upsert', row }) as ChangeEvent));
@@ -193,7 +193,7 @@ export class DemoRepo implements Repo {
   async remove(venueId: string, kind: EntityKey, ids: string[]) {
     this.guard(venueId, kind);
     this.mutate(venueId, d => {
-      (d as any)[kind] = (d[kind] as unknown as { id: string }[]).filter(x => !ids.includes(x.id));
+      (d as any)[kind] = ((d[kind] ?? []) as unknown as { id: string }[]).filter(x => !ids.includes(x.id));
       if (kind === 'tables') {
         d.reservations.forEach(r => { r.tableIds = r.tableIds.filter(t => !ids.includes(t)); });
         d.combos = d.combos.map(c => ({ ...c, tableIds: c.tableIds.filter(t => !ids.includes(t)) })).filter(c => c.tableIds.length >= 2);
@@ -201,7 +201,7 @@ export class DemoRepo implements Repo {
         d.blocks = d.blocks.filter(b => !ids.includes(b.tableId));
       }
       if (kind === 'rooms') { const tids = d.tables.filter(t => ids.includes(t.roomId)).map(t => t.id); d.tables = d.tables.filter(t => !tids.includes(t.id)); d.decor = d.decor.filter(x => !ids.includes(x.roomId)); d.reservations.forEach(r => { r.tableIds = r.tableIds.filter(t => !tids.includes(t)); }); }
-      if (kind === 'services') d.reservations = d.reservations.filter(r => !ids.includes(r.serviceId));
+      if (kind === 'services') { d.reservations = d.reservations.filter(r => !ids.includes(r.serviceId)); d.menus = (d.menus ?? []).filter(m => !ids.includes(m.serviceId)); }
     });
     this.emit(ids.map(id => ({ kind, type: 'delete', id }) as ChangeEvent));
   }
@@ -212,7 +212,7 @@ export class DemoRepo implements Repo {
   }
   async replaceAll(venueId: string, data: VenueData) {
     this.guard(venueId, '*');
-    this.mutate(venueId, (_d, db) => { db.data[venueId] = { ...structuredClone(data), venue: { id: venueId, name: data.venue.name } }; });
+    this.mutate(venueId, (_d, db) => { db.data[venueId] = normalizeVenueData({ ...structuredClone(data), venue: { id: venueId, name: data.venue.name } }); });
   }
   async uploadBackground(_venueId: string, file: File): Promise<string> {
     if (file.size > 1_500_000) throw new RepoError('other', 'Bild zu groß (max. 1,5 MB im Demo-Modus)');

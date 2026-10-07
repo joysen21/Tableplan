@@ -24,7 +24,12 @@ Web-App für Empfang, Service und Küche: Raumplan, Reservierungen, Live-Tischpl
   - Halb- und Vollpension mit automatischen Reservierungen für jede Nacht
   - fester Tisch für den ganzen Aufenthalt (belegte Nächte werden gemeldet)
   - Anreise- und Abreiselisten, CSV-Import
-- **Berichte:** Tagesübersicht, Küchenvorschau/Briefing, Allergie-Liste, Hotel-Tischliste, Tischplan – druckbar bzw. als PDF
+- **Menü:**
+  - Wochenplan: pro Tag und Service ein Menü mit Gängen und Wahlmöglichkeiten (erwartete Anteile in %), „Vorwoche übernehmen“
+  - Gerichte (Rezepte mit Mengen pro Portion) und Zutaten (Einheit, 14 EU-Allergene, Spuren); Allergene der Gerichte ergeben sich aus den Zutaten
+  - Portionen automatisch aus den Reservierungen (inkl. Hotelgäste mit HP/VP) + Puffer, von Hand überschreibbar
+  - Gästeallergien als Auswahl der 14 Allergene (Freitext bleibt als Notiz); Warnungen mit Alternative im selben Gang
+- **Berichte:** Tagesübersicht, Küchenvorschau/Briefing (mit Menü und Allergen-Warnungen), Zutatenliste, Allergen-Übersicht, Allergie-Liste, Hotel-Tischliste, Tischplan – druckbar bzw. als PDF
 - **Rollen:**
   - Admin, Empfang, Service, Küche
   - Die Rechte werden **in der Datenbank** durchgesetzt (Row Level Security + Trigger).
@@ -101,8 +106,8 @@ src/
   domain/      Fachlogik ohne UI: Typen, Konflikte, Vorschläge, Hotel-Planung, Demo-Daten (+ Unit-Tests)
   data/        Datenzugriff: Schnittstelle (repo.ts), Supabase-Implementierung, Demo-Implementierung
   store/       Zustand (zustand): Daten des Betriebs, Bedienzustand, Dialoge
-  views/       Seiten: Live-Plan, Zeitleiste, Reservierungen, Hotel, Berichte, Editor, Einstellungen
-  forms/       Dialoge: Reservierung, Tisch-Popup, Walk-in, Sperre, Aufenthalt, CSV-Import
+  views/       Seiten: Live-Plan, Zeitleiste, Reservierungen, Hotel, Menü, Berichte, Editor, Einstellungen
+  forms/       Dialoge: Reservierung, Tisch-Popup, Walk-in, Sperre, Aufenthalt, CSV-Import, Menü/Gericht/Zutat
   ui/          Bausteine: Raumplan-SVG, Modal, Drag & Drop, Rückmeldungen
 supabase/
   migrations/  Datenbankschema inkl. Row Level Security
@@ -118,6 +123,7 @@ prototype/     Erster HTML-Prototyp (archiviert)
 | `rooms`, `dining_tables`, `decor`, `stations`, `table_combos`, `layouts` | Raumplan |
 | `services`, `table_blocks` | Services (Zeiten, Verweildauer, Pacing, Seatings) und Tischsperren |
 | `stays` | Hotelaufenthalte (Zimmer, Verpflegung, fester Tisch) |
+| `ingredients`, `dishes`, `menus` | Zutaten (Allergene), Gerichte (Rezept als JSON), Tagesmenüs je Service |
 | `reservations`, `reservation_tables` | Reservierungen und Tischbelegung (mit Doppelbuchungsschutz) |
 | `audit_log` | Änderungsprotokoll |
 

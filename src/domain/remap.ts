@@ -17,6 +17,9 @@ export function remapIds(d: VenueData, newId: () => string): VenueData {
     blocks: d.blocks.map(x => ({ ...x, id: m(x.id)!, tableId: m(x.tableId)!, serviceId: m(x.serviceId) })),
     stays: d.stays.map(x => ({ ...x, id: m(x.id)!, tableIds: mm(x.tableIds) })),
     reservations: d.reservations.map(x => ({ ...x, id: m(x.id)!, serviceId: m(x.serviceId)!, stayId: m(x.stayId), seriesId: x.seriesId ? m(x.seriesId) : null, tableIds: mm(x.tableIds) })),
-    audit: []
+    audit: [],
+    ingredients: (d.ingredients ?? []).map(x => ({ ...x, id: m(x.id)! })),
+    dishes: (d.dishes ?? []).map(x => ({ ...x, id: m(x.id)!, ingredients: x.ingredients.map(l => ({ ...l, ingredientId: m(l.ingredientId)! })) })),
+    menus: (d.menus ?? []).map(x => ({ ...x, id: m(x.id)!, serviceId: m(x.serviceId)!, items: x.items.map(i => ({ ...i, dishId: m(i.dishId)! })) }))
   };
 }

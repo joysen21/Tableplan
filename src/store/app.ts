@@ -5,7 +5,7 @@
 import { create } from 'zustand';
 import { repo, HISTORY_DAYS } from '../data';
 import { RepoError, type ChangeEvent, type EntityKey, type EntityMap, type LiveState, type Membership } from '../data/repo';
-import { demoVenueData, emptyVenueData, newId } from '../domain/demo';
+import { demoVenueData, emptyVenueData, newId, normalizeVenueData } from '../domain/demo';
 import { OPEN_STATES } from '../domain/constants';
 import { planStay } from '../domain/logic';
 import type { Reservation, ResStatus, SessionUser, Stay, VenueData } from '../domain/types';
@@ -234,7 +234,7 @@ export const useApp = create<AppState>((set, get) => {
       if (ok) set(s => (s.data ? { data: { ...s.data, venue: { ...s.data.venue, name } } } : {}));
     },
     async replaceAll(data, logText) {
-      const ok = await write(async () => { await repo.replaceAll(venueId(), data); return true; });
+      const ok = await write(async () => { await repo.replaceAll(venueId(), normalizeVenueData(data)); return true; });
       if (!ok) return false;
       await get().reload();
       get().log(logText);

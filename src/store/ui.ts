@@ -10,6 +10,8 @@ interface UiState {
   /** Live-Plan am Handy: Plan oder Liste anzeigen */
   liveTab: 'plan' | 'liste';
   resFilter: ResFilter | null; editRoomId: string | null; editSel: string | null;
+  /** Menüverwaltung: Reiter und angezeigte Woche (irgendein Tag der Woche) */
+  menuTab: 'plan' | 'gerichte' | 'zutaten'; menuWeek: string;
   set: (p: Partial<UiState>) => void;
   goToday: () => void;
 }
@@ -17,7 +19,7 @@ interface UiState {
 export const useUi = create<UiState>(set => ({
   date: today(), serviceId: null, roomId: null, time: nowMin(), follow: true,
   showStations: false, liveActiveOnly: false, hotelDate: today(), report: '', liveTab: 'plan',
-  resFilter: null, editRoomId: null, editSel: null,
+  resFilter: null, editRoomId: null, editSel: null, menuTab: 'plan', menuWeek: today(),
   set: p => set(p),
   goToday: () => set({ date: today(), time: nowMin(), follow: true, serviceId: null })
 }));

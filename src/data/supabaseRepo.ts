@@ -88,14 +88,15 @@ export class SupabaseRepo implements Repo {
   async loadVenue(venueId: string, venueName: string, historyDays: number): Promise<VenueData> {
     const cutoff = addDays(today(), -historyDays);
     const byVenue = (q: any) => q.eq('venue_id', venueId).order('id');
-    const [rooms, stations, tables, decor, combos, layouts, services, blocks, stays, reservations, audit, venue] = await Promise.all([
+    const [rooms, stations, tables, decor, combos, layouts, services, blocks, stays, reservations, audit, venue, ingredients, dishes, menus] = await Promise.all([
       this.all('rooms', byVenue), this.all('stations', byVenue), this.all('dining_tables', byVenue), this.all('decor', byVenue),
       this.all('table_combos', byVenue), this.all('layouts', byVenue), this.all('services', byVenue),
       this.all('table_blocks', q => byVenue(q).gte('date', cutoff)),
       this.all('stays', q => byVenue(q).gte('departure', cutoff)),
       this.all('reservations', q => byVenue(q).gte('date', cutoff), '*, reservation_tables(table_id)'),
       run<any[]>(this.sb.from('audit_log').select('*').eq('venue_id', venueId).order('ts', { ascending: false }).limit(300)),
-      run<any>(this.sb.from('venues').select('id, name').eq('id', venueId).maybeSingle())
+      run<any>(this.sb.from('venues').select('id, name').eq('id', venueId).maybeSingle()),
+      this.all('ingredients', byVenue), this.all('dishes', byVenue), this.all('menus', q => byVenue(q).gte('date', cutoff))
     ]);
     return {
       venue: { id: venueId, name: venue?.name ?? venueName },
@@ -104,7 +105,9 @@ export class SupabaseRepo implements Repo {
       combos: combos.map(fromDb.combos), layouts: layouts.map(fromDb.layouts),
       services: services.map(fromDb.services).sort((a, b) => a.sort - b.sort || a.start.localeCompare(b.start)),
       blocks: blocks.map(fromDb.blocks), stays: stays.map(fromDb.stays), reservations: reservations.map(fromDb.reservation),
-      audit: audit.map(fromDb.audit)
+      audit: audit.map(fromDb.audit),
+      ingredients: ingredients.map(fromDb.ingredients).sort((a, b) => a.name.localeCompare(b.name, 'de')),
+      dishes: dishes.map(fromDb.dishes).sort((a, b) => a.name.localeCompare(b.name, 'de')), menus: menus.map(fromDb.menus)
     };
   }
 
@@ -142,7 +145,7 @@ export class SupabaseRepo implements Repo {
   }
   async replaceAll(venueId: string, d: VenueData) {
     // Bestehendes löschen (Reservierungen zuerst, Tischbelegung kaskadiert)
-    for (const t of ['reservations', 'stays', 'table_blocks', 'table_combos', 'layouts', 'decor', 'dining_tables', 'stations', 'rooms', 'services'])
+    for (const t of ['menus', 'dishes', 'ingredients', 'reservations', 'stays', 'table_blocks', 'table_combos', 'layouts', 'decor', 'dining_tables', 'stations', 'rooms', 'services'])
       await run(this.sb.from(t).delete().eq('venue_id', venueId));
     for (const k of ENTITY_KEYS) await this.upsert(venueId, k, d[k] as any);
     await this.upsertStaysRaw(venueId, d.stays);

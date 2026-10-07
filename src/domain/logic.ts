@@ -164,14 +164,14 @@ export function planStay(d: VenueData, stay: Stay, newId: () => string, resetMan
     const ex = existing.find(r => r.date === n.date && r.serviceId === n.svc.id);
     const base: Reservation = ex ? { ...ex } : {
       id: newId(), date: n.date, serviceId: n.svc.id, time: stay.times[n.svc.kind] || n.svc.hotelTime || n.svc.start,
-      duration: turnTime(d, n.svc.id, p), adults: 0, children: 0, name: '', phone: '', email: '', occasion: '', allergies: '', notes: '',
+      duration: turnTime(d, n.svc.id, p), adults: 0, children: 0, name: '', phone: '', email: '', occasion: '', allergies: '', allergens: [], notes: '',
       highchair: false, vip: false, source: 'Hotel', status: 'bestaetigt', wishes: [], stayId: stay.id, manualTable: false,
       seriesId: null, seatedAt: null, finishedAt: null, tableIds: []
     };
     const open = OPEN_STATES.includes(base.status);
     const next: Reservation = {
       ...base, name: `${stay.name} · Zi. ${stay.roomNo}`, adults: stay.adults, children: stay.children,
-      allergies: stay.allergies, notes: stay.notes, vip: stay.vip, phone: stay.phone
+      allergies: stay.allergies, allergens: [...(stay.allergens ?? [])], notes: stay.notes, vip: stay.vip, phone: stay.phone
     };
     if (open) {
       if (stay.times[n.svc.kind]) next.time = stay.times[n.svc.kind]!;
