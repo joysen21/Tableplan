@@ -183,6 +183,54 @@ test('Zeitleiste: Wischen über Balken scrollt seitlich, Antippen öffnet', asyn
   await expect(page.locator('.modal')).toBeVisible();
 });
 
+test('Zeitleiste: Tischspalte bleibt beim Scrollen stehen, Zeile antippen markiert sie', async ({ page }) => {
+  await loginDemo(page);
+  await goView(page, 'Zeitleiste');
+  await page.getByLabel('Service').selectOption({ label: 'Abendessen' });
+  const gantt = page.locator('.gantt');
+  await gantt.evaluate(e => { e.scrollLeft = e.scrollWidth; });
+  const g = (await gantt.boundingBox())!;
+  const label = page.locator('.g-row[data-table-id] .g-label').first();
+  expect(Math.abs((await label.boundingBox())!.x - g.x)).toBeLessThan(2);
+  await label.tap();
+  await expect(page.locator('.g-row.marked')).toHaveCount(1);
+  await label.tap();
+  await expect(page.locator('.g-row.marked')).toHaveCount(0);
+});
+
+test('Zeitleiste: lange drücken und ziehen verschiebt einen Eintrag auf einen anderen Tisch', async ({ page }) => {
+  await loginDemo(page);
+  await goView(page, 'Zeitleiste');
+  await page.getByLabel('Service').selectOption({ label: 'Abendessen' });
+  const free = await freeDinnerTable(page);
+  // Balken aus der nächsten belegten Zeile oberhalb des freien Tisches, beide sichtbar machen
+  const res = await page.evaluate(id => {
+    const rows = [...document.querySelectorAll<HTMLElement>('.g-row[data-table-id]')];
+    const f = rows.findIndex(r => r.dataset.tableId === id);
+    const src = rows.slice(0, f).reverse().find(r => r.querySelector('.g-bar'))!;
+    const bar = src.querySelector<HTMLElement>('.g-bar')!;
+    bar.scrollIntoView({ block: 'center', inline: 'center' });
+    return bar.dataset.res!;
+  }, free);
+  const bar = page.locator(`.g-bar[data-res="${res}"]`).first();
+  await page.locator(`.g-row[data-table-id="${free}"]`).evaluate(e => e.scrollIntoView({ block: 'nearest' }));
+  const b = (await bar.boundingBox())!, t = (await page.locator(`.g-row[data-table-id="${free}"] .g-track`).boundingBox())!;
+  const x = b.x + Math.min(b.width / 2, 30), y = b.y + b.height / 2, ty = t.y + t.height / 2;
+  const top0 = await page.locator('.gantt').evaluate(e => e.scrollTop);
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+  await page.waitForTimeout(600);
+  await expect(bar).toHaveClass(/lifted/);
+  for (let i = 1; i <= 10; i++) { await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y + (ty - y) * i / 10 }] }); await page.waitForTimeout(16); }
+  await expect(page.locator(`.g-row.drop-target[data-table-id="${free}"]`)).toHaveCount(1);
+  expect(await page.locator('.gantt').evaluate(e => e.scrollTop)).toBe(top0); // Ziehen scrollt nicht mit
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  const confirm = page.getByRole('button', { name: 'Trotzdem speichern' });
+  if (await confirm.isVisible({ timeout: 1000 }).catch(() => false)) await confirm.click();
+  await expect(page.locator('.toast')).toContainText(/Gespeichert|verschoben/);
+  await expect(page.locator(`.g-row[data-table-id="${free}"] .g-bar[data-res="${res}"]`)).toHaveCount(1);
+});
+
 test('Hotel: freien Tisch antippen und Gast ohne Tisch zuweisen', async ({ page }) => {
   await loginDemo(page);
   await goView(page, 'Hotelgäste');

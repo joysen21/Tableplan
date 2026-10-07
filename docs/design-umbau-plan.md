@@ -60,7 +60,8 @@ Befehle:
 - [x] Live (3a): Tippen statt Ziehen – freier Tisch zeigt „Ohne Tisch – hier platzieren“; besetzter Tisch hat „Umsetzen an…“
 - [x] Dialoge (3a): am Handy als Blatt von unten, Buttons immer sichtbar, `dvh`; Formularfelder zweispaltig wo kurz
 - [x] Reservierungen (3b): am Handy Karten nach Datum gruppiert, Suche + aufklappbare Filter (mit Anzahl aktiver Filter)
-- [x] Zeitleiste (3b): schmalere Namensspalte; am Handy scrollt Wischen über Balken, Antippen öffnet (Verschieben dann im Dialog)
+- [x] Zeitleiste (3b): schmalere Namensspalte; am Handy scrollt Wischen über Balken, Antippen öffnet
+- [x] Zeitleiste (3c): Tischspalte und Zeilenlinien bleiben beim Scrollen nach rechts; Zeile antippen = markieren; am Handy lange drücken (0,4 s) und ziehen = Uhrzeit/Tisch ändern (Zielzeile markiert, Auto-Scroll am Rand); öffnet heute bei der aktuellen Uhrzeit
 - [x] Hotel (3b): freien Tisch antippen → Hotelgast ohne festen Tisch zuweisen; Plan scrollbar
 - [x] Editor (3b): am Handy Plan zuerst + Hinweis „am besten am Tablet/PC“; Berichte/Einstellungen passen ohne Änderung
 
