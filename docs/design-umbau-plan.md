@@ -59,9 +59,10 @@ Befehle:
 - [x] Live (3a): Scroll-Problem behoben – Wischen über Einträge/Plan scrollt; am Handy wird nur am Griff ⋮⋮ gezogen, Antippen öffnet
 - [x] Live (3a): Tippen statt Ziehen – freier Tisch zeigt „Ohne Tisch – hier platzieren“; besetzter Tisch hat „Umsetzen an…“
 - [x] Dialoge (3a): am Handy als Blatt von unten, Buttons immer sichtbar, `dvh`; Formularfelder zweispaltig wo kurz
-- [ ] Reservierungen: Kartenansicht am Handy, Filter als Bottom-Sheet
-- [ ] Zeitleiste: schmalere Namensspalte, größere Touch-Ziele
-- [ ] Hotel, Berichte, Editor, Einstellungen nach gleichem Muster
+- [x] Reservierungen (3b): am Handy Karten nach Datum gruppiert, Suche + aufklappbare Filter (mit Anzahl aktiver Filter)
+- [x] Zeitleiste (3b): schmalere Namensspalte; am Handy scrollt Wischen über Balken, Antippen öffnet (Verschieben dann im Dialog)
+- [x] Hotel (3b): freien Tisch antippen → Hotelgast ohne festen Tisch zuweisen; Plan scrollbar
+- [x] Editor (3b): am Handy Plan zuerst + Hinweis „am besten am Tablet/PC“; Berichte/Einstellungen passen ohne Änderung
 
 ## Phase 4 – Prüfen & Veröffentlichen
 - [ ] `npm run typecheck`, `npm test`, `npm run e2e` (Desktop + Handy)

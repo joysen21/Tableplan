@@ -148,3 +148,59 @@ test('Live: freien Tisch antippen und Reservierung ohne Tisch dort platzieren', 
   if (await confirm.isVisible({ timeout: 1000 }).catch(() => false)) await confirm.click();
   await expect(page.locator('.toast')).toContainText('Gespeichert');
 });
+
+test('Reservierungen: Karten nach Datum, Filter aufklappbar, Antippen öffnet', async ({ page }) => {
+  await loginDemo(page);
+  await goView(page, 'Reservierungen');
+  await expect(page.locator('table.list')).toHaveCount(0);
+  await expect(page.locator('.day-head').first()).toBeVisible();
+  await expect(page.getByLabel('Von')).toBeHidden();
+  await page.getByRole('button', { name: /^Filter/ }).click();
+  await expect(page.getByLabel('Von')).toBeVisible();
+  await page.getByLabel('nur ohne Tisch').check();
+  await expect(page.getByRole('button', { name: /^Filter/ })).toContainText('1');
+  await page.locator('.ritem .main').first().tap();
+  await expect(page.locator('.modal')).toBeVisible();
+});
+
+test('Zeitleiste: Wischen über Balken scrollt seitlich, Antippen öffnet', async ({ page }) => {
+  await loginDemo(page);
+  await goView(page, 'Zeitleiste');
+  await page.getByLabel('Service').selectOption({ label: 'Abendessen' });
+  const bar = page.locator('.g-row[data-table-id] .g-bar').first();
+  await bar.scrollIntoViewIfNeeded();
+  const b = (await bar.boundingBox())!;
+  const cdp = await page.context().newCDPSession(page);
+  const before = await page.locator('.gantt').evaluate(e => e.scrollLeft);
+  const x = b.x + Math.min(b.width / 2, 40), y = b.y + b.height / 2;
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+  for (let i = 1; i <= 10; i++) { await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x - i * 20, y }] }); await page.waitForTimeout(16); }
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await page.waitForTimeout(500);
+  expect(await page.locator('.gantt').evaluate(e => e.scrollLeft)).toBeGreaterThan(before + 50);
+  await expect(page.locator('.modal')).toHaveCount(0);
+  await page.locator('.g-row[data-table-id] .g-bar').first().tap();
+  await expect(page.locator('.modal')).toBeVisible();
+});
+
+test('Hotel: freien Tisch antippen und Gast ohne Tisch zuweisen', async ({ page }) => {
+  await loginDemo(page);
+  await goView(page, 'Hotelgäste');
+  const chips = page.locator('[data-chip]');
+  const n = await chips.count();
+  expect(n).toBeGreaterThan(0);
+  const id = await page.evaluate(() => {
+    const venue = Object.values(JSON.parse(localStorage.getItem('tischplan.demo.v2')!).data)[0] as any;
+    const used = new Set(venue.stays.flatMap((s: any) => s.tableIds));
+    const day = new Date().toLocaleDateString('sv-SE');
+    const busy = new Set([...used, ...venue.reservations.filter((r: any) => r.date === day).flatMap((r: any) => r.tableIds), ...venue.blocks.map((b: any) => b.tableId)]);
+    return venue.tables.find((t: any) => !busy.has(t.id) && t.roomId === venue.rooms[0].id && t.maxPersons >= 4).id as string;
+  });
+  await page.locator(`.hotel svg.plan [data-table-id="${id}"]`).tap();
+  await expect(page.getByRole('heading', { name: 'Hotelgast ohne festen Tisch hier platzieren' })).toBeVisible();
+  await page.locator('.modal .sugg .btn').first().click();
+  const confirm = page.getByRole('button', { name: 'Trotzdem zuweisen' });
+  if (await confirm.isVisible({ timeout: 1000 }).catch(() => false)) await confirm.click();
+  await expect(page.locator('.toast')).toBeVisible();
+  await expect(chips).toHaveCount(n - 1);
+});

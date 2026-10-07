@@ -147,6 +147,7 @@ export function EditorView() {
 
   return (
     <div className="editor">
+      <p className="infobox only-mobile editor-hint">Tipp: Der Raumplan-Editor lässt sich am besten am Tablet oder PC bedienen.</p>
       <div className="panel toolbox">
         <h3>Raum</h3>
         <div className="body">
@@ -177,7 +178,7 @@ export function EditorView() {
         </div>
       </div>
 
-      <div className="panel">
+      <div className="panel editor-canvas">
         <div className="plan-wrap">{room ? <FloorPlan data={view} room={room} mode="edit" sel={ui.editSel} showStations svgRef={svgRef}
           onTableDown={(e, tb) => startMove(e, tb.id, 'table')} onDecorDown={(e, x) => startMove(e, x.id, 'decor')}
           onResizeDown={(e, tb) => startMove(e, tb.id, 'table', true)} onBackgroundDown={() => ui.set({ editSel: null })} />

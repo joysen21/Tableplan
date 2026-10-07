@@ -6,8 +6,7 @@ import { addDays, fmtShort, today } from '../lib/time';
 import { useData, useRoomId } from '../store/hooks';
 import { useUi } from '../store/ui';
 import { openDialog } from '../store/dialogs';
-import { dropTableId, startDrag } from '../ui/drag';
-import { toast } from '../ui/notify';
+import { dropTableId, startDrag, startDragOrTap } from '../ui/drag';
 import { FloorPlan } from '../ui/FloorPlan';
 import { assignStayTable } from '../forms/HotelForms';
 
@@ -61,7 +60,7 @@ export function HotelView() {
           <div className="kpi" style={open.length ? { color: 'var(--danger)' } : undefined}><b>{open.length}</b><small>ohne Tisch</small></div>
         </div>
         <div className="body">
-          <h4 style={{ margin: '0 0 6px' }}>Ohne festen Tisch – auf den Plan ziehen</h4>
+          <h4 style={{ margin: '0 0 6px' }}>Ohne festen Tisch – <span className="tip-desktop">auf den Plan ziehen</span><span className="tip-touch">freien Tisch im Plan antippen</span></h4>
           <div>{open.length ? open.map(s => (
             <span key={s.id} className="stay-chip" data-chip={s.id} onPointerDown={e => startDrag(e, {
               label: `Zi. ${s.roomNo} ${s.name}`, onClick: () => openDialog({ type: 'stay', stay: s }),
@@ -79,14 +78,14 @@ export function HotelView() {
         <div className="plan-wrap">{room && <FloorPlan data={d} room={room} mode="assign" status={status} onTableDown={(e, tb) => {
           const s = status(tb);
           const st = s.r?.stayId ? byId(d.stays, s.r.stayId) : undefined;
-          startDrag(e, {
+          startDragOrTap(e, {
             label: st ? `Zi. ${st.roomNo} → ?` : tb.name,
-            onClick: () => st ? openDialog({ type: 'stay', stay: st }) : s.r ? openDialog({ type: 'reservation', r: s.r }) : toast(`${tb.name}: frei am ${fmtShort(D)}`),
+            onClick: () => st ? openDialog({ type: 'stay', stay: st }) : s.r ? openDialog({ type: 'reservation', r: s.r }) : openDialog({ type: 'staytable', tableId: tb.id }),
             onDrop: el => { const to = dropTableId(el); if (st && to && to !== tb.id) assignStayTable(d, st, st.tableIds.map(x => (x === tb.id ? to : x))); }
           });
         }} />}</div>
         <div className="legend"><span><i style={{ background: 'var(--st-reserviert)' }} />Hotelgast (fester Tisch)</span><span><i style={{ background: 'var(--st-bald)' }} />Externe Reservierung</span>
-          <span><i style={{ background: 'var(--st-frei)' }} />frei</span><span>Ziehen: Gast-Chip → Tisch, oder Tisch → anderer Tisch</span></div>
+          <span><i style={{ background: 'var(--st-frei)' }} />frei</span><span className="tip-desktop">Ziehen: Gast-Chip → Tisch, oder Tisch → anderer Tisch</span><span className="tip-touch">Freien Tisch antippen = Gast zuweisen · belegten Tisch antippen = ändern</span></div>
       </div>
     </div>
   );

@@ -7,11 +7,13 @@ import { t } from '../lib/i18n';
 import { fmtShort } from '../lib/time';
 
 /** Eine Reservierung in Listen; mit `draggable` erscheint ein Griff (am Handy wird nur daran gezogen) */
-export function ResItem({ d, r, showDate, draggable, onPointerDown }: { d: VenueData; r: Reservation; showDate?: boolean; draggable?: boolean; onPointerDown?: (e: RPE) => void }) {
+export function ResItem({ d, r, showDate, draggable, onPointerDown, onClick }: {
+  d: VenueData; r: Reservation; showDate?: boolean; draggable?: boolean; onPointerDown?: (e: RPE) => void; onClick?: () => void;
+}) {
   const unassigned = occupies(r) && !r.tableIds.length;
   const issues = checkReservation(d, r);
   return (
-    <div className={'ritem' + (unassigned ? ' unassigned' : '') + (occupies(r) || r.status === 'abgeschlossen' ? '' : ' cancel')} data-res={r.id} onPointerDown={onPointerDown}>
+    <div className={'ritem' + (unassigned ? ' unassigned' : '') + (occupies(r) || r.status === 'abgeschlossen' ? '' : ' cancel') + (onClick ? ' clickable' : '')} data-res={r.id} onPointerDown={onPointerDown} onClick={onClick}>
       {draggable && <span className="grip" data-drag-handle title="Auf einen Tisch ziehen" aria-hidden="true"><GripVertical /></span>}
       <div className="time">{showDate && <>{fmtShort(r.date)}<br /></>}{r.time}</div>
       <div className="main">
