@@ -148,6 +148,8 @@ npm test             # Unit-Tests der Fachlogik (vitest)
 npm run e2e          # Oberflächentests im Demo-Modus (Playwright)
 ```
 
+**CI:** Bei jedem Push und Pull Request laufen Typecheck, Unit-Tests und Oberflächentests automatisch in GitHub Actions (`.github/workflows/ci.yml`). Schlägt ein Test fehl, liegen Bericht und Screenshots als Artefakt „playwright-report“ am Lauf. Damit nichts Ungeprüftes live geht, in GitHub unter *Settings → Branches* für `main` „Require status checks to pass“ aktivieren.
+
 Den Integrationstest gegen eine echte Datenbank (`src/data/supabaseRepo.int.test.ts`) gibt es zusätzlich. Er läuft gegen PostgreSQL mit dem Schema und PostgREST und wird über diese Variablen aktiviert:
 
 ```bash

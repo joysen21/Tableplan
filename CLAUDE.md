@@ -13,6 +13,7 @@ Oberfläche und Texte auf **Deutsch**. Arbeitssprache mit dem Nutzer: Deutsch.
 - `npm run build` – Produktions-Build
 
 Nach jeder Änderung: `npm run typecheck` und `npm test`; bei UI-Änderungen zusätzlich `npm run e2e`.
+Dieselben Prüfungen laufen in GitHub Actions (`.github/workflows/ci.yml`) bei jedem Push/PR; Node-Version steht in `.nvmrc`. Lokal ohne Playwright-Browser: `PW_CHANNEL=msedge npm run e2e`.
 
 ## Architektur
 - `src/domain/` – reine Fachlogik ohne UI/DB (Konfliktprüfung, Tischvorschläge, Live-Status, Hotel-Planung). Neue Regeln hierhin + Unit-Test.
