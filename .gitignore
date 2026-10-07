@@ -11,3 +11,5 @@ prototype/config.js
 # System
 .DS_Store
 Thumbs.db
+# Vorher/Nachher-Screenshots (werden per e2e/screens.spec.ts erzeugt)
+docs/screens/

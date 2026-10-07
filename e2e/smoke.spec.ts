@@ -64,6 +64,8 @@ test('Walk-in platzieren und Status ändern', async ({ page }) => {
 test('Zeitleiste: Balken verschieben', async ({ page }) => {
   await loginDemo(page);
   await page.getByRole('link', { name: 'Zeitleiste' }).click();
+  // fest den Abendservice wählen – morgens (Frühstück) gäbe es keine Balken
+  await page.getByLabel('Service').selectOption({ label: 'Abendessen' });
   const bar = page.locator('.g-row[data-table-id] .g-bar').last();
   await bar.scrollIntoViewIfNeeded();
   const box = (await bar.boundingBox())!;
