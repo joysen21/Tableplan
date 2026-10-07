@@ -91,7 +91,7 @@ export function Shell() {
   return (
     <div className={'shell' + (bottom.length ? ' has-bottomnav' : '')}>
       <header>
-        <span className="brand">🍽 {data.venue.name}</span>
+        <span className="brand"><img className="logo-light" src="/joke-icon.svg" alt="JoKe" /><img className="logo-dark" src="/joke-icon-weiss.svg" alt="JoKe" />{data.venue.name}</span>
         <nav className="topnav">{views.map(v => <NavLink key={v} to={PATHS[v]} className={({ isActive }) => (isActive ? 'active' : '')}>{t(v)}</NavLink>)}</nav>
         <span className="spacer" />
         {showCtx ? (
