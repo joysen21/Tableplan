@@ -1,15 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
+import { goView, loginDemo, VIEWS } from './helpers';
 
 /** Handy-Tests (Projekt „mobile“). Tests mit test.fail() dokumentieren bekannte Probleme aus dem
  *  Ist-Zustand – sie werden im Design-Umbau behoben und dann zu normalen Tests. */
-
-async function loginDemo(page: Page, who = 'Anna (Admin)') {
-  await page.goto('/?demo');
-  await page.evaluate(() => localStorage.removeItem('tischplan.demo.v2'));
-  await page.goto('/?demo');
-  await page.getByRole('button', { name: new RegExp(who.replace(/[()]/g, '.')) }).click();
-  await expect(page.locator('header')).toBeVisible();
-}
 
 /** Abendservice wählen, damit die Liste Einträge hat */
 async function evening(page: Page) {
@@ -39,11 +32,13 @@ async function swipeUp(page: Page, sel: string) {
 
 test('Alle Ansichten laden ohne seitliches Scrollen der Seite', async ({ page }) => {
   await loginDemo(page);
-  for (const name of ['Live-Plan', 'Zeitleiste', 'Reservierungen', 'Hotelgäste', 'Berichte', 'Raumplan-Editor', 'Einstellungen']) {
-    await page.getByRole('link', { name }).click();
+  for (const name of VIEWS) {
+    await goView(page, name);
     await expect(page.locator('main .panel').first()).toBeVisible();
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-    expect(overflow, `${name}: Seite breiter als Bildschirm`).toBeLessThanOrEqual(1);
+    // Ist der Inhalt zu breit, zoomt der Handy-Browser heraus – dann wächst innerWidth über die Gerätebreite
+    const { inner, scroll } = await page.evaluate(() => ({ inner: window.innerWidth, scroll: document.documentElement.scrollWidth }));
+    expect(inner, `${name}: Seite breiter als Bildschirm (herausgezoomt)`).toBe(page.viewportSize()!.width);
+    expect(scroll - inner, `${name}: Seite breiter als Bildschirm`).toBeLessThanOrEqual(1);
   }
 });
 
@@ -61,7 +56,6 @@ test('Liste scrollt beim Wischen über eine Reservierung', async ({ page }) => {
 });
 
 test('Kopfzeile belegt höchstens 15 % der Bildschirmhöhe', async ({ page }) => {
-  test.fail(true, 'Bekannt: Kopfzeile bricht in mehrere Zeilen um – Behebung in Phase 2');
   await loginDemo(page);
   const h = (await page.locator('header').boundingBox())!.height;
   expect(h).toBeLessThanOrEqual(page.viewportSize()!.height * 0.15);
@@ -78,4 +72,28 @@ test('Eingabefelder haben mindestens 16 px Schrift (kein iOS-Zoom)', async ({ pa
   await loginDemo(page);
   const sizes = await page.locator('input:visible, select:visible').evaluateAll(els => els.map(e => parseFloat(getComputedStyle(e).fontSize)));
   expect(Math.min(...sizes)).toBeGreaterThanOrEqual(16);
+});
+
+test('Leiste unten: Hauptansichten + „Mehr“ mit restlichen Ansichten, Hell/Dunkel und Abmelden', async ({ page }) => {
+  await loginDemo(page);
+  const bar = page.getByRole('navigation', { name: 'Hauptnavigation' });
+  await expect(bar.getByRole('link')).toHaveCount(4);
+  await expect(page.getByRole('link', { name: 'Live-Plan', exact: true })).toHaveClass(/active/);
+  await page.getByRole('button', { name: 'Mehr' }).click();
+  for (const name of ['Berichte', 'Raumplan-Editor', 'Einstellungen', 'Dunkler Modus', 'Abmelden']) await expect(page.getByRole('menuitem', { name })).toBeVisible();
+  await page.getByRole('menuitem', { name: 'Einstellungen' }).click();
+  await expect(page.getByRole('menu')).toHaveCount(0);
+  await expect(page.locator('header .pagetitle')).toHaveText('Einstellungen');
+  await expect(page.getByRole('button', { name: 'Mehr' })).toHaveClass(/active/);
+  // Inhalt endet nicht unter der Leiste
+  const pad = await page.locator('main').evaluate(e => parseFloat(getComputedStyle(e).paddingBottom));
+  expect(pad).toBeGreaterThanOrEqual(60);
+});
+
+test('Küche: keine Leiste unten, Abmelden über das Benutzermenü', async ({ page }) => {
+  await loginDemo(page, 'Karl (Küche)');
+  await expect(page.getByRole('navigation', { name: 'Hauptnavigation' })).toHaveCount(0);
+  await page.getByRole('button', { name: /Karl/ }).click();
+  await page.getByRole('menuitem', { name: 'Abmelden' }).click();
+  await expect(page.getByRole('button', { name: /Toni/ })).toBeVisible();
 });

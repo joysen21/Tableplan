@@ -45,11 +45,14 @@ Befehle:
 - [x] Dunkel-Modus: `color-scheme:dark` (Datum/Uhrzeit-Symbole, Checkboxen), eigene Button-Farben
 - [x] Tests: Button-Höhe und Feld-Schrift sind jetzt normale Handy-Tests; Screenshots in `docs/screens/phase1/`
 
-## Phase 2 – Navigation & Kopfzeile
-- [ ] Handy: kompakte Leiste oben (Datum ◀ ▶, Service, Sync-Status)
-- [ ] Handy: Leiste unten mit Hauptansichten je Rolle + „Mehr“ (Einstellungen, Hell/Dunkel, Abmelden)
-- [ ] Desktop: Kopfzeile aufräumen, Benutzermenü statt „Name ⎋“
-- [ ] Safe-Area (iPhone-Home-Balken) berücksichtigen
+## Phase 2 – Navigation & Kopfzeile ✅
+- [x] Handy (≤ 760 px): Kopfzeile in einer Zeile (◀ Datum ▶, Service, Status-Punkt); „Heute“ nur sichtbar, wenn ein anderer Tag gewählt ist; ohne Datumsleiste steht der Seitentitel oben (ca. 60 px statt 300 px)
+- [x] Handy: Leiste unten mit bis zu 4 Ansichten je Rolle + „Mehr“ (weitere Ansichten, Hell/Dunkel, Abmelden); Küche (nur eine Ansicht) ohne Leiste, Menü oben rechts
+- [x] Desktop: Benutzermenü (Name ▾ → Hell/Dunkel, Abmelden) statt „Name ⎋“ und Mond-Button
+- [x] Safe-Area (iPhone-Notch und Home-Balken), Toasts über der Leiste
+- [x] Gefunden & behoben: Hotelgäste und Berichte waren am Handy breiter als der Bildschirm (Browser zoomte heraus) → Tabellen scrollen jetzt in ihrem Bereich; Test erkennt das Herauszoomen
+- [x] Dunkel-Modus: hellere rote Schrift für Löschen/Abmelden
+- [x] Tests: Leiste unten, „Mehr“-Menü, Küche-Abmelden; gemeinsame Hilfsfunktionen in `e2e/helpers.ts`; Screenshots in `docs/screens/phase2/`
 
 ## Phase 3 – Seiten mobil
 - [ ] Live: Umschalter „Plan | Liste“, schwebender ＋-Button, Tippen-statt-Ziehen zur Tischzuweisung, Ziehen nur am Griff

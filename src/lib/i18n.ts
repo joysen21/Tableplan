@@ -2,6 +2,9 @@
 const DE: Record<string, string> = {
   live: 'Live-Plan', zeit: 'Zeitleiste', res: 'Reservierungen', hotel: 'Hotelgäste', berichte: 'Berichte',
   editor: 'Raumplan-Editor', settings: 'Einstellungen',
+  // Kurzformen für die Navigationsleiste am Handy
+  'kurz.live': 'Live', 'kurz.zeit': 'Zeitleiste', 'kurz.res': 'Reserv.', 'kurz.hotel': 'Hotel', 'kurz.berichte': 'Berichte',
+  'kurz.editor': 'Editor', 'kurz.settings': 'Einstellungen',
   angefragt: 'Angefragt', bestaetigt: 'Bestätigt', eingetroffen: 'Eingetroffen', platziert: 'Platziert',
   rechnung: 'Rechnung', abgeschlossen: 'Abgeschlossen', storniert: 'Storniert', noshow: 'No-Show',
   frei: 'Frei', reserviert: 'Reserviert', bald: 'Bald fällig', ueberfaellig: 'Überfällig', gesperrt: 'Gesperrt', ueberzogen: 'Zeit überzogen',

@@ -11,7 +11,7 @@
   --shadow:0 2px 10px rgba(0,0,0,.08); --r:10px;
   /* Buttons: sekundär = grau gefüllt (klar anders als weiße Eingabefelder), „an“ = getönt */
   --btn-bg:#e9edf2; --btn-bg-h:#dde3ea; --btn-line:#c3cad3; --btn-text:#1d2329;
-  --accent-h:#1a5fcc; --accent-soft:rgba(31,111,235,.12); --danger-soft:rgba(209,36,47,.1); --danger-h:#b01e28;
+  --accent-h:#1a5fcc; --accent-soft:rgba(31,111,235,.12); --danger-soft:rgba(209,36,47,.1); --danger-h:#b01e28; --danger-text:#d1242f;
   --focus:0 0 0 3px rgba(31,111,235,.45);
 }
 :root[data-theme="dark"]{
@@ -20,7 +20,7 @@
   --accent:#4c8dff; --st-frei:#2a323b; --plan-bg:#141a20; --plan-grid:#1c232b; --decor:#3a444f;
   --shadow:0 2px 10px rgba(0,0,0,.4);
   --btn-bg:#2a333d; --btn-bg-h:#343f4b; --btn-line:#3f4a56; --btn-text:#e6edf3;
-  --accent-h:#6ea2ff; --accent-t:#0b1220; --accent-soft:rgba(76,141,255,.18); --danger-soft:rgba(209,36,47,.18); --danger-h:#e5534b;
+  --accent-h:#6ea2ff; --accent-t:#0b1220; --accent-soft:rgba(76,141,255,.18); --danger-soft:rgba(209,36,47,.18); --danger-h:#e5534b; --danger-text:#ff7b72;
   --focus:0 0 0 3px rgba(110,162,255,.55);
 }
 *{box-sizing:border-box}
@@ -39,7 +39,7 @@ button{cursor:pointer}
 .btn svg{width:18px;height:18px;flex:none}
 .btn.primary{background:var(--accent);color:var(--accent-t);border-color:var(--accent);box-shadow:0 1px 2px rgba(0,0,0,.18)}
 .btn.primary:hover{background:var(--accent-h);border-color:var(--accent-h)}
-.btn.danger{background:var(--danger-soft);color:var(--danger);border-color:var(--danger)}
+.btn.danger{background:var(--danger-soft);color:var(--danger-text);border-color:var(--danger)}
 .btn.danger:hover{background:var(--danger);color:#fff}
 .btn.danger.solid{background:var(--danger);color:#fff}
 .btn.danger.solid:hover{background:var(--danger-h);border-color:var(--danger-h)}
@@ -54,7 +54,7 @@ button{cursor:pointer}
 .btn.primary:disabled{background:var(--accent);color:var(--accent-t);border-color:var(--accent)}
 label.btn{font-size:15px;color:var(--btn-text);cursor:pointer}
 .btn.icon.danger{background:transparent;border-color:transparent;box-shadow:none}
-.btn.icon.danger:hover{background:var(--danger-soft);color:var(--danger);border-color:var(--danger)}
+.btn.icon.danger:hover{background:var(--danger-soft);color:var(--danger-text);border-color:var(--danger)}
 :focus-visible{outline:none;box-shadow:var(--focus)}
 .btn:focus-visible{box-shadow:var(--focus)}
 input,select,textarea{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:8px 10px;min-height:40px;width:100%}
@@ -73,9 +73,8 @@ label>input,label>select,label>textarea{margin-top:3px}
 /* ---------- Layout ---------- */
 header{display:flex;align-items:center;gap:12px;padding:8px 14px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;flex-wrap:wrap}
 header .brand{font-weight:700;font-size:17px;margin-right:6px}
-nav{display:flex;gap:4px;flex-wrap:wrap}
-nav button{border:0;background:none;padding:9px 12px;border-radius:8px;color:var(--muted);min-height:40px}
-nav button.active{background:var(--accent);color:#fff}
+.topnav{display:flex;gap:4px;flex-wrap:wrap}
+header .pagetitle{display:none}
 header .spacer{flex:1}
 .ctx{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .ctx input,.ctx select{width:auto;min-height:38px}
@@ -135,6 +134,7 @@ table.list tr.clickable{cursor:pointer}
 table.list tr.clickable:hover td{background:var(--panel2)}
 .filters{display:flex;gap:8px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--line)}
 .filters>*{width:auto}
+.table-scroll{overflow-x:auto}
 
 /* ---------- Hotel ---------- */
 .hotel{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
@@ -143,6 +143,8 @@ table.list tr.clickable:hover td{background:var(--panel2)}
 
 /* ---------- Editor ---------- */
 .editor{display:grid;grid-template-columns:200px 1fr 290px;gap:14px;align-items:start}
+/* Rasterspalten dürfen schmaler als ihr Inhalt werden (sonst wird die Seite am Handy breiter als der Bildschirm) */
+.live>*,.hotel>*,.editor>*{min-width:0}
 .toolbox .btn{width:100%;justify-content:flex-start;margin-bottom:6px;white-space:normal;text-align:left}
 .props label{margin-bottom:8px}
 
@@ -169,6 +171,7 @@ table.list tr.clickable:hover td{background:var(--panel2)}
 
 /* ---------- Berichte / Druck ---------- */
 .report h2{margin:0 0 4px}
+@media screen{.report{overflow-x:auto}}
 .report h4{margin:16px 0 6px}
 .slotbar{display:flex;align-items:flex-end;gap:3px;height:120px;border-bottom:1px solid var(--line);margin:6px 0 2px}
 .slotbar div{flex:1;background:var(--accent);border-radius:3px 3px 0 0;position:relative;min-height:1px}
@@ -196,7 +199,7 @@ table.list tr.clickable:hover td{background:var(--panel2)}
   .btn,.btn.small{min-height:44px}
   .btn.small{padding:6px 12px;font-size:14px}
   .btn.icon,.btn.small.icon{width:44px;min-width:44px}
-  nav a{min-height:44px}
+  .topnav a{min-height:44px}
   input,select,textarea{font-size:16px;min-height:44px}
   input[type=checkbox]{width:24px;height:24px}
   .ctx input,.ctx select{min-height:44px}
@@ -205,7 +208,6 @@ table.list tr.clickable:hover td{background:var(--panel2)}
   main{padding:8px}
   .grid2,.grid3{grid-template-columns:1fr}
   .stbtns{grid-template-columns:1fr 1fr}
-  header .brand{display:none}
 }
 
 /* ---------- Ergänzungen React-Version ---------- */
@@ -220,7 +222,51 @@ table.list tr.clickable:hover td{background:var(--panel2)}
 .g-bar.dragging{z-index:10;pointer-events:none;opacity:.85}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .mb8{margin-bottom:8px}.mt8{margin-top:8px}.mt12{margin-top:12px}
-nav a{padding:9px 12px;border-radius:8px;color:var(--muted);min-height:40px;text-decoration:none;display:inline-flex;align-items:center}
-nav a.active{background:var(--accent);color:#fff}
+.topnav a{padding:9px 12px;border-radius:8px;color:var(--muted);min-height:40px;text-decoration:none;display:inline-flex;align-items:center}
+.topnav a:hover{color:var(--text);background:var(--btn-bg)}
+.topnav a.active{background:var(--accent);color:var(--accent-t)}
 .dragging,.dragging *{user-select:none!important;-webkit-user-select:none!important}
 .stay-chip,.ritem,.g-bar,svg.plan{user-select:none;-webkit-user-select:none}
+
+/* ---------- Benutzermenü / „Mehr“ ---------- */
+.usermenu-btn svg{width:16px;height:16px}
+.menu-bg{position:fixed;inset:0;z-index:90}
+.menu{position:fixed;top:var(--menu-top,58px);right:var(--menu-right,14px);width:290px;z-index:91;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.2);padding:6px}
+.menu-views{display:none}
+.menu-user{display:flex;flex-direction:column;padding:10px 12px;border-bottom:1px solid var(--line);margin-bottom:4px}
+.menu-user small{font-size:12px;overflow:hidden;text-overflow:ellipsis}
+.menu-item{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:10px 12px;border:0;border-radius:8px;background:none;color:var(--text);text-decoration:none;font-weight:500;text-align:left}
+.menu-item:hover{background:var(--btn-bg)}
+.menu-item svg{width:20px;height:20px;flex:none;color:var(--muted)}
+.menu-item.active{color:var(--accent)}
+.menu-item.active svg{color:var(--accent)}
+.menu-item.danger,.menu-item.danger svg{color:var(--danger-text)}
+
+/* ---------- Navigationsleiste unten (Handy) ---------- */
+.bottomnav{display:none}
+
+/* ---------- Handy-Layout: kompakte Kopfzeile + Leiste unten ---------- */
+@media (max-width:760px){
+  header{flex-wrap:nowrap;gap:6px;padding:6px 8px;padding-top:max(6px,env(safe-area-inset-top))}
+  header .brand,.topnav{display:none}
+  header .spacer{display:none}
+  header .pagetitle{display:block;flex:1;margin:0 4px;font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ctx{flex:1;flex-wrap:nowrap;gap:4px;min-width:0}
+  .ctx input[type=date]{flex:1 1 auto;min-width:0;padding:6px 8px}
+  .ctx select{flex:0 1 auto;min-width:0;max-width:34%;padding:6px 8px}
+  .ctx .today.is-today{display:none}
+  .sync{border:0;padding:0 4px;background:none}
+  .sync-label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .sync i{width:10px;height:10px}
+  .has-bottomnav .usermenu-btn{display:none}
+  .has-bottomnav main{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+  .bottomnav{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--panel);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -2px 10px rgba(0,0,0,.06)}
+  .bottomnav a,.bottomnav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:60px;padding:6px 2px;border:0;background:none;color:var(--muted);text-decoration:none;font-size:11px;font-weight:600;position:relative}
+  .bottomnav svg{width:24px;height:24px}
+  .bottomnav .active{color:var(--accent)}
+  .bottomnav .active::before{content:'';position:absolute;top:0;left:25%;right:25%;height:3px;border-radius:0 0 3px 3px;background:var(--accent)}
+  body:has(.bottomnav) .toast{bottom:calc(76px + env(safe-area-inset-bottom))}
+  .menu-bg{background:rgba(0,0,0,.4)}
+  .menu{top:auto;left:0;right:0;bottom:0;width:auto;border-radius:16px 16px 0 0;border-bottom:0;padding:10px 10px calc(10px + env(safe-area-inset-bottom))}
+  .menu-views{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding-bottom:6px;margin-bottom:6px;border-bottom:1px solid var(--line)}
+}
