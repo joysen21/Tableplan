@@ -1,6 +1,7 @@
-/** Live-Tischplan: Raumplan mit Status, Reservierungsliste, Walk-ins */
+/** Live-Tischplan: Raumplan mit Status, Reservierungsliste, Walk-ins.
+ *  Am Handy umschaltbar „Plan | Liste“; Tische antippen (statt ziehen) öffnet das Tisch-Popup mit Zuweisen/Umsetzen. */
 import { useMemo } from 'react';
-import { Clock, Plus, PersonStanding } from 'lucide-react';
+import { Clock, List, Map as MapIcon, Plus, PersonStanding, TriangleAlert } from 'lucide-react';
 import { canEdit, SEATED_STATES } from '../domain/constants';
 import { byId, isCancelled, occupies, persons, resStart, tableStatusAt } from '../domain/logic';
 import { fromMin, nowMin, today, toMin } from '../lib/time';
@@ -8,7 +9,7 @@ import { useApp } from '../store/app';
 import { useData, useRoomId, useServiceId } from '../store/hooks';
 import { useUi } from '../store/ui';
 import { openDialog } from '../store/dialogs';
-import { dropTableId, startDrag } from '../ui/drag';
+import { dropTableId, startDragOrTap } from '../ui/drag';
 import { FloorPlan, Legend } from '../ui/FloorPlan';
 import { saveChecked } from '../forms/actions';
 import { ResItem } from './ResItem';
@@ -33,10 +34,17 @@ export function LiveView() {
   const freeNow = d.tables.filter(x => tableStatusAt(d, x, ui.date, serviceId, tm).st === 'frei').length;
   const shown = ui.liveActiveOnly ? list.filter(occupies) : list;
   const status = (tb: (typeof d.tables)[number]) => tableStatusAt(d, tb, ui.date, serviceId, tm);
+  const tab = ui.liveTab;
 
   return (
     <div className="live">
-      <div className="panel">
+      <div className="seg live-tabs" role="group" aria-label="Ansicht">
+        <button className="btn" aria-pressed={tab === 'plan'} onClick={() => ui.set({ liveTab: 'plan' })}><MapIcon />Plan</button>
+        <button className="btn" aria-pressed={tab === 'liste'} onClick={() => ui.set({ liveTab: 'liste' })}><List />Liste
+          <span className="count">{act.length}</span>
+          {unassigned > 0 && <span className="count warn" title={`${unassigned} ohne Tisch`} aria-label={`${unassigned} ohne Tisch`}><TriangleAlert />{unassigned}</span>}</button>
+      </div>
+      <div className={'panel live-plan' + (tab === 'plan' ? ' show' : '')}>
         <div className="roomtabs">
           {d.rooms.map(r => <button key={r.id} className="btn small" aria-pressed={r.id === roomId} onClick={() => ui.set({ roomId: r.id })}>{r.name}</button>)}
           <span className="spacer" />
@@ -48,7 +56,7 @@ export function LiveView() {
           {room ? <FloorPlan data={d} room={room} mode="live" showStations={ui.showStations} status={status}
             onTableDown={(e, tb) => {
               const s = status(tb);
-              startDrag(e, {
+              startDragOrTap(e, {
                 label: s.r ? `${s.r.name} → ?` : tb.name,
                 onClick: () => openDialog({ type: 'table', tableId: tb.id }),
                 onDrop: el => {
@@ -61,7 +69,7 @@ export function LiveView() {
         </div>
         <Legend />
       </div>
-      <div className="panel">
+      <div className={'panel live-list' + (tab === 'liste' ? ' show' : '')}>
         <div className="kpis">
           <div className="kpi"><b>{act.length}</b><small>Reserv.</small></div>
           <div className="kpi"><b>{covers}</b><small>Gäste</small></div>
@@ -76,15 +84,18 @@ export function LiveView() {
         </div>
         <div className="reslist">
           {shown.length ? shown.map(r => (
-            <ResItem key={r.id} d={d} r={r} onPointerDown={e => startDrag(e, {
+            <ResItem key={r.id} d={d} r={r} draggable={edit} onPointerDown={e => startDragOrTap(e, {
               label: `${r.name} (${persons(r)}P)`,
               onClick: () => openDialog(edit ? { type: 'reservation', r } : { type: 'resinfo', id: r.id }),
               onDrop: el => { const to = dropTableId(el); if (to && edit) saveChecked({ ...r, tableIds: [to] }, r, ['Tisch zugewiesen', `${r.name} → ${byId(d.tables, to)?.name}`]); }
             })} />
           )) : <p className="muted" style={{ padding: 12 }}>Keine Reservierungen für {svc?.name}.</p>}
         </div>
-        {edit && <p className="muted" style={{ fontSize: 12, padding: '8px 12px', margin: 0 }}>Tipp: Reservierung aus der Liste auf einen Tisch ziehen.</p>}
+        {edit && <p className="muted tip" style={{ fontSize: 12, padding: '8px 12px', margin: 0 }}>
+          <span className="tip-desktop">Tipp: Reservierung aus der Liste auf einen Tisch ziehen.</span>
+          <span className="tip-touch">Tipp: Freien Tisch im Plan antippen, um eine Reservierung ohne Tisch dort zu platzieren.</span></p>}
       </div>
+      {edit && <button className="btn primary fab" aria-label="Neue Reservierung" title="Neue Reservierung" onClick={() => openDialog({ type: 'reservation', preset: {} })}><Plus /></button>}
     </div>
   );
 }

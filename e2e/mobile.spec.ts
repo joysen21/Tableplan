@@ -4,10 +4,23 @@ import { goView, loginDemo, VIEWS } from './helpers';
 /** Handy-Tests (Projekt „mobile“). Tests mit test.fail() dokumentieren bekannte Probleme aus dem
  *  Ist-Zustand – sie werden im Design-Umbau behoben und dann zu normalen Tests. */
 
-/** Abendservice wählen, damit die Liste Einträge hat */
-async function evening(page: Page) {
+/** Abendservice wählen (damit es Reservierungen gibt) und im Live-Plan die Liste zeigen */
+async function evening(page: Page, tab: 'Plan' | 'Liste' = 'Liste') {
   await page.getByLabel('Service').selectOption({ label: 'Abendessen' });
-  await expect(page.locator('.ritem').first()).toBeVisible();
+  await page.getByRole('group', { name: 'Ansicht' }).getByRole('button', { name: new RegExp('^' + tab) }).click();
+  if (tab === 'Liste') await expect(page.locator('.ritem').first()).toBeVisible();
+}
+
+/** Ein Tisch, der heute beim Abendessen weder reserviert noch gesperrt ist */
+async function freeDinnerTable(page: Page) {
+  return page.evaluate(() => {
+    const venue = Object.values(JSON.parse(localStorage.getItem('tischplan.demo.v2')!).data)[0] as any;
+    const dinner = venue.services.find((s: any) => s.name === 'Abendessen');
+    const day = new Date().toLocaleDateString('sv-SE');
+    const busy = new Set([...venue.reservations.filter((r: any) => r.date === day && r.serviceId === dinner.id).flatMap((r: any) => r.tableIds),
+      ...venue.blocks.filter((b: any) => b.date === day).map((b: any) => b.tableId)]);
+    return venue.tables.find((t: any) => !busy.has(t.id) && t.roomId === venue.rooms[0].id).id as string;
+  });
 }
 
 /** Echte Touch-Wischgeste (nach oben) ab der Mitte des Elements; liefert, wie weit die Seite gescrollt hat.
@@ -49,7 +62,6 @@ test('Seite scrollt beim Wischen über die Kennzahlen (Kontrolle)', async ({ pag
 });
 
 test('Liste scrollt beim Wischen über eine Reservierung', async ({ page }) => {
-  test.fail(true, 'Bekannt: .ritem hat touch-action:none (Drag & Drop) – Behebung in Phase 3');
   await loginDemo(page);
   await evening(page);
   expect(await swipeUp(page, '.ritem')).toBeGreaterThan(50);
@@ -96,4 +108,43 @@ test('Küche: keine Leiste unten, Abmelden über das Benutzermenü', async ({ pa
   await page.getByRole('button', { name: /Karl/ }).click();
   await page.getByRole('menuitem', { name: 'Abmelden' }).click();
   await expect(page.getByRole('button', { name: /Toni/ })).toBeVisible();
+});
+
+test('Live: Umschalter Plan/Liste, ＋-Button nur beim Plan', async ({ page }) => {
+  await loginDemo(page);
+  await evening(page, 'Plan');
+  await expect(page.locator('svg.plan')).toBeVisible();
+  await expect(page.locator('.ritem').first()).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Neue Reservierung' })).toBeVisible();
+  await page.getByRole('group', { name: 'Ansicht' }).getByRole('button', { name: /^Liste/ }).click();
+  await expect(page.locator('.ritem').first()).toBeVisible();
+  await expect(page.locator('svg.plan')).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Neue Reservierung' })).toBeHidden();
+});
+
+test('Live: Reservierung antippen öffnet sie als Blatt von unten mit sichtbaren Buttons', async ({ page }) => {
+  await loginDemo(page);
+  await evening(page);
+  await page.locator('.ritem .main').first().tap();
+  const modal = page.locator('.modal');
+  await expect(modal).toBeVisible();
+  const vh = page.viewportSize()!.height;
+  expect(Math.round((await modal.boundingBox())!.y + (await modal.boundingBox())!.height)).toBeGreaterThanOrEqual(vh - 1);
+  const save = page.getByRole('button', { name: 'Speichern' });
+  await expect(save).toBeInViewport();
+});
+
+test('Live: freien Tisch antippen und Reservierung ohne Tisch dort platzieren', async ({ page }) => {
+  await loginDemo(page);
+  await evening(page, 'Plan');
+  await page.getByLabel('Uhrzeit').fill('18:00');
+  const id = await freeDinnerTable(page);
+  await page.locator(`svg.plan [data-table-id="${id}"]`).tap();
+  await expect(page.getByRole('heading', { name: 'Ohne Tisch – hier platzieren' })).toBeVisible();
+  const before = await page.locator('.modal .sugg .btn').count();
+  expect(before).toBeGreaterThan(0);
+  await page.locator('.modal .sugg .btn').first().click();
+  const confirm = page.getByRole('button', { name: 'Trotzdem speichern' });
+  if (await confirm.isVisible({ timeout: 1000 }).catch(() => false)) await confirm.click();
+  await expect(page.locator('.toast')).toContainText('Gespeichert');
 });

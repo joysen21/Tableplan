@@ -55,10 +55,12 @@ Befehle:
 - [x] Tests: Leiste unten, „Mehr“-Menü, Küche-Abmelden; gemeinsame Hilfsfunktionen in `e2e/helpers.ts`; Screenshots in `docs/screens/phase2/`
 
 ## Phase 3 – Seiten mobil
-- [ ] Live: Umschalter „Plan | Liste“, schwebender ＋-Button, Tippen-statt-Ziehen zur Tischzuweisung, Ziehen nur am Griff
+- [x] Live (3a): Umschalter „Plan | Liste“ (Anzahl + rote Warnung „ohne Tisch“), schwebender ＋-Button beim Plan
+- [x] Live (3a): Scroll-Problem behoben – Wischen über Einträge/Plan scrollt; am Handy wird nur am Griff ⋮⋮ gezogen, Antippen öffnet
+- [x] Live (3a): Tippen statt Ziehen – freier Tisch zeigt „Ohne Tisch – hier platzieren“; besetzter Tisch hat „Umsetzen an…“
+- [x] Dialoge (3a): am Handy als Blatt von unten, Buttons immer sichtbar, `dvh`; Formularfelder zweispaltig wo kurz
 - [ ] Reservierungen: Kartenansicht am Handy, Filter als Bottom-Sheet
 - [ ] Zeitleiste: schmalere Namensspalte, größere Touch-Ziele
-- [ ] Dialoge: am Handy volle Höhe, Footer fixiert, `dvh`
 - [ ] Hotel, Berichte, Editor, Einstellungen nach gleichem Muster
 
 ## Phase 4 – Prüfen & Veröffentlichen

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Minus, Plus, PersonStanding } from 'lucide-react';
 import { newId } from '../domain/demo';
 import { canEdit, canStatus, RES_STATUS_COLOR, SEATED_STATES } from '../domain/constants';
-import { byId, capacity, freeMinutes, isBlocked, persons, resEnd, resStart, suggestTables, tableBusy, tableNames, tableStatusAt, turnTime } from '../domain/logic';
+import { byId, capacity, freeMinutes, isBlocked, occupies, persons, resEnd, resStart, suggestTables, tableBusy, tableNames, tableStatusAt, turnTime } from '../domain/logic';
 import type { Reservation, ResStatus } from '../domain/types';
 import { t } from '../lib/i18n';
 import { fmtDate, fmtShort, fromMin, nowMin, today, toMin } from '../lib/time';
@@ -58,6 +58,10 @@ export function TablePopup({ tableId }: { tableId: string }) {
   const station = byId(d.stations, tb.stationId);
   const edit = canEdit(role);
   const freeT = r ? d.tables.filter(x => x.id !== tb.id && !r.tableIds.includes(x.id) && !tableBusy(d, x.id, r.date, resStart(r), resEnd(r), r.id).length) : [];
+  // Reservierungen dieses Service ohne Tisch – lassen sich per Antippen hier platzieren (Alternative zum Ziehen)
+  const waiting = !r && !block && edit ? d.reservations.filter(x => x.date === ui.date && x.serviceId === serviceId && occupies(x) && !x.tableIds.length)
+    .sort((a, b) => resStart(a) - resStart(b)) : [];
+  const run = (p: Promise<boolean>) => p.then(ok => ok && closeDialog());
 
   return (
     <Modal title={'Tisch ' + tb.name} onClose={closeDialog} footer={<>
@@ -73,7 +77,11 @@ export function TablePopup({ tableId }: { tableId: string }) {
       {r && canStatus(role) && <StatusButtons r={r} />}
       {r && edit && (
         <div className="row mt12">
-          <select style={{ width: 'auto' }} value="" onChange={e => e.target.value && saveChecked({ ...r, tableIds: [...r.tableIds, e.target.value] }, r, ['Tische zusammengelegt', r.name]).then(ok => ok && closeDialog())}>
+          <select style={{ width: 'auto' }} value="" aria-label="Umsetzen an" onChange={e => { const to = e.target.value; if (to) run(saveChecked({ ...r, tableIds: r.tableIds.map(x => (x === tb.id ? to : x)) }, r, ['Tisch gewechselt', `${r.name} → ${byId(d.tables, to)?.name}`])); }}>
+            <option value="">Umsetzen an…</option>
+            {freeT.map(x => <option key={x.id} value={x.id}>{x.name} ({x.maxPersons}P, {byId(d.rooms, x.roomId)?.name})</option>)}
+          </select>
+          <select style={{ width: 'auto' }} value="" aria-label="Tisch dazunehmen" onChange={e => e.target.value && run(saveChecked({ ...r, tableIds: [...r.tableIds, e.target.value] }, r, ['Tische zusammengelegt', r.name]))}>
             <option value="">Tisch dazunehmen…</option>
             {freeT.map(x => <option key={x.id} value={x.id}>{x.name} ({x.maxPersons}P, {byId(d.rooms, x.roomId)?.name})</option>)}
           </select>
@@ -89,6 +97,12 @@ export function TablePopup({ tableId }: { tableId: string }) {
           }}><Plus />Reservierung für diesen Tisch</button>
         </div>
       )}
+      {waiting.length > 0 && <>
+        <h4 style={{ margin: '16px 0 6px' }}>Ohne Tisch – hier platzieren</h4>
+        <div className="sugg">{waiting.map(x => (
+          <button key={x.id} className="btn" onClick={() => run(saveChecked({ ...x, tableIds: [tb.id] }, x, ['Tisch zugewiesen', `${x.name} → ${tb.name}`]))}>
+            {x.time} · {x.name} · {persons(x)}P{persons(x) > tb.maxPersons ? ' ⚠' : ''}</button>))}</div>
+      </>}
       {block && <div className="warnbox">Gesperrt: {block.reason || '–'}</div>}
       <h4 style={{ margin: '16px 0 6px' }}>{ui.date === today() ? 'Heute' : fmtDate(ui.date)} an diesem Tisch</h4>
       {dayRes.length ? dayRes.map(x => (
