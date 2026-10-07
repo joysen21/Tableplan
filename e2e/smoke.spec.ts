@@ -13,7 +13,7 @@ test.afterEach(() => { expect(errors, errors.join('\n')).toEqual([]); errors.len
 
 test('Admin: alle Ansichten laden', async ({ page }) => {
   await loginDemo(page);
-  for (const name of ['Live-Plan', 'Zeitleiste', 'Reservierungen', 'Hotelgäste', 'Berichte', 'Raumplan-Editor', 'Einstellungen']) {
+  for (const name of ['Live-Plan', 'Zeitleiste', 'Reservierungen', 'Hotelgäste', 'Menü', 'Berichte', 'Raumplan-Editor', 'Einstellungen']) {
     await page.getByRole('link', { name }).click();
     await expect(page.locator('main .panel').first()).toBeVisible();
   }
@@ -107,12 +107,12 @@ test('Editor: Tisch verschieben wird gespeichert', async ({ page }) => {
   await page.screenshot({ path: 'test-results/editor.png' });
 });
 
-test('Rollen: Küche sieht nur Berichte, Service ändert nur Status', async ({ page }) => {
+test('Rollen: Küche sieht Berichte und Menü, Service ändert nur Status', async ({ page }) => {
   await loginDemo(page, 'Karl (Küche)');
-  await expect(page.locator('.topnav a')).toHaveCount(1);
+  await expect(page.locator('.topnav a')).toHaveText(['Berichte', 'Menü']);
   await page.getByRole('button', { name: /Karl/ }).click();
   await page.getByRole('menuitem', { name: 'Abmelden' }).click();
   await page.getByRole('button', { name: /Toni/ }).click();
-  await expect(page.locator('.topnav a')).toHaveCount(3);
+  await expect(page.locator('.topnav a')).toHaveCount(4);
   await expect(page.getByRole('button', { name: 'Reservierung', exact: true })).toHaveCount(0);
 });

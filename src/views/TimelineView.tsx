@@ -1,5 +1,6 @@
 /** Zeitleiste (Gantt): Tische × Uhrzeit, Balken verschieben / Dauer ändern */
 import { useEffect, useRef, useState, type MouseEvent as RME, type PointerEvent as RPE } from 'react';
+import { hasAllergy } from '../domain/menu';
 import { Plus } from 'lucide-react';
 import { canEdit, RES_STATUS_COLOR } from '../domain/constants';
 import { byId, checkReservation, isBlocked, occupies, persons, resEnd, resStart } from '../domain/logic';
@@ -132,7 +133,7 @@ export function TimelineView() {
       <div className={'g-bar' + (issues.length ? ' conflict' : '')} data-res={r.id} onPointerDown={e => onBarDown(e, r, tid)}
         title={`${r.name} · ${persons(r)}P · ${r.time}–${fromMin(resEnd(r))}${issues.length ? '\n' + issues.map(i => i.text).join('\n') : ''}`}
         style={{ left: x(resStart(r)), width: Math.max(18, r.duration * PX - 2), background: RES_STATUS_COLOR[r.status] }}>
-        {r.stayId ? '⌂ ' : ''}{r.vip ? '★ ' : ''}{r.name} · {persons(r)}P{r.allergies ? ' ⚠' : ''}{edit && <span className="rs" />}
+        {r.stayId ? '⌂ ' : ''}{r.vip ? '★ ' : ''}{r.name} · {persons(r)}P{hasAllergy(r) ? ' ⚠' : ''}{edit && <span className="rs" />}
       </div>
     );
   };

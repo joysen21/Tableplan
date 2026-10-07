@@ -1,7 +1,8 @@
 /** Demo-Daten: Hotelrestaurant mit 2 Räumen, 30 Tischen und einer Woche Reservierungen */
 import { OCCASIONS } from './constants';
+import { guessAllergens, snapshotItems } from './menu';
 import { planStay, resEnd, resStart, stayTableConflicts, suggestTables, turnTime } from './logic';
-import type { DiningTable, Reservation, Service, Stay, TableFeature, TableShape, VenueData } from './types';
+import type { Allergen, Course, Dish, DiningTable, Ingredient, Menu, MenuItem, Reservation, Service, Stay, TableFeature, TableShape, Unit, VenueData } from './types';
 import { addDays, fromMin, nowMin, toMin, today } from '../lib/time';
 
 export const newId = () => crypto.randomUUID();
@@ -22,8 +23,19 @@ export function emptyVenueData(venueId: string, name: string): VenueData {
   return {
     venue: { id: venueId, name },
     rooms: [{ id: newId(), name: 'Restaurant', width: 1000, height: 650, backgroundUrl: null, sort: 0 }],
-    stations: [], tables: [], decor: [], combos: [], layouts: [], services: defaultServices(), blocks: [], stays: [], reservations: [], audit: []
+    stations: [], tables: [], decor: [], combos: [], layouts: [], services: defaultServices(), blocks: [], stays: [], reservations: [], audit: [],
+    ingredients: [], dishes: [], menus: []
   };
+}
+
+/** Fehlende Listen/Felder ergänzen (ältere Sicherungen, Demo-Daten aus früheren Versionen) */
+export function normalizeVenueData(d: VenueData): VenueData {
+  const L = ['rooms', 'stations', 'tables', 'decor', 'combos', 'layouts', 'services', 'blocks', 'stays', 'reservations', 'audit', 'ingredients', 'dishes', 'menus'] as const;
+  const out = { ...d } as VenueData;
+  for (const k of L) (out as any)[k] = (d as any)[k] ?? [];
+  out.reservations = out.reservations.map(r => (r.allergens ? r : { ...r, allergens: [] }));
+  out.stays = out.stays.map(s => (s.allergens ? s : { ...s, allergens: [] }));
+  return out;
 }
 
 export function demoVenueData(venueId: string, name: string): VenueData {
@@ -38,7 +50,8 @@ export function demoVenueData(venueId: string, name: string): VenueData {
       { id: r2, name: 'Stube', width: 720, height: 500, backgroundUrl: null, sort: 1 }
     ],
     stations: [{ id: sA, name: 'Revier A', color: '#1f6feb' }, { id: sB, name: 'Revier B', color: '#e36209' }, { id: sC, name: 'Revier Stube', color: '#1a7f37' }],
-    tables: [], decor: [], combos: [], layouts: [], services: defaultServices(), blocks: [], stays: [], reservations: [], audit: []
+    tables: [], decor: [], combos: [], layouts: [], services: defaultServices(), blocks: [], stays: [], reservations: [], audit: [],
+    ingredients: [], dishes: [], menus: []
   };
   const T = (roomId: string, nm: string, shape: TableShape, x: number, y: number, w: number, h: number, min: number, max: number, stationId: string, features: TableFeature[] = []) =>
     d.tables.push({ id: newId(), roomId, name: nm, shape, x, y, width: w, height: h, rotation: 0, minPersons: min, maxPersons: max, stationId, features } as DiningTable);
@@ -73,6 +86,7 @@ export function demoVenueData(venueId: string, name: string): VenueData {
     'Wagner', 'Fischer', 'Ricci', 'Thaler', 'Egger', 'Brunner', 'Colombo', 'Steiner', 'Lang', 'Kerschbaumer', 'Marini', 'Wolf',
     'Unterhofer', 'Fink', 'Rainer', 'Gamper', 'Romano', 'Baumann', 'Seidl', 'Kaufmann', 'Greco', 'Walder', 'Bauer', 'Esposito'];
   const ALLERG = ['', '', '', '', '', 'Gluten', 'Laktose', 'Nüsse', 'vegetarisch', 'vegan', 'Schalentiere'];
+  const allerg = () => { const allergies = pick(ALLERG); return { allergies, allergens: guessAllergens(allergies) }; };
   const statusFor = (r: Reservation): Reservation['status'] => {
     if (r.date < t0) return 'abgeschlossen';
     if (r.date > t0) return rnd() < 0.15 ? 'angefragt' : 'bestaetigt';
@@ -92,7 +106,7 @@ export function demoVenueData(venueId: string, name: string): VenueData {
     const adults = rnd() < 0.7 ? 2 : rnd() < 0.5 ? 1 : 3, children = rnd() < 0.25 ? 1 + Math.floor(rnd() * 2) : 0;
     const board = rnd() < 0.7 ? 'HP' : rnd() < 0.5 ? 'VP' : 'UF';
     d.stays.push({ id: newId(), roomNo: String(101 + i + (i > 11 ? 88 : 0)), name: NAMES[i], adults, children, arrival: arr, departure: addDays(arr, nights),
-      board, tableIds: [], allergies: pick(ALLERG), notes: '', vip: rnd() < 0.12, phone: '', times: { abend: pick(['18:30', '19:00', '19:00', '19:30']) } });
+      board, tableIds: [], ...allerg(), notes: '', vip: rnd() < 0.12, phone: '', times: { abend: pick(['18:30', '19:00', '19:00', '19:30']) } });
   }
   let openLeft = 3;
   for (const st of d.stays) {
@@ -117,7 +131,7 @@ export function demoVenueData(venueId: string, name: string): VenueData {
           id: newId(), date, serviceId: svc.id, time: fromMin(startM), adults, children, duration: turnTime(d, svc.id, adults + children),
           name: pick(NAMES) + (rnd() < 0.5 ? ' ' + pick(['A.', 'M.', 'S.', 'L.', 'K.']) : ''), phone: phone(), email: '',
           notes: rnd() < 0.15 ? pick(['Kinderwagen', 'Ruhiger Tisch gewünscht', 'Kommt evtl. später', 'Stammgast – bevorzugt Fenster']) : '',
-          occasion: rnd() < 0.12 ? pick(OCCASIONS.slice(1)) : '', allergies: pick(ALLERG), highchair: children > 0 && rnd() < 0.5,
+          occasion: rnd() < 0.12 ? pick(OCCASIONS.slice(1)) : '', ...allerg(), highchair: children > 0 && rnd() < 0.5,
           vip: rnd() < 0.07, source: pick(['Telefon', 'Telefon', 'Website', 'Google', 'E-Mail']), tableIds: [], status: 'bestaetigt',
           wishes: [], stayId: null, manualTable: false, seriesId: null, seatedAt: null, finishedAt: null
         };
@@ -132,5 +146,50 @@ export function demoVenueData(venueId: string, name: string): VenueData {
   const past = d.reservations.filter(r => r.date < t0 && !r.stayId);
   if (past[0]) past[0].status = 'noshow';
   if (past[1]) past[1].status = 'storniert';
+  demoKitchen(d);
   return d;
+}
+
+/** Demo-Küche: Zutaten, Gerichte und Menüs für Mittag- und Abendessen von vorgestern bis in einer Woche */
+export function demoKitchen(d: VenueData) {
+  const I: Record<string, Ingredient> = {};
+  const ing = (key: string, name: string, unit: Unit, allergens: Allergen[] = [], traces: Allergen[] = []) => { I[key] = { id: newId(), name, unit, allergens, traces }; };
+  ing('mehl', 'Weizenmehl', 'g', ['gluten']); ing('ei', 'Eier', 'stk', ['eier']); ing('butter', 'Butter', 'g', ['milch']);
+  ing('sahne', 'Sahne', 'ml', ['milch']); ing('parmesan', 'Parmesan', 'g', ['milch']); ing('milch', 'Milch', 'ml', ['milch']);
+  ing('kartoffel', 'Kartoffeln', 'g'); ing('zwiebel', 'Zwiebeln', 'g'); ing('sellerie', 'Knollensellerie', 'g', ['sellerie']);
+  ing('karotte', 'Karotten', 'g'); ing('rind', 'Rindfleisch (Tafelspitz)', 'g'); ing('kalb', 'Kalbsschnitzel', 'g');
+  ing('brösel', 'Semmelbrösel', 'g', ['gluten'], ['sesam']); ing('saibling', 'Saiblingsfilet', 'g', ['fisch']);
+  ing('reis', 'Risottoreis', 'g'); ing('steinpilz', 'Steinpilze', 'g'); ing('wein', 'Weißwein', 'ml', ['sulfite']);
+  ing('spinat', 'Spinat', 'g'); ing('knödelbrot', 'Knödelbrot', 'g', ['gluten']); ing('speck', 'Südtiroler Speck', 'g');
+  ing('apfel', 'Äpfel', 'g'); ing('strudelteig', 'Strudelteig', 'g', ['gluten', 'eier']); ing('hasel', 'Haselnüsse', 'g', ['schalenfruechte']);
+  ing('zucker', 'Zucker', 'g'); ing('beeren', 'Waldbeeren', 'g'); ing('salat', 'Blattsalat', 'g'); ing('senf', 'Senf', 'g', ['senf']);
+  ing('oel', 'Olivenöl', 'ml'); ing('brühe', 'Gemüsebrühe', 'ml', ['sellerie']);
+  d.ingredients = Object.values(I).sort((a, b) => a.name.localeCompare(b.name, 'de'));
+  const D: Record<string, Dish> = {};
+  const dish = (key: string, name: string, nameIt: string, course: Course, lines: [string, number][], diet: Dish['diet'] = []) => {
+    D[key] = { id: newId(), name, nameIt, nameEn: '', course, diet, notes: '', ingredients: lines.map(([k, qty]) => ({ ingredientId: I[k].id, qty })) };
+  };
+  dish('salat', 'Bunter Blattsalat mit Senfdressing', 'Insalata mista', 'vorspeise', [['salat', 60], ['senf', 5], ['oel', 10]], ['vegan']);
+  dish('speck', 'Speckbrettl mit Bauernbrot', 'Tagliere di speck', 'vorspeise', [['speck', 50], ['knödelbrot', 40]]);
+  dish('gersten', 'Selleriecremesuppe', 'Crema di sedano', 'suppe', [['sellerie', 80], ['sahne', 40], ['brühe', 200], ['zwiebel', 20]], ['vegetarisch']);
+  dish('knödel', 'Spinatknödel mit Parmesan', 'Canederli agli spinaci', 'zwischengang', [['knödelbrot', 70], ['spinat', 50], ['ei', 0.5], ['milch', 40], ['parmesan', 15], ['butter', 15]], ['vegetarisch']);
+  dish('risotto', 'Steinpilzrisotto', 'Risotto ai porcini', 'zwischengang', [['reis', 80], ['steinpilz', 40], ['wein', 30], ['parmesan', 15], ['butter', 15], ['brühe', 250]], ['vegetarisch']);
+  dish('schnitzel', 'Wiener Schnitzel mit Petersilkartoffeln', 'Cotoletta alla viennese', 'hauptgang', [['kalb', 160], ['mehl', 20], ['ei', 0.5], ['brösel', 40], ['butter', 30], ['kartoffel', 200]]);
+  dish('saibling', 'Saiblingsfilet auf Gemüse', 'Filetto di salmerino', 'hauptgang', [['saibling', 150], ['karotte', 80], ['sellerie', 40], ['butter', 15], ['kartoffel', 150]]);
+  dish('tafelspitz', 'Tafelspitz mit Wurzelgemüse', 'Bollito di manzo', 'hauptgang', [['rind', 180], ['karotte', 80], ['sellerie', 40], ['zwiebel', 30], ['kartoffel', 150]]);
+  dish('strudel', 'Apfelstrudel mit Vanillesahne', 'Strudel di mele', 'dessert', [['strudelteig', 40], ['apfel', 120], ['zucker', 15], ['hasel', 10], ['butter', 10], ['sahne', 30]], ['vegetarisch']);
+  dish('sorbet', 'Waldbeerensorbet', 'Sorbetto ai frutti di bosco', 'dessert', [['beeren', 100], ['zucker', 25]], ['vegan']);
+  d.dishes = Object.values(D).sort((a, b) => a.name.localeCompare(b.name, 'de'));
+  const plans: [string, string, string, string[]][] = [ // Vorspeise/Suppe, Zwischengang, Hauptgänge, Desserts
+    ['gersten', 'knödel', 'schnitzel saibling', ['strudel', 'sorbet']], ['salat', 'risotto', 'tafelspitz saibling', ['sorbet']],
+    ['speck', 'knödel', 'schnitzel', ['strudel']]];
+  const t0 = today(), menus: Menu[] = [];
+  for (let dd = -2; dd < 7; dd++) for (const svc of d.services.filter(s => s.kind !== 'fruehstueck')) {
+    const [a, b, mains, desserts] = plans[(dd + 9 + (svc.kind === 'mittag' ? 1 : 0)) % plans.length];
+    const keys = svc.kind === 'mittag' ? [a, ...mains.split(' ').slice(0, 1), desserts[0]] : [a, b, ...mains.split(' '), ...desserts];
+    const items: MenuItem[] = keys.map(k => ({ course: D[k].course, dishId: D[k].id, share: null, name: '', allergens: [] }));
+    if (items.filter(i => i.course === 'hauptgang').length === 2) items.find(i => i.course === 'hauptgang')!.share = 60;
+    menus.push({ id: newId(), date: addDays(t0, dd), serviceId: svc.id, portions: null, bufferPct: 10, notes: '', items: snapshotItems(d, items) });
+  }
+  d.menus = menus;
 }

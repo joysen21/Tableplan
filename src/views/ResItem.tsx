@@ -1,4 +1,5 @@
 import type { PointerEvent as RPE } from 'react';
+import { allergyText, hasAllergy } from '../domain/menu';
 import { GripVertical } from 'lucide-react';
 import { RES_STATUS_COLOR } from '../domain/constants';
 import { checkReservation, occupies, persons, tableNames } from '../domain/logic';
@@ -19,7 +20,7 @@ export function ResItem({ d, r, showDate, draggable, onPointerDown, onClick }: {
       <div className="main">
         <div className="name">{r.vip ? '★ ' : ''}{r.name}</div>
         <div className="sub">{persons(r)} P{r.children ? ` (${r.children} Ki.)` : ''} · {r.tableIds.length ? 'Tisch ' + tableNames(d, r.tableIds) : <b style={{ color: 'var(--danger)' }}>ohne Tisch</b>}
-          {r.allergies ? ' · ⚠ ' + r.allergies : ''}{r.occasion ? ' · 🎉 ' + r.occasion : ''}</div>
+          {hasAllergy(r) ? ' · ⚠ ' + allergyText(r) : ''}{r.occasion ? ' · 🎉 ' + r.occasion : ''}</div>
       </div>
       <div style={{ textAlign: 'right' }}>
         {r.stayId && <><span className="badge hotel">Hotel</span><br /></>}

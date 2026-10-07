@@ -3,14 +3,15 @@
  * und der Demo-Implementierung (Daten im Browser) erfüllt wird.
  */
 import type {
-  AuditEntry, Decor, DiningTable, Layout, Member, Reservation, Role, Room, Service, Station, Stay, TableBlock, TableCombo, VenueData
+  AuditEntry, Decor, DiningTable, Dish, Ingredient, Layout, Member, Menu, Reservation, Role, Room, Service, Station, Stay, TableBlock, TableCombo, VenueData
 } from '../domain/types';
 
 export interface EntityMap {
   rooms: Room; stations: Station; tables: DiningTable; decor: Decor; combos: TableCombo; layouts: Layout; services: Service; blocks: TableBlock;
+  ingredients: Ingredient; dishes: Dish; menus: Menu;
 }
 export type EntityKey = keyof EntityMap;
-export const ENTITY_KEYS: EntityKey[] = ['services', 'rooms', 'stations', 'tables', 'decor', 'combos', 'layouts', 'blocks'];
+export const ENTITY_KEYS: EntityKey[] = ['services', 'rooms', 'stations', 'tables', 'decor', 'combos', 'layouts', 'blocks', 'ingredients', 'dishes', 'menus'];
 
 export interface AuthUser { id: string; email: string }
 export interface Membership { venueId: string; venueName: string; role: Role; name: string }

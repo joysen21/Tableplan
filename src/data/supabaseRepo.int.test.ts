@@ -52,7 +52,7 @@ describe.skipIf(!URL_)('SupabaseRepo gegen echte Datenbank', () => {
     const repo = repoAs(ADMIN);
     const d = await repo.loadVenue(VENUE, 'x', 120);
     const stay = { id: newId(), roomNo: '999', name: 'Integration', adults: 2, children: 0, arrival: '2030-01-10', departure: '2030-01-13', board: 'HP' as const,
-      phone: '', allergies: '', notes: '', vip: false, times: {}, tableIds: [d.tables[0].id] };
+      phone: '', allergies: '', allergens: [], notes: '', vip: false, times: {}, tableIds: [d.tables[0].id] };
     const plan = planStay({ ...d, stays: [...d.stays, stay] }, stay, newId);
     const res = await repo.saveStay(VENUE, stay, plan.upserts, plan.deleteIds);
     expect(res.reservations.length).toBe(3);

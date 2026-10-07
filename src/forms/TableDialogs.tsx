@@ -1,5 +1,6 @@
 /** Tisch-Popup, Reservierungs-Info (Service), Walk-in, Tischsperre */
 import { useState } from 'react';
+import { allergyText, hasAllergy } from '../domain/menu';
 import { Minus, Plus, PersonStanding } from 'lucide-react';
 import { newId } from '../domain/demo';
 import { canEdit, canStatus, RES_STATUS_COLOR, SEATED_STATES } from '../domain/constants';
@@ -34,7 +35,7 @@ function ResDetails({ r }: { r: Reservation }) {
     <div className="infobox">
       <b>{r.vip ? '★ ' : ''}{r.name}</b> · {persons(r)} P{r.children ? ` (${r.children} Kinder)` : ''} · {r.time}–{fromMin(resEnd(r))}
       {stay && <><br />Hotelgast Zi. {stay.roomNo} · {t(stay.board)} · bis {fmtShort(stay.departure)}</>}
-      {r.allergies && <><br />⚠ <b>{r.allergies}</b></>}
+      {hasAllergy(r) && <><br />⚠ <b>{allergyText(r)}</b></>}
       {r.occasion && <><br />🎉 {r.occasion}</>}
       {r.highchair && <><br />Kinderstuhl</>}
       {r.notes && <><br />📝 {r.notes}</>}
@@ -139,7 +140,7 @@ export function WalkIn({ tableId }: { tableId?: string }) {
   const start = Math.round((ui.date === today() ? nowMin() : ui.time) / 5) * 5;
   const draft: Reservation = {
     id: newId(), date: ui.date, serviceId, time: fromMin(start), duration: turnTime(d, serviceId, p), adults: p, children: 0, name: '',
-    phone: '', email: '', occasion: '', allergies: '', notes: '', highchair: false, vip: false, source: 'Walk-in', status: 'platziert', wishes: [],
+    phone: '', email: '', occasion: '', allergies: '', allergens: [], notes: '', highchair: false, vip: false, source: 'Walk-in', status: 'platziert', wishes: [],
     stayId: null, manualTable: false, seriesId: null, seatedAt: nowMin(), finishedAt: null, tableIds: []
   };
   // Walk-ins dürfen auch Tische nutzen, die später reserviert sind – die Dauer wird dann gekürzt (min. 30 Min.)

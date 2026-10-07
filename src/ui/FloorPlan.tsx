@@ -1,5 +1,6 @@
 /** Raumplan als SVG – gemeinsam für Live-Plan, Hotel-Zuweisung, Editor und Druck */
 import type { PointerEvent as RPE, Ref } from 'react';
+import { hasAllergy } from '../domain/menu';
 import { TABLE_STATE_ICON, TABLE_STATES } from '../domain/constants';
 import { byId, persons, type TableStatus } from '../domain/logic';
 import type { Decor, DiningTable, Room, VenueData } from '../domain/types';
@@ -91,8 +92,8 @@ export function FloorPlan(p: Props) {
           const nm = r.name.split(' · ')[0];
           lineEls.push(<tspan key="a" x={0} dy={14} fontSize={11}>{nm.length > maxLen ? nm.slice(0, maxLen - 1) + '…' : nm}</tspan>);
           lineEls.push(small
-            ? <tspan key="b" x={0} dy={13} fontSize={10}>{persons(r)}P{r.stayId ? '⌂' : ''}{r.allergies ? '⚠' : ''}</tspan>
-            : <tspan key="b" x={0} dy={13} fontSize={11}>{r.time} · {persons(r)}P{r.stayId ? ' ⌂' : ''}{r.allergies ? ' ⚠' : ''}{r.vip ? ' ★' : ''}</tspan>);
+            ? <tspan key="b" x={0} dy={13} fontSize={10}>{persons(r)}P{r.stayId ? '⌂' : ''}{hasAllergy(r) ? '⚠' : ''}</tspan>
+            : <tspan key="b" x={0} dy={13} fontSize={11}>{r.time} · {persons(r)}P{r.stayId ? ' ⌂' : ''}{hasAllergy(r) ? ' ⚠' : ''}{r.vip ? ' ★' : ''}</tspan>);
         } else if (mode !== 'edit' && s.next) {
           lineEls.push(<tspan key="a" x={0} dy={14} fontSize={11} opacity={0.8}>ab {s.next.time}</tspan>);
         } else lineEls.push(<tspan key="a" x={0} dy={14} fontSize={11} opacity={0.7}>{tb.minPersons}–{tb.maxPersons} P</tspan>);
