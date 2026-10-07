@@ -1,8 +1,8 @@
 import type { Board, ResStatus, Role, ServiceKind, TableFeature, TableState } from './types';
 
 export const RES_STATUS_COLOR: Record<ResStatus, string> = {
-  angefragt: '#8c959f', bestaetigt: '#4f8ef7', eingetroffen: '#a371f7', platziert: '#2da44e',
-  rechnung: '#f0883e', abgeschlossen: '#57606a', storniert: '#cf222e', noshow: '#7d2c2c'
+  angefragt: '#8A97B0', bestaetigt: '#4F7BD1', eingetroffen: '#a371f7', platziert: '#2da44e',
+  rechnung: '#f0883e', abgeschlossen: '#4A5B7D', storniert: '#cf222e', noshow: '#7d2c2c'
 };
 export const ALL_STATUS = Object.keys(RES_STATUS_COLOR) as ResStatus[];
 export const OPEN_STATES: ResStatus[] = ['angefragt', 'bestaetigt'];

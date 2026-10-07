@@ -7,7 +7,13 @@ import { useApp } from '../store/app';
 import { toast } from '../ui/notify';
 
 function Box({ title, children }: { title: string; children: ReactNode }) {
-  return <div className="login panel"><h3>{title}</h3><div className="body">{children}</div></div>;
+  return (
+    <div className="login">
+      <img className="login-logo" src="/joke-logo-horizontal.svg" alt="JoKe Smart Solutions" />
+      <img className="login-logo neg" src="/joke-logo-horizontal-negativ.svg" alt="JoKe Smart Solutions" />
+      <div className="panel"><h3>{title}</h3><div className="body">{children}</div></div>
+    </div>
+  );
 }
 
 export function Gate() {

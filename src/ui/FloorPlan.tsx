@@ -38,7 +38,7 @@ function DecorShape({ d, sel, onDown }: { d: Decor; sel: boolean; onDown?: (e: R
   const w = d.width, h = d.height;
   const body: Record<string, JSX.Element | null> = {
     wall: <rect x={-w / 2} y={-h / 2} width={w} height={h} fill="var(--decor)" />,
-    door: <rect x={-w / 2} y={-h / 2} width={w} height={h} fill="none" stroke="var(--accent)" strokeWidth={3} strokeDasharray="6 4" />,
+    door: <rect x={-w / 2} y={-h / 2} width={w} height={h} fill="none" stroke="var(--hl)" strokeWidth={3} strokeDasharray="6 4" />,
     bar: <rect x={-w / 2} y={-h / 2} width={w} height={h} rx={8} fill="var(--decor)" />,
     buffet: <rect x={-w / 2} y={-h / 2} width={w} height={h} rx={6} fill="var(--decor)" opacity={0.7} />,
     column: <rect x={-w / 2} y={-h / 2} width={w} height={h} fill="var(--decor)" />,
@@ -49,7 +49,7 @@ function DecorShape({ d, sel, onDown }: { d: Decor; sel: boolean; onDown?: (e: R
     <g data-decor-id={d.id} transform={`translate(${d.x} ${d.y}) rotate(${d.rotation || 0})`} onPointerDown={onDown} style={onDown ? { cursor: 'move' } : undefined}>
       {body[d.kind]}
       {d.label && <text textAnchor="middle" dy={4} fontSize={13} fill="var(--muted)" pointerEvents="none">{d.label}</text>}
-      {sel && <rect x={-w / 2 - 4} y={-h / 2 - 4} width={w + 8} height={h + 8} fill="none" stroke="var(--accent)" strokeDasharray="4 3" />}
+      {sel && <rect x={-w / 2 - 4} y={-h / 2 - 4} width={w + 8} height={h + 8} fill="none" stroke="var(--hl)" strokeDasharray="4 3" />}
     </g>
   );
 }
@@ -104,12 +104,12 @@ export function FloorPlan(p: Props) {
           <g key={tb.id} className="tb" data-table-id={tb.id} transform={`translate(${tb.x} ${tb.y}) rotate(${tb.rotation || 0})`}
             style={{ cursor: mode === 'edit' ? 'move' : 'pointer' }} onPointerDown={p.onTableDown ? e => p.onTableDown!(e, tb) : undefined}
             aria-label={`Tisch ${tb.name}, ${t(s.st)}`}>
-            {(sel || hl) && <rect x={-w / 2 - 16} y={-h / 2 - 16} width={w + 32} height={h + 32} rx={12} fill="none" stroke={hl ? 'var(--hotel)' : 'var(--accent)'} strokeWidth={3} strokeDasharray="6 4" />}
+            {(sel || hl) && <rect x={-w / 2 - 16} y={-h / 2 - 16} width={w + 32} height={h + 32} rx={12} fill="none" stroke={hl ? 'var(--hotel)' : 'var(--hl)'} strokeWidth={3} strokeDasharray="6 4" />}
             <Chairs tb={tb} />
             {outline}
             {tb.shape === 'round' ? <ellipse rx={w / 2} ry={h / 2} fill={fill} className="tbody" /> : <rect x={-w / 2} y={-h / 2} width={w} height={h} rx={7} fill={fill} className="tbody" />}
             <text textAnchor="middle" y={dy} fill={col} transform={`rotate(${-(tb.rotation || 0)})`} pointerEvents="none">{lineEls}</text>
-            {mode === 'edit' && sel && p.onResizeDown && <rect x={w / 2 - 6} y={h / 2 - 6} width={14} height={14} fill="var(--accent)" style={{ cursor: 'nwse-resize' }} onPointerDown={e => { e.stopPropagation(); p.onResizeDown!(e, tb); }} />}
+            {mode === 'edit' && sel && p.onResizeDown && <rect x={w / 2 - 6} y={h / 2 - 6} width={14} height={14} fill="var(--hl)" style={{ cursor: 'nwse-resize' }} onPointerDown={e => { e.stopPropagation(); p.onResizeDown!(e, tb); }} />}
           </g>
         );
       })}
