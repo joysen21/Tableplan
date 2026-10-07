@@ -118,8 +118,14 @@ svg.plan{width:100%;height:auto;display:block;background:var(--plan-bg);border-r
 .kpi small{color:var(--muted);font-size:11px}
 
 /* ---------- Gantt ---------- */
-.gantt{overflow:auto;max-height:calc(100vh - 150px);position:relative}
-.g-head,.g-row{display:flex;position:relative}
+.gantt{overflow:auto;max-height:calc(100vh - 150px);position:relative;overscroll-behavior:contain}
+/* Zeilen so breit wie die ganze Zeitleiste – sonst endet beim Scrollen die klebende Tischspalte und die Linie */
+.g-head,.g-row{display:flex;position:relative;width:max-content;min-width:100%}
+.g-row:not(.group)::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:0}
+.g-row.marked::after{background:var(--accent-soft)}
+.g-row.drop-target::after{background:var(--accent-soft);box-shadow:inset 0 0 0 2px var(--hl)}
+.g-row.marked>.g-label,.g-row.drop-target>.g-label{background:linear-gradient(var(--accent-soft),var(--accent-soft)),var(--panel);box-shadow:inset 3px 0 0 var(--hl)}
+@media (hover:hover){.g-row:not(.group):not(.marked):hover::after{background:rgba(79,123,209,.07)}}
 .g-head{position:sticky;top:0;z-index:3;background:var(--panel)}
 .g-label{width:150px;min-width:150px;position:sticky;left:0;background:var(--panel);z-index:2;padding:0 10px;display:flex;align-items:center;border-right:1px solid var(--line);font-size:13px;gap:6px}
 .g-row{height:38px;border-bottom:1px solid var(--line)}
@@ -233,6 +239,7 @@ table.list tr.clickable:hover td{background:var(--panel2)}
 .link{background:none;border:0;color:var(--on-text);padding:0;cursor:pointer;font-size:inherit}
 .spacer{flex:1}
 .g-bar.dragging{z-index:10;pointer-events:none;opacity:.85}
+.g-bar.lifted{opacity:.95;box-shadow:0 6px 16px rgba(15,35,71,.35);outline:2px solid #fff;outline-offset:-2px}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .mb8{margin-bottom:8px}.mt8{margin-top:8px}.mt12{margin-top:12px}
 .topnav a{padding:9px 12px;border-radius:8px;color:var(--muted);min-height:40px;text-decoration:none;display:inline-flex;align-items:center}
@@ -240,6 +247,7 @@ table.list tr.clickable:hover td{background:var(--panel2)}
 .topnav a.active{background:var(--accent);color:var(--accent-t)}
 .dragging,.dragging *{user-select:none!important;-webkit-user-select:none!important}
 .stay-chip,.ritem,.g-bar,svg.plan{user-select:none;-webkit-user-select:none}
+.g-bar{-webkit-touch-callout:none}
 
 /* ---------- Benutzermenü / „Mehr“ ---------- */
 .usermenu-btn svg{width:16px;height:16px}
