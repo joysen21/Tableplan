@@ -1,5 +1,6 @@
 /** Rahmen der angemeldeten App: Kopfzeile mit Navigation, Datum/Service, Status; Dialoge */
 import { useEffect } from 'react';
+import { ChevronLeft, ChevronRight, LogOut, Moon, Sun } from 'lucide-react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { repo } from '../data';
 import { ROLE_VIEWS } from '../domain/constants';
@@ -49,9 +50,9 @@ export function Shell() {
         <span className="spacer" />
         {showCtx && (
           <div className="ctx">
-            <button className="btn small" aria-label="Vortag" onClick={() => ui.set({ date: addDays(ui.date, -1), follow: false })}>◀</button>
+            <button className="btn small icon" aria-label="Vortag" title="Vortag" onClick={() => ui.set({ date: addDays(ui.date, -1), follow: false })}><ChevronLeft /></button>
             <input type="date" value={ui.date} onChange={e => e.target.value && ui.set({ date: e.target.value, follow: false })} aria-label="Datum" />
-            <button className="btn small" aria-label="Folgetag" onClick={() => ui.set({ date: addDays(ui.date, 1), follow: false })}>▶</button>
+            <button className="btn small icon" aria-label="Folgetag" title="Folgetag" onClick={() => ui.set({ date: addDays(ui.date, 1), follow: false })}><ChevronRight /></button>
             <button className="btn small" onClick={() => ui.goToday()}>Heute</button>
             <select value={serviceId} aria-label="Service" onChange={e => { const s = data.services.find(x => x.id === e.target.value)!; ui.set({ serviceId: s.id, follow: false, time: toMin(s.start) + 60 }); }}>
               {data.services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -59,8 +60,8 @@ export function Shell() {
           </div>
         )}
         <SyncIndicator />
-        <button className="btn small" onClick={toggleTheme} title="Hell/Dunkel" aria-label="Hell/Dunkel umschalten">{theme === 'dark' ? '☀' : '☾'}</button>
-        <button className="btn small" onClick={() => logout()} title={`${user.email} – Abmelden`}>{user.name} ⎋</button>
+        <button className="btn small icon ghost" onClick={toggleTheme} title="Hell/Dunkel" aria-label="Hell/Dunkel umschalten">{theme === 'dark' ? <Sun /> : <Moon />}</button>
+        <button className="btn small" onClick={() => logout()} title={`${user.email} – Abmelden`}>{user.name}<LogOut /></button>
       </header>
       <main id="main"><Outlet /></main>
       <Dialogs />

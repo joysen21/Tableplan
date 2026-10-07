@@ -1,5 +1,6 @@
 /** Raumplan-Editor (Admin): Räume, Tische, Deko, Reviere, Kombinationen, Layout-Varianten */
 import { useRef, useState, type PointerEvent as RPE } from 'react';
+import { Plus, Trash2, X } from 'lucide-react';
 import { repo } from '../data';
 import { newId } from '../domain/demo';
 import { FEATURES } from '../domain/constants';
@@ -159,8 +160,8 @@ export function EditorView() {
             <label className="mt8">Grundriss-Bild<input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) uploadBg(f); e.target.value = ''; }} /></label>
             {room.backgroundUrl && <button className="btn small mt8" onClick={() => saveRoom(room, { backgroundUrl: null })}>Bild entfernen</button>}
           </>}
-          <button className="btn mt12" onClick={addRoom}>＋ Neuer Raum</button>
-          {room && <button className="btn danger" onClick={() => deleteRoom(room)}>Raum löschen</button>}
+          <button className="btn mt12" onClick={addRoom}><Plus />Neuer Raum</button>
+          {room && <button className="btn danger" onClick={() => deleteRoom(room)}><Trash2 />Raum löschen</button>}
         </div>
         <h3>Tisch hinzufügen</h3>
         <div className="body">{SHAPES.map(s => <button key={s} className="btn" onClick={() => addTable(s)}>{t(s)}</button>)}</div>
@@ -170,7 +171,7 @@ export function EditorView() {
         <div className="body">
           {layouts.length ? layouts.map(l => (
             <div key={l.id} className="row mb8"><button className="btn small" style={{ flex: 1 }} onClick={() => loadLayout(l)}>{l.name}</button>
-              <button className="btn small danger" aria-label="Variante löschen" onClick={() => store.remove('layouts', [l.id])}>✕</button></div>
+              <button className="btn small icon danger" aria-label="Variante löschen" title="Variante löschen" onClick={() => store.remove('layouts', [l.id])}><X /></button></div>
           )) : <p className="muted" style={{ margin: '0 0 6px', fontSize: 12 }}>Keine Varianten gespeichert.</p>}
           <button className="btn small" onClick={saveLayout}>Aktuelles Layout speichern…</button>
         </div>
@@ -201,7 +202,7 @@ export function EditorView() {
             </div>
             <div style={{ margin: '8px 0' }}>{FEATURES.map(f => <label key={f} className="chk"><input type="checkbox" checked={selT.features.includes(f)}
               onChange={e => saveTable(selT, { features: e.target.checked ? [...selT.features, f] : selT.features.filter(x => x !== f) })} /> {t(f)}</label>)}</div>
-            <div className="row"><button className="btn small" onClick={duplicate}>Duplizieren</button><button className="btn small danger" onClick={deleteSelected}>Löschen</button></div>
+            <div className="row"><button className="btn small" onClick={duplicate}>Duplizieren</button><button className="btn small danger" onClick={deleteSelected}><Trash2 />Löschen</button></div>
           </> : selD ? <>
             <div className="grid2">
               <label>Typ<select value={selD.kind} onChange={e => saveDecor(selD, { kind: e.target.value as DecorKind })}>{DECOR.map(k => <option key={k} value={k}>{t(k)}</option>)}</select></label>
@@ -210,7 +211,7 @@ export function EditorView() {
               <Field label="Höhe" type="number" value={selD.height} onCommit={v => saveDecor(selD, { height: Math.max(4, +v || 4) })} />
               <Field label="Drehung °" type="number" step={15} value={selD.rotation} onCommit={v => saveDecor(selD, { rotation: +v || 0 })} />
             </div>
-            <div className="row mt8"><button className="btn small" onClick={duplicate}>Duplizieren</button><button className="btn small danger" onClick={deleteSelected}>Löschen</button></div>
+            <div className="row mt8"><button className="btn small" onClick={duplicate}>Duplizieren</button><button className="btn small danger" onClick={deleteSelected}><Trash2 />Löschen</button></div>
           </> : <>
             <p className="muted" style={{ marginTop: 0, fontSize: 13 }}>Tisch anklicken, um ihn zu bearbeiten.</p>
             <h4 style={{ margin: '6px 0' }}>Service-Reviere</h4>
@@ -218,17 +219,17 @@ export function EditorView() {
               <div key={s.id} className="row mb8">
                 <input type="color" value={s.color} style={{ width: 44, padding: 2 }} onChange={e => store.upsert('stations', [{ ...s, color: e.target.value }])} />
                 <div style={{ flex: 1 }}><Field label="" value={s.name} onCommit={v => v.trim() && store.upsert('stations', [{ ...s, name: v.trim() }])} /></div>
-                <button className="btn small danger" aria-label="Revier löschen" onClick={() => store.remove('stations', [s.id])}>✕</button>
+                <button className="btn small icon danger" aria-label="Revier löschen" title="Revier löschen" onClick={() => store.remove('stations', [s.id])}><X /></button>
               </div>
             ))}
-            <button className="btn small" onClick={() => store.upsert('stations', [{ id: newId(), name: 'Revier ' + (d.stations.length + 1), color: '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0') }])}>＋ Revier</button>
+            <button className="btn small" onClick={() => store.upsert('stations', [{ id: newId(), name: 'Revier ' + (d.stations.length + 1), color: '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0') }])}><Plus />Revier</button>
             <h4 style={{ margin: '14px 0 6px' }}>Feste Tischkombinationen</h4>
             {d.combos.map(c => (
               <div key={c.id} className="row" style={{ marginBottom: 4 }}><span style={{ flex: 1 }}>{tableNames(d, c.tableIds)} ({capacity(d, c.tableIds).max}P)</span>
-                <button className="btn small danger" aria-label="Kombination löschen" onClick={() => store.remove('combos', [c.id])}>✕</button></div>
+                <button className="btn small icon danger" aria-label="Kombination löschen" title="Kombination löschen" onClick={() => store.remove('combos', [c.id])}><X /></button></div>
             ))}
             <div className="row"><input value={comboText} placeholder="z. B. T7+T8" style={{ flex: 1, width: 'auto' }} onChange={e => setComboText(e.target.value)} />
-              <button className="btn small" onClick={addCombo}>＋</button></div>
+              <button className="btn small icon" aria-label="Kombination hinzufügen" title="Kombination hinzufügen" onClick={addCombo}><Plus /></button></div>
           </>}
         </div>
       </div>

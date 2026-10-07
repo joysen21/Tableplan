@@ -1,4 +1,5 @@
 /** Hotelgäste: Anreise/Abreise, Gäste ohne Tisch, feste Tische per Ziehen */
+import { ChevronLeft, ChevronRight, Plus, Upload } from 'lucide-react';
 import { byId, isBlocked, isInHouse, needsTable, occupies, tableNames, type TableStatus } from '../domain/logic';
 import type { DiningTable, Stay } from '../domain/types';
 import { addDays, fmtShort, today } from '../lib/time';
@@ -43,13 +44,13 @@ export function HotelView() {
     <div className="hotel">
       <div className="panel">
         <div className="row" style={{ padding: '10px 14px', borderBottom: '1px solid var(--line)' }}>
-          <button className="btn small" aria-label="Vortag" onClick={() => ui.set({ hotelDate: addDays(D, -1) })}>◀</button>
+          <button className="btn small icon" aria-label="Vortag" title="Vortag" onClick={() => ui.set({ hotelDate: addDays(D, -1) })}><ChevronLeft /></button>
           <input type="date" value={D} style={{ width: 'auto' }} onChange={e => e.target.value && ui.set({ hotelDate: e.target.value })} />
-          <button className="btn small" aria-label="Folgetag" onClick={() => ui.set({ hotelDate: addDays(D, 1) })}>▶</button>
+          <button className="btn small icon" aria-label="Folgetag" title="Folgetag" onClick={() => ui.set({ hotelDate: addDays(D, 1) })}><ChevronRight /></button>
           <button className="btn small" onClick={() => ui.set({ hotelDate: today() })}>Heute</button>
           <span className="spacer" />
-          <button className="btn" onClick={() => openDialog({ type: 'stayimport' })}>CSV-Import</button>
-          <button className="btn primary" onClick={() => openDialog({ type: 'stay' })}>＋ Aufenthalt</button>
+          <button className="btn" onClick={() => openDialog({ type: 'stayimport' })}><Upload />CSV-Import</button>
+          <button className="btn primary" onClick={() => openDialog({ type: 'stay' })}><Plus />Aufenthalt</button>
         </div>
         <div className="kpis">
           <div className="kpi"><b>{inHouse.length}</b><small>Zimmer belegt</small></div>
@@ -74,7 +75,7 @@ export function HotelView() {
       </div>
       <div className="panel">
         <h3>Feste Tische · {dinner?.name} {fmtShort(D)}</h3>
-        <div className="roomtabs">{d.rooms.map(r => <button key={r.id} className={'btn small' + (r.id === roomId ? ' on' : '')} onClick={() => ui.set({ roomId: r.id })}>{r.name}</button>)}</div>
+        <div className="roomtabs">{d.rooms.map(r => <button key={r.id} className="btn small" aria-pressed={r.id === roomId} onClick={() => ui.set({ roomId: r.id })}>{r.name}</button>)}</div>
         <div className="plan-wrap">{room && <FloorPlan data={d} room={room} mode="assign" status={status} onTableDown={(e, tb) => {
           const s = status(tb);
           const st = s.r?.stayId ? byId(d.stays, s.r.stayId) : undefined;

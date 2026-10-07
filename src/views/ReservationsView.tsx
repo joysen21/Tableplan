@@ -1,4 +1,5 @@
 /** Reservierungsliste mit Filtern und CSV-Export */
+import { Download, Plus } from 'lucide-react';
 import { canEdit, RES_STATUS_COLOR, ALL_STATUS } from '../domain/constants';
 import { byId, checkReservation, occupies, persons, resEnd, resStart, tableNames } from '../domain/logic';
 import { t } from '../lib/i18n';
@@ -37,8 +38,8 @@ export function ReservationsView() {
         <label className="chk" style={{ alignSelf: 'flex-end' }}><input type="checkbox" checked={F.hotel} onChange={e => setF({ hotel: e.target.checked })} /> nur Hotelgäste</label>
         <label className="chk" style={{ alignSelf: 'flex-end' }}><input type="checkbox" checked={F.unassigned} onChange={e => setF({ unassigned: e.target.checked })} /> nur ohne Tisch</label>
         <span className="spacer" />
-        <button className="btn" style={{ alignSelf: 'flex-end' }} onClick={exportCsv}>CSV-Export</button>
-        {canEdit(role) && <button className="btn primary" style={{ alignSelf: 'flex-end' }} onClick={() => openDialog({ type: 'reservation', preset: {} })}>＋ Reservierung</button>}
+        <button className="btn" style={{ alignSelf: 'flex-end' }} onClick={exportCsv}><Download />CSV-Export</button>
+        {canEdit(role) && <button className="btn primary" style={{ alignSelf: 'flex-end' }} onClick={() => openDialog({ type: 'reservation', preset: {} })}><Plus />Reservierung</button>}
       </div>
       <div style={{ overflow: 'auto' }}>
         <table className="list">

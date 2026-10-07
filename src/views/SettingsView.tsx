@@ -1,5 +1,6 @@
 /** Einstellungen (Admin): Betrieb, Services, Benutzer & Rollen, Daten, Protokoll */
 import { useEffect, useState } from 'react';
+import { Download, Plus, Upload, X } from 'lucide-react';
 import { repo } from '../data';
 import { demoVenueData, newId } from '../domain/demo';
 import { ROLES } from '../domain/constants';
@@ -70,9 +71,9 @@ function Members() {
           <span className="muted" style={{ flex: 2, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.email}</span>
           <select style={{ flex: 2, width: 'auto' }} value={m.role} disabled={m.userId === user.id} onChange={e => act(() => repo.updateMember(d.venue.id, m.userId, { role: e.target.value as Role }))}>
             {ROLES.map(r => <option key={r} value={r}>{t(r)}</option>)}</select>
-          <button className="btn small danger" disabled={m.userId === user.id} aria-label="Benutzer entfernen" onClick={async () => {
+          <button className="btn small icon danger" disabled={m.userId === user.id} aria-label="Benutzer entfernen" title="Benutzer entfernen" onClick={async () => {
             if (await confirmDialog('Benutzer entfernen?', [`${m.name} (${m.email}) verliert den Zugriff auf diesen Betrieb.`], 'Entfernen', true)) act(() => repo.removeMember(d.venue.id, m.userId), 'Entfernt');
-          }}>✕</button>
+          }}><X /></button>
         </div>
       ))}
       <h4 style={{ margin: '14px 0 6px' }}>Benutzer hinzufügen</h4>
@@ -103,14 +104,14 @@ export function SettingsView() {
         <p className="muted" style={{ fontSize: 12 }}>Verweildauer: „bis Personen:Minuten“, z. B. <code>2:105, 4:120, 6:150, 99:180</code>. Pacing = max. ankommende Gäste je 15 Min. (0 = aus). Seatings = feste Zeiten, z. B. 18:30, 20:30.</p>
         {d.services.map(s => <ServiceCard key={s.id} s={s} />)}
         <button className="btn" onClick={() => store.upsert('services', [{ id: newId(), name: 'Neuer Service', kind: 'abend', start: '17:00', end: '20:00', hotelTime: '18:00', freeSeating: false, pacing: 0,
-          turnTimes: [{ maxP: 2, min: 90 }, { maxP: 99, min: 120 }], seatings: [], sort: d.services.length }])}>＋ Service</button>
+          turnTimes: [{ maxP: 2, min: 90 }, { maxP: 99, min: 120 }], seatings: [], sort: d.services.length }])}><Plus />Service</button>
       </div></div>
       <div>
         <div className="panel"><h3>Benutzer & Rollen</h3><div className="body"><Members /></div></div>
         <div className="panel mt12"><h3>Daten</h3><div className="body">
           <div className="row">
-            <button className="btn" onClick={() => downloadBlob(`tischplan-sicherung-${today()}.json`, new Blob([JSON.stringify({ format: 'tischplan', version: 2, data: d }, null, 1)], { type: 'application/json' }))}>Sicherung exportieren (JSON)</button>
-            <label className="btn" style={{ color: 'var(--text)' }}>Sicherung importieren<input type="file" accept=".json" className="hidden" onChange={async e => {
+            <button className="btn" onClick={() => downloadBlob(`tischplan-sicherung-${today()}.json`, new Blob([JSON.stringify({ format: 'tischplan', version: 2, data: d }, null, 1)], { type: 'application/json' }))}><Download />Sicherung exportieren (JSON)</button>
+            <label className="btn"><Upload />Sicherung importieren<input type="file" accept=".json" className="hidden" onChange={async e => {
               const f = e.target.files?.[0]; e.target.value = ''; if (!f) return;
               try {
                 const j = JSON.parse(await f.text());

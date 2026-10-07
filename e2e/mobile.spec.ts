@@ -17,8 +17,14 @@ async function evening(page: Page) {
   await expect(page.locator('.ritem').first()).toBeVisible();
 }
 
-/** Echte Touch-Wischgeste (nach oben) ab Punkt x/y; liefert, wie weit die Seite gescrollt hat */
-async function swipeUp(page: Page, x: number, y: number) {
+/** Echte Touch-Wischgeste (nach oben) ab der Mitte des Elements; liefert, wie weit die Seite gescrollt hat.
+ *  Das Element wird vorher in die Bildschirmmitte geholt (nicht unter die fixierte Kopfzeile). */
+async function swipeUp(page: Page, sel: string) {
+  const el = page.locator(sel).first();
+  await el.evaluate(e => e.scrollIntoView({ block: 'center' }));
+  const b = (await el.boundingBox())!;
+  const x = b.x + b.width / 2, y = b.y + b.height / 2;
+  expect(await page.evaluate(([x, y, sel]) => !!document.elementFromPoint(x, y)?.closest(sel), [x, y, sel] as const), `Finger liegt auf ${sel}`).toBe(true);
   const cdp = await page.context().newCDPSession(page);
   const before = await page.evaluate(() => window.scrollY);
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
@@ -44,21 +50,14 @@ test('Alle Ansichten laden ohne seitliches Scrollen der Seite', async ({ page })
 test('Seite scrollt beim Wischen über die Kennzahlen (Kontrolle)', async ({ page }) => {
   await loginDemo(page);
   await evening(page);
-  const kpi = (await page.locator('.kpis').boundingBox())!;
-  await page.evaluate(y => window.scrollTo(0, y - 300), kpi.y);
-  const k = (await page.locator('.kpis').boundingBox())!;
-  expect(await swipeUp(page, k.x + k.width / 2, k.y + k.height / 2)).toBeGreaterThan(50);
+  expect(await swipeUp(page, '.kpis')).toBeGreaterThan(50);
 });
 
 test('Liste scrollt beim Wischen über eine Reservierung', async ({ page }) => {
   test.fail(true, 'Bekannt: .ritem hat touch-action:none (Drag & Drop) – Behebung in Phase 3');
   await loginDemo(page);
   await evening(page);
-  const item = page.locator('.ritem').first();
-  await item.scrollIntoViewIfNeeded();
-  await page.evaluate(() => window.scrollBy(0, 100));
-  const b = (await item.boundingBox())!;
-  expect(await swipeUp(page, b.x + b.width / 2, b.y + b.height / 2)).toBeGreaterThan(50);
+  expect(await swipeUp(page, '.ritem')).toBeGreaterThan(50);
 });
 
 test('Kopfzeile belegt höchstens 15 % der Bildschirmhöhe', async ({ page }) => {
@@ -69,7 +68,6 @@ test('Kopfzeile belegt höchstens 15 % der Bildschirmhöhe', async ({ page }) =>
 });
 
 test('Buttons sind mindestens 44 px hoch (Touch)', async ({ page }) => {
-  test.fail(true, 'Bekannt: .btn.small ist 32 px hoch – Behebung in Phase 1');
   await loginDemo(page);
   const small = await page.locator('button:visible').evaluateAll(els =>
     els.map(e => ({ t: (e.textContent || e.getAttribute('aria-label') || '').trim(), h: e.getBoundingClientRect().height })).filter(x => x.h < 44));
@@ -77,7 +75,6 @@ test('Buttons sind mindestens 44 px hoch (Touch)', async ({ page }) => {
 });
 
 test('Eingabefelder haben mindestens 16 px Schrift (kein iOS-Zoom)', async ({ page }) => {
-  test.fail(true, 'Bekannt: Schrift 15 px – Behebung in Phase 1');
   await loginDemo(page);
   const sizes = await page.locator('input:visible, select:visible').evaluateAll(els => els.map(e => parseFloat(getComputedStyle(e).fontSize)));
   expect(Math.min(...sizes)).toBeGreaterThanOrEqual(16);

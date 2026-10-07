@@ -1,5 +1,6 @@
 /** Tisch-Popup, Reservierungs-Info (Service), Walk-in, Tischsperre */
 import { useState } from 'react';
+import { Minus, Plus, PersonStanding } from 'lucide-react';
 import { newId } from '../domain/demo';
 import { canEdit, canStatus, RES_STATUS_COLOR, SEATED_STATES } from '../domain/constants';
 import { byId, capacity, freeMinutes, isBlocked, persons, resEnd, resStart, suggestTables, tableBusy, tableNames, tableStatusAt, turnTime } from '../domain/logic';
@@ -20,7 +21,7 @@ function StatusButtons({ r }: { r: Reservation }) {
   const setStatus = useApp(s => s.setStatus);
   return (
     <div className="stbtns">{STATUS_BUTTONS.map(x => (
-      <button key={x} className={'btn' + (r.status === x ? ' on' : '')} style={{ borderLeft: `5px solid ${RES_STATUS_COLOR[x]}` }}
+      <button key={x} className="btn" aria-pressed={r.status === x} style={{ borderLeft: `5px solid ${RES_STATUS_COLOR[x]}` }}
         onClick={async () => { if (await setStatus(r, x)) closeDialog(); }}>{t(x)}</button>
     ))}</div>
   );
@@ -81,11 +82,11 @@ export function TablePopup({ tableId }: { tableId: string }) {
       )}
       {!r && !block && edit && (
         <div className="row">
-          <button className="btn primary" onClick={() => openDialog({ type: 'walkin', tableId: tb.id })}>🚶 Walk-in hier platzieren</button>
+          <button className="btn primary" onClick={() => openDialog({ type: 'walkin', tableId: tb.id })}><PersonStanding />Walk-in hier platzieren</button>
           <button className="btn" onClick={() => {
             const svc = byId(d.services, serviceId);
             openDialog({ type: 'reservation', preset: { tableIds: [tb.id], serviceId, time: fromMin(Math.max(toMin(svc?.start), Math.ceil(ui.time / 15) * 15)) } });
-          }}>＋ Reservierung für diesen Tisch</button>
+          }}><Plus />Reservierung für diesen Tisch</button>
         </div>
       )}
       {block && <div className="warnbox">Gesperrt: {block.reason || '–'}</div>}
@@ -140,9 +141,9 @@ export function WalkIn({ tableId }: { tableId?: string }) {
   return (
     <Modal title={'Walk-in' + (fixed ? ' an ' + fixed.name : '')} onClose={closeDialog} footer={<button className="btn" onClick={closeDialog}>Abbrechen</button>}>
       <div className="row" style={{ justifyContent: 'center', gap: 16 }}>
-        <button className="btn" style={{ fontSize: 24, minWidth: 60 }} onClick={() => setP(Math.max(1, p - 1))} aria-label="weniger">−</button>
+        <button className="btn" style={{ minWidth: 60 }} onClick={() => setP(Math.max(1, p - 1))} aria-label="weniger"><Minus /></button>
         <b style={{ fontSize: 36, minWidth: 50, textAlign: 'center' }}>{p}</b>
-        <button className="btn" style={{ fontSize: 24, minWidth: 60 }} onClick={() => setP(Math.min(40, p + 1))} aria-label="mehr">＋</button>
+        <button className="btn" style={{ minWidth: 60 }} onClick={() => setP(Math.min(40, p + 1))} aria-label="mehr"><Plus /></button>
         <span className="muted">Personen</span>
       </div>
       <label className="mt12">Name (optional)<input value={name} placeholder="Walk-in" onChange={e => setName(e.target.value)} /></label>

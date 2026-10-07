@@ -1,5 +1,6 @@
 /** Berichte: Tagesübersicht, Küchenvorschau, Allergien, Hotel-Tischliste, Tischplan – druckbar */
 import type { ReactNode } from 'react';
+import { Printer } from 'lucide-react';
 import { byId, isBlocked, isCancelled, isInHouse, needsTable, persons, resStart, tableNames, tableStatusAt } from '../domain/logic';
 import type { Reservation, VenueData } from '../domain/types';
 import { t } from '../lib/i18n';
@@ -95,8 +96,8 @@ export function ReportsView() {
   return (
     <div className="panel">
       <div className="row" style={{ padding: '10px 14px', borderBottom: '1px solid var(--line)' }}>
-        {TYPES.map(([k, l]) => <button key={k} className={'btn small' + (type === k ? ' on' : '')} onClick={() => ui.set({ report: k })}>{l}</button>)}
-        <span className="spacer" /><button className="btn primary" onClick={() => window.print()}>🖨 Drucken / PDF</button>
+        {TYPES.map(([k, l]) => <button key={k} className="btn small" aria-pressed={type === k} onClick={() => ui.set({ report: k })}>{l}</button>)}
+        <span className="spacer" /><button className="btn primary" onClick={() => window.print()}><Printer />Drucken / PDF</button>
       </div>
       <div className="body report print-area">{body}</div>
     </div>

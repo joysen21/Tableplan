@@ -9,26 +9,58 @@
   --st-rechnung:#f0883e; --st-ueberfaellig:#e5534b; --st-gesperrt:#8c959f; --st-ueberzogen:#cf222e;
   --hotel:#0e8a7d; --plan-bg:#fbfbfc; --plan-grid:#eef0f3; --decor:#c9ced4;
   --shadow:0 2px 10px rgba(0,0,0,.08); --r:10px;
+  /* Buttons: sekundär = grau gefüllt (klar anders als weiße Eingabefelder), „an“ = getönt */
+  --btn-bg:#e9edf2; --btn-bg-h:#dde3ea; --btn-line:#c3cad3; --btn-text:#1d2329;
+  --accent-h:#1a5fcc; --accent-soft:rgba(31,111,235,.12); --danger-soft:rgba(209,36,47,.1); --danger-h:#b01e28;
+  --focus:0 0 0 3px rgba(31,111,235,.45);
 }
 :root[data-theme="dark"]{
+  color-scheme:dark;
   --bg:#0f1419; --panel:#171d24; --panel2:#1d242c; --line:#2c353f; --text:#e6edf3; --muted:#8b949e;
   --accent:#4c8dff; --st-frei:#2a323b; --plan-bg:#141a20; --plan-grid:#1c232b; --decor:#3a444f;
   --shadow:0 2px 10px rgba(0,0,0,.4);
+  --btn-bg:#2a333d; --btn-bg-h:#343f4b; --btn-line:#3f4a56; --btn-text:#e6edf3;
+  --accent-h:#6ea2ff; --accent-t:#0b1220; --accent-soft:rgba(76,141,255,.18); --danger-soft:rgba(209,36,47,.18); --danger-h:#e5534b;
+  --focus:0 0 0 3px rgba(110,162,255,.55);
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%}
 body{background:var(--bg);color:var(--text);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
-.btn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:8px 14px;min-height:40px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
-.btn:hover{border-color:var(--accent)}
-.btn.primary{background:var(--accent);color:var(--accent-t);border-color:var(--accent)}
-.btn.danger{color:var(--danger);border-color:var(--danger)}
+/* ---------- Buttons ----------
+   .btn          sekundär (grau gefüllt)      .btn.primary  Hauptaktion (Akzent gefüllt)
+   .btn.danger   Löschen (rot getönt)         .btn.danger.solid  Bestätigung einer Löschung
+   .btn.ghost    dezent (nur Text/Icon)       .btn.on / [aria-pressed=true]  ausgewählter Zustand
+   .btn.icon     nur Symbol (quadratisch)     .btn.small    kompakt (am Touch-Gerät trotzdem 44 px) */
+.btn{border:1px solid var(--btn-line);background:var(--btn-bg);color:var(--btn-text);border-radius:8px;padding:8px 14px;min-height:40px;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;font-weight:600;box-shadow:0 1px 0 rgba(0,0,0,.06);transition:background-color .12s,border-color .12s,box-shadow .12s,transform .05s}
+.btn:hover{background:var(--btn-bg-h)}
+.btn:active{transform:translateY(1px);box-shadow:none}
+.btn svg{width:18px;height:18px;flex:none}
+.btn.primary{background:var(--accent);color:var(--accent-t);border-color:var(--accent);box-shadow:0 1px 2px rgba(0,0,0,.18)}
+.btn.primary:hover{background:var(--accent-h);border-color:var(--accent-h)}
+.btn.danger{background:var(--danger-soft);color:var(--danger);border-color:var(--danger)}
+.btn.danger:hover{background:var(--danger);color:#fff}
+.btn.danger.solid{background:var(--danger);color:#fff}
+.btn.danger.solid:hover{background:var(--danger-h);border-color:var(--danger-h)}
+.btn.ghost{background:transparent;border-color:transparent;box-shadow:none;color:var(--text)}
+.btn.ghost:hover{background:var(--btn-bg)}
 .btn.small{min-height:32px;padding:4px 10px;font-size:13px}
-.btn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn.small svg{width:16px;height:16px}
+.btn.icon{padding:0;width:40px;min-width:40px}
+.btn.small.icon{width:32px;min-width:32px}
+.btn.on,.btn[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.btn:disabled,.btn:disabled:hover{opacity:.45;cursor:not-allowed;transform:none;background:var(--btn-bg);color:var(--btn-text);border-color:var(--btn-line)}
+.btn.primary:disabled{background:var(--accent);color:var(--accent-t);border-color:var(--accent)}
+label.btn{font-size:15px;color:var(--btn-text);cursor:pointer}
+.btn.icon.danger{background:transparent;border-color:transparent;box-shadow:none}
+.btn.icon.danger:hover{background:var(--danger-soft);color:var(--danger);border-color:var(--danger)}
+:focus-visible{outline:none;box-shadow:var(--focus)}
+.btn:focus-visible{box-shadow:var(--focus)}
 input,select,textarea{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:8px 10px;min-height:40px;width:100%}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:var(--focus)}
 textarea{min-height:64px;resize:vertical}
-input[type=checkbox]{width:20px;height:20px;min-height:0}
+input[type=checkbox]{width:20px;height:20px;min-height:0;accent-color:var(--accent)}
 label{font-size:13px;color:var(--muted);display:block}
 label>input,label>select,label>textarea{margin-top:3px}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
@@ -111,7 +143,7 @@ table.list tr.clickable:hover td{background:var(--panel2)}
 
 /* ---------- Editor ---------- */
 .editor{display:grid;grid-template-columns:200px 1fr 290px;gap:14px;align-items:start}
-.toolbox .btn{width:100%;justify-content:flex-start;margin-bottom:6px}
+.toolbox .btn{width:100%;justify-content:flex-start;margin-bottom:6px;white-space:normal;text-align:left}
 .props label{margin-bottom:8px}
 
 /* ---------- Modal/Popup/Toast ---------- */
@@ -159,6 +191,16 @@ table.list tr.clickable:hover td{background:var(--panel2)}
   .editor{grid-template-columns:1fr}
   .hotel{grid-template-columns:1fr}
 }
+/* Touch-Geräte: Fingerfreundliche Mindestgrößen, 16 px Schrift in Feldern (verhindert iOS-Zoom) */
+@media (pointer:coarse){
+  .btn,.btn.small{min-height:44px}
+  .btn.small{padding:6px 12px;font-size:14px}
+  .btn.icon,.btn.small.icon{width:44px;min-width:44px}
+  nav a{min-height:44px}
+  input,select,textarea{font-size:16px;min-height:44px}
+  input[type=checkbox]{width:24px;height:24px}
+  .ctx input,.ctx select{min-height:44px}
+}
 @media (max-width:640px){
   main{padding:8px}
   .grid2,.grid3{grid-template-columns:1fr}
@@ -173,7 +215,6 @@ table.list tr.clickable:hover td{background:var(--panel2)}
 .loading{padding:40px;text-align:center;color:var(--muted)}
 .errorbox{background:rgba(209,36,47,.1);border:1px solid var(--danger);color:var(--danger);border-radius:8px;padding:8px 10px;margin:8px 0;font-size:13px}
 .issue-warn{color:var(--warn)}
-.btn:disabled{opacity:.5;cursor:not-allowed}
 .link{background:none;border:0;color:var(--accent);padding:0;cursor:pointer;font-size:inherit}
 .spacer{flex:1}
 .g-bar.dragging{z-index:10;pointer-events:none;opacity:.85}

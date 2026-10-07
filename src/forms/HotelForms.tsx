@@ -1,5 +1,6 @@
 /** Hotelaufenthalt bearbeiten, CSV-Import und Zuweisung eines festen Tisches */
 import { useState } from 'react';
+import { Trash2 } from 'lucide-react';
 import { newId } from '../domain/demo';
 import { BOARDS } from '../domain/constants';
 import { byId, capacity, needsTable, stayTableConflicts, tableNames } from '../domain/logic';
@@ -64,7 +65,7 @@ export function StayForm({ stay }: { stay?: Stay }) {
   }
   return (
     <Modal title={isNew ? 'Neuer Aufenthalt' : `Zi. ${stay.roomNo} – ${stay.name}`} onClose={closeDialog}
-      footer={<>{!isNew && <button className="btn danger" onClick={remove}>Löschen</button>}<span className="spacer" />
+      footer={<>{!isNew && <button className="btn danger" onClick={remove}><Trash2 />Löschen</button>}<span className="spacer" />
         <button className="btn" onClick={closeDialog}>Abbrechen</button><button className="btn primary" disabled={busy} onClick={save}>Speichern</button></>}>
       <div className="grid3">
         <label>Zimmer *<input value={s.roomNo} onChange={e => upd({ roomNo: e.target.value })} autoFocus={isNew} /></label>

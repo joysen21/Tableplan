@@ -1,5 +1,6 @@
 /** Live-Tischplan: Raumplan mit Status, Reservierungsliste, Walk-ins */
 import { useMemo } from 'react';
+import { Clock, Plus, PersonStanding } from 'lucide-react';
 import { canEdit, SEATED_STATES } from '../domain/constants';
 import { byId, isCancelled, occupies, persons, resStart, tableStatusAt } from '../domain/logic';
 import { fromMin, nowMin, today, toMin } from '../lib/time';
@@ -37,11 +38,11 @@ export function LiveView() {
     <div className="live">
       <div className="panel">
         <div className="roomtabs">
-          {d.rooms.map(r => <button key={r.id} className={'btn small' + (r.id === roomId ? ' on' : '')} onClick={() => ui.set({ roomId: r.id })}>{r.name}</button>)}
+          {d.rooms.map(r => <button key={r.id} className="btn small" aria-pressed={r.id === roomId} onClick={() => ui.set({ roomId: r.id })}>{r.name}</button>)}
           <span className="spacer" />
           <label className="chk"><input type="checkbox" checked={ui.showStations} onChange={e => ui.set({ showStations: e.target.checked })} /> Reviere</label>
           <input type="time" value={fromMin(tm)} step={300} style={{ width: 'auto' }} aria-label="Uhrzeit" onChange={e => e.target.value && ui.set({ time: toMin(e.target.value), follow: false })} />
-          <button className={'btn small' + (ui.follow ? ' on' : '')} onClick={() => ui.set({ follow: true, date: today(), time: nowMin(), serviceId: null })}>Jetzt</button>
+          <button className="btn small" aria-pressed={ui.follow} onClick={() => ui.set({ follow: true, date: today(), time: nowMin(), serviceId: null })}><Clock />Jetzt</button>
         </div>
         <div className="plan-wrap">
           {room ? <FloorPlan data={d} room={room} mode="live" showStations={ui.showStations} status={status}
@@ -69,8 +70,8 @@ export function LiveView() {
           <div className="kpi" style={unassigned ? { color: 'var(--danger)' } : undefined}><b>{unassigned}</b><small>ohne Tisch</small></div>
         </div>
         <div className="row" style={{ padding: '10px 12px', borderBottom: '1px solid var(--line)' }}>
-          {edit && <><button className="btn primary" onClick={() => openDialog({ type: 'reservation', preset: {} })}>＋ Reservierung</button>
-            <button className="btn" onClick={() => openDialog({ type: 'walkin' })}>🚶 Walk-in</button></>}
+          {edit && <><button className="btn primary" onClick={() => openDialog({ type: 'reservation', preset: {} })}><Plus />Reservierung</button>
+            <button className="btn" onClick={() => openDialog({ type: 'walkin' })}><PersonStanding />Walk-in</button></>}
           <label className="chk"><input type="checkbox" checked={ui.liveActiveOnly} onChange={e => ui.set({ liveActiveOnly: e.target.checked })} /> nur aktive</label>
         </div>
         <div className="reslist">

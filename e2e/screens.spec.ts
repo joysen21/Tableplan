@@ -1,16 +1,18 @@
 import { expect, test } from '@playwright/test';
 
 /** Screenshots aller Ansichten für Vorher/Nachher-Vergleiche (Desktop + Handy).
- *  Läuft nur mit SHOT_DIR, z. B.: SHOT_DIR=docs/screens/vorher npx playwright test screens */
+ *  Läuft nur mit SHOT_DIR, z. B.: SHOT_DIR=docs/screens/vorher npx playwright test screens
+ *  SHOT_THEME=dark für den Dunkel-Modus. */
 const dir = process.env.SHOT_DIR;
+const theme = process.env.SHOT_THEME === 'dark' ? 'dark' : 'light';
 test.skip(!dir, 'nur mit SHOT_DIR');
 
 const VIEWS = ['Live-Plan', 'Zeitleiste', 'Reservierungen', 'Hotelgäste', 'Berichte', 'Raumplan-Editor', 'Einstellungen'];
 
 test('Screenshots aller Ansichten', async ({ page }, info) => {
-  const p = info.project.name;
+  const p = info.project.name + (theme === 'dark' ? '-dunkel' : '');
   await page.goto('/?demo');
-  await page.evaluate(() => localStorage.removeItem('tischplan.demo.v2'));
+  await page.evaluate(th => { localStorage.removeItem('tischplan.demo.v2'); localStorage.setItem('tischplan.theme', th); }, theme);
   await page.goto('/?demo');
   await page.screenshot({ path: `${dir}/${p}-00-login.png`, fullPage: true });
   await page.getByRole('button', { name: /Anna .Admin./ }).click();

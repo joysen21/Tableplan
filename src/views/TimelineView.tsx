@@ -1,5 +1,6 @@
 /** Zeitleiste (Gantt): Tische × Uhrzeit, Balken verschieben / Dauer ändern */
 import { useRef, type PointerEvent as RPE } from 'react';
+import { Plus } from 'lucide-react';
 import { canEdit, RES_STATUS_COLOR } from '../domain/constants';
 import { byId, checkReservation, isBlocked, occupies, persons, resEnd, resStart } from '../domain/logic';
 import type { Reservation } from '../domain/types';
@@ -84,7 +85,7 @@ export function TimelineView() {
       <div className="row" style={{ padding: '10px 14px', borderBottom: '1px solid var(--line)' }}>
         <b>{svc.name} · {fmtDate(ui.date)}</b>
         <span className="muted" style={{ fontSize: 13 }}>{edit ? 'Balken ziehen = Uhrzeit/Tisch ändern · rechten Rand ziehen = Dauer · Klick = bearbeiten' : 'Klick auf Balken = Details'}</span>
-        <span className="spacer" />{edit && <button className="btn primary" onClick={() => openDialog({ type: 'reservation', preset: {} })}>＋ Reservierung</button>}
+        <span className="spacer" />{edit && <button className="btn primary" onClick={() => openDialog({ type: 'reservation', preset: {} })}><Plus />Reservierung</button>}
       </div>
       <div className="gantt" ref={scroller}>
         <div className="g-head"><div className="g-label muted">Tisch</div><div className="g-track" style={{ width: W }}><Ticks labels /></div></div>

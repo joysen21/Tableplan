@@ -37,13 +37,13 @@ Befehle:
 - Tests mit installiertem Chrome: `PW_CHANNEL=chrome npm run e2e`
 - Screenshots: `PW_CHANNEL=chrome SHOT_DIR=docs/screens/nachher npx playwright test screens`
 
-## Phase 1 – Button- & Design-Grundlage
-- [ ] Button-Varianten: `primary` (gefüllt), `secondary` (getönt), `ghost`, `danger`; Zustand `.on` als Segment-Optik
-- [ ] `:focus-visible`-Ring, `:active`-Feedback, klarer `:disabled`-Zustand
-- [ ] Touch-Geräte (`@media (pointer:coarse)`): min. 44 px, auch `.small`
-- [ ] Eingabefelder 16 px; Inputs optisch von Buttons abgrenzen
-- [ ] `lucide-react` einbinden, Unicode-Symbole ersetzen
-- [ ] Hell- und Dunkel-Modus prüfen
+## Phase 1 – Button- & Design-Grundlage ✅
+- [x] Button-Varianten: `.btn` sekundär (grau gefüllt), `.primary`, `.danger` (getönt) / `.danger.solid` (Bestätigung), `.ghost`, `.icon`; Auswahlzustand per `aria-pressed` (getönt, statt wie Primär)
+- [x] `:focus-visible`-Ring, `:active`-Feedback, klarer `:disabled`-Zustand; Eingabefelder mit Fokus-Ring
+- [x] Touch-Geräte (`@media (pointer:coarse)`): Buttons, Felder, Menü min. 44 px; Felder 16 px Schrift
+- [x] `lucide-react` eingebunden, alle Unicode-Symbole in Buttons ersetzt (Legende im Raumplan folgt in Phase 3)
+- [x] Dunkel-Modus: `color-scheme:dark` (Datum/Uhrzeit-Symbole, Checkboxen), eigene Button-Farben
+- [x] Tests: Button-Höhe und Feld-Schrift sind jetzt normale Handy-Tests; Screenshots in `docs/screens/phase1/`
 
 ## Phase 2 – Navigation & Kopfzeile
 - [ ] Handy: kompakte Leiste oben (Datum ◀ ▶, Service, Sync-Status)

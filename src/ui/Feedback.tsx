@@ -10,7 +10,7 @@ export function Feedback() {
         <div style={{ position: 'relative', zIndex: 150 }}>
           <Modal title={confirm.title} onClose={() => closeConfirm(false)} width={520}
             footer={<><button className="btn" onClick={() => closeConfirm(false)}>Abbrechen</button>
-              <button className={'btn ' + (confirm.danger ? 'danger' : 'primary')} onClick={() => closeConfirm(true)} autoFocus>{confirm.okLabel}</button></>}>
+              <button className={'btn ' + (confirm.danger ? 'danger solid' : 'primary')} onClick={() => closeConfirm(true)} autoFocus>{confirm.okLabel}</button></>}>
             <div className={confirm.danger ? 'warnbox' : 'infobox'}>{confirm.lines.map((l, i) => <div key={i}>{l}</div>)}</div>
           </Modal>
         </div>
