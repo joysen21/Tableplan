@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Trash2, X } from 'lucide-react';
 import { newId } from '../domain/demo';
 import { ALL_STATUS, FEATURES, OCCASIONS, SOURCES } from '../domain/constants';
-import { byId, capacity, checkReservation, isInHouse, persons, resEnd, resStart, suggestTables, tableBusy, tableNames, turnTime } from '../domain/logic';
+import { byId, capacity, checkReservation, isInHouse, mergeEdits, persons, resEnd, resStart, suggestTables, tableBusy, tableNames, turnTime } from '../domain/logic';
 import type { Reservation } from '../domain/types';
 import { t } from '../lib/i18n';
 import { addDays, fmtDate } from '../lib/time';
@@ -14,6 +14,14 @@ import { closeDialog } from '../store/dialogs';
 import { confirmDialog, toast } from '../ui/notify';
 import { Modal } from '../ui/Modal';
 import { AllergenPicker } from '../ui/AllergenPicker';
+
+/** Feldnamen für die Rückfrage bei Bearbeitungskonflikten */
+const FIELD_LABEL: Partial<Record<keyof Reservation, string>> = {
+  date: 'Datum', serviceId: 'Service', time: 'Uhrzeit', duration: 'Dauer', adults: 'Erwachsene', children: 'Kinder', name: 'Name',
+  phone: 'Telefon', email: 'E-Mail', occasion: 'Anlass', allergies: 'Notiz zu Unverträglichkeiten', allergens: 'Allergene', notes: 'Notizen',
+  highchair: 'Kinderstuhl', vip: 'VIP', source: 'Quelle', status: 'Status', wishes: 'Wünsche', stayId: 'Hotelgast', tableIds: 'Tisch',
+  seatedAt: 'Platziert um', finishedAt: 'Fertig um'
+};
 
 export function ReservationForm({ r, preset }: { r?: Reservation; preset?: Partial<Reservation> }) {
   const d = useData();
@@ -45,6 +53,8 @@ export function ReservationForm({ r, preset }: { r?: Reservation; preset?: Parti
   const svc = byId(d.services, draft.serviceId);
   const issues = checkReservation(d, draft);
   const sugg = suggestTables(d, draft, roomId, 6);
+  const live = r && d.reservations.find(x => x.id === r.id);
+  const changedMeanwhile = !!r && (!live || live.updatedAt !== r.updatedAt);
   const inHouse = d.stays.filter(s => isInHouse(s, draft.date)).sort((a, b) => a.roomNo.localeCompare(b.roomNo, 'de', { numeric: true }));
 
   async function save() {
@@ -54,7 +64,26 @@ export function ReservationForm({ r, preset }: { r?: Reservation; preset?: Parti
     if (err) return toast(err.text, 'err');
     const warns = issues.filter(i => i.level === 'warn').map(i => i.text);
     if (warns.length && !(await confirmDialog('Bitte prüfen', warns))) return;
-    const next = { ...draft, name: draft.name.trim() };
+    let mine = draft;
+    // Hat jemand anderes die Reservierung inzwischen gespeichert? Dann eigene Eingaben auf den aktuellen Stand legen.
+    if (r) {
+      const live = useApp.getState().data?.reservations.find(x => x.id === r.id);
+      if (!live) return toast('Diese Reservierung wurde inzwischen gelöscht.', 'err');
+      if (live.updatedAt !== r.updatedAt) {
+        const { merged, overlap } = mergeEdits(r, draft, live);
+        if (overlap.length) {
+          const fields = overlap.map(k => FIELD_LABEL[k] ?? k).join(', ');
+          const keepMine = await confirmDialog('Inzwischen geändert', [`Jemand anderes hat diese Reservierung gerade ebenfalls geändert: ${fields}.`,
+            'Deine Eingaben speichern (überschreibt diese Felder) oder den aktuellen Stand übernehmen und prüfen?'], 'Meine Eingaben speichern');
+          if (!keepMine) {
+            setDraft({ ...merged, ...Object.fromEntries(overlap.map(k => [k, live[k]])) });
+            return toast('Aktueller Stand übernommen – bitte prüfen und speichern.');
+          }
+        }
+        mine = merged;
+      }
+    }
+    const next = { ...mine, name: mine.name.trim() };
     if (r?.stayId && JSON.stringify(r.tableIds) !== JSON.stringify(next.tableIds)) next.manualTable = true;
     const items = [next];
     let skipped = 0;
@@ -81,6 +110,7 @@ export function ReservationForm({ r, preset }: { r?: Reservation; preset?: Parti
     <Modal title={isNew ? 'Neue Reservierung' : 'Reservierung bearbeiten'} onClose={closeDialog}
       footer={<>{!isNew && <button className="btn danger" onClick={remove}><Trash2 />Löschen</button>}<span className="spacer" />
         <button className="btn" onClick={closeDialog}>Abbrechen</button><button className="btn primary" onClick={save} disabled={busy}>Speichern</button></>}>
+      {changedMeanwhile && <div className="infobox" role="status">{live ? 'Diese Reservierung wurde gerade von jemand anderem geändert. Beim Speichern werden deine Eingaben mit dem aktuellen Stand zusammengeführt.' : 'Diese Reservierung wurde inzwischen gelöscht.'}</div>}
       <div className="grid3">
         <label>Datum<input type="date" value={draft.date} onChange={e => e.target.value && upd({ date: e.target.value })} /></label>
         <label>Service<select value={draft.serviceId} onChange={e => { const s = byId(d.services, e.target.value)!; upd({ serviceId: s.id, time: s.hotelTime || s.start }); }}>

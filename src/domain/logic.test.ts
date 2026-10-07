@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { demoVenueData, emptyVenueData, newId } from './demo';
 import {
-  checkReservation, freeMinutes, hasErrors, occupies, planStay, resEnd, resStart, stayTableConflicts, suggestTables, tableBusy, tableStatusAt, turnTime
+  checkReservation, freeMinutes, hasErrors, mergeEdits, occupies, planStay, resEnd, resStart, stayTableConflicts, suggestTables, tableBusy, tableStatusAt, turnTime
 } from './logic';
 import type { Reservation, VenueData } from './types';
 import { addDays, today } from '../lib/time';
@@ -111,5 +111,23 @@ describe('Demo-Daten', () => {
     for (const r of d.reservations) if (occupies(r)) for (const t of r.tableIds)
       expect(tableBusy(d, t, r.date, resStart(r), resEnd(r), r.id)).toEqual([]);
     expect(d.reservations.some(r => r.date === addDays(today(), 3))).toBe(true);
+  });
+});
+
+describe('Bearbeitungskonflikte', () => {
+  const base = res({ serviceId: 's1', updatedAt: '2026-10-10T10:00:00.000000+00:00', notes: '', status: 'bestaetigt' });
+  it('legt eigene Änderungen auf den neuen Stand, ohne fremde zu verlieren', () => {
+    const mine = { ...base, notes: 'Fensterplatz' };
+    const theirs = { ...base, status: 'platziert' as const, seatedAt: 1140, updatedAt: '2026-10-10T10:05:00.000000+00:00' };
+    const { merged, overlap } = mergeEdits(base, mine, theirs);
+    expect(overlap).toEqual([]);
+    expect(merged).toMatchObject({ notes: 'Fensterplatz', status: 'platziert', seatedAt: 1140, updatedAt: theirs.updatedAt });
+  });
+  it('meldet Felder, die beide unterschiedlich geändert haben', () => {
+    const mine = { ...base, status: 'storniert' as const, tableIds: ['t2'] };
+    const theirs = { ...base, status: 'platziert' as const, tableIds: ['t2'], updatedAt: 'neu' };
+    const { merged, overlap } = mergeEdits(base, mine, theirs);
+    expect(overlap).toEqual(['status']); // gleicher Tisch auf beiden Seiten ist kein Konflikt
+    expect(merged.status).toBe('storniert');
   });
 });

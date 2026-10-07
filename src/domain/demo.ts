@@ -146,6 +146,9 @@ export function demoVenueData(venueId: string, name: string): VenueData {
   const past = d.reservations.filter(r => r.date < t0 && !r.stayId);
   if (past[0]) past[0].status = 'noshow';
   if (past[1]) past[1].status = 'storniert';
+  // wie in der Datenbank hat jede Reservierung einen Bearbeitungsstand
+  const now = new Date().toISOString();
+  d.reservations.forEach(r => { r.updatedAt = now; });
   demoKitchen(d);
   return d;
 }

@@ -203,3 +203,21 @@ export function stayTableConflicts(d: VenueData, stay: Stay, tableIds: string[])
   }
   return days;
 }
+
+/** Felder, die beim Zusammenführen nicht als Änderung zählen (werden vom Server gesetzt) */
+const SERVER_FIELDS = new Set<keyof Reservation>(['updatedAt']);
+const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+
+/**
+ * Bearbeitungskonflikt auflösen: `base` = Stand beim Öffnen, `mine` = eigene Eingaben, `theirs` = aktueller Stand
+ * (inzwischen von jemand anderem gespeichert). Eigene Änderungen werden auf den aktuellen Stand gelegt;
+ * `overlap` = Felder, die beide geändert haben (dann Rückfrage).
+ */
+export function mergeEdits(base: Reservation, mine: Reservation, theirs: Reservation): { merged: Reservation; overlap: (keyof Reservation)[] } {
+  const keys = new Set([...Object.keys(base), ...Object.keys(mine), ...Object.keys(theirs)] as (keyof Reservation)[]);
+  const mineChanged = [...keys].filter(k => !SERVER_FIELDS.has(k) && !same(base[k], mine[k]));
+  const overlap = mineChanged.filter(k => !same(base[k], theirs[k]) && !same(mine[k], theirs[k]));
+  const merged = { ...theirs } as Record<string, unknown>;
+  for (const k of mineChanged) merged[k] = mine[k];
+  return { merged: merged as unknown as Reservation, overlap };
+}

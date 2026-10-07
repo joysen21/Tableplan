@@ -15,7 +15,8 @@ export type Dialog =
   | { type: 'dish'; dish?: Dish }
   | { type: 'ingredient'; ing?: Ingredient; back?: { type: 'dish'; dish: Dish } };
 
-interface DialogState { dialog: Dialog | null; open: (d: Dialog) => void; close: () => void }
-export const useDialogs = create<DialogState>(set => ({ dialog: null, open: dialog => set({ dialog }), close: () => set({ dialog: null }) }));
+/** seq zählt jedes Öffnen – damit startet ein neuer Dialog auch nach einem Anzeigefehler sauber */
+interface DialogState { dialog: Dialog | null; seq: number; open: (d: Dialog) => void; close: () => void }
+export const useDialogs = create<DialogState>(set => ({ dialog: null, seq: 0, open: dialog => set(s => ({ dialog, seq: s.seq + 1 })), close: () => set({ dialog: null }) }));
 export const openDialog = (d: Dialog) => useDialogs.getState().open(d);
 export const closeDialog = () => useDialogs.getState().close();

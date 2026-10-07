@@ -90,7 +90,8 @@ export const useApp = create<AppState>((set, get) => {
     catch (e) {
       const msg = errorMessage(e);
       toast(msg, 'err');
-      if (e instanceof RepoError && e.code === 'forbidden') get().reload();
+      // fehlende Rechte oder veralteter Stand: aktuellen Stand vom Server holen
+      if (e instanceof RepoError && (e.code === 'forbidden' || e.code === 'conflict')) get().reload();
       return undefined;
     } finally { set(s => ({ saving: s.saving - 1 })); }
   }
@@ -180,9 +181,11 @@ export const useApp = create<AppState>((set, get) => {
         seatedAt: status === 'platziert' && r.status !== 'platziert' && r.date === today() ? nowMin() : r.seatedAt,
         finishedAt: status === 'abgeschlossen' && r.date === today() ? nowMin() : r.finishedAt
       };
-      const ok = await write(async () => { await repo.setStatus(venueId(), r.id, patch); return true; });
+      const ok = await write(async () => ({ updatedAt: await repo.setStatus(venueId(), r.id, patch) }));
       if (!ok) return false;
-      set(s => (s.data ? { data: { ...s.data, reservations: s.data.reservations.map(x => (x.id === r.id ? { ...x, ...patch } : x)) } } : {}));
+      // neuen Bearbeitungsstand übernehmen, sonst gälte die eigene Änderung später als Konflikt
+      const upd = ok.updatedAt ? { updatedAt: ok.updatedAt } : {};
+      set(s => (s.data ? { data: { ...s.data, reservations: s.data.reservations.map(x => (x.id === r.id ? { ...x, ...patch, ...upd } : x)) } } : {}));
       get().log('Status geändert', `${r.name}: ${r.status} → ${status}`);
       return true;
     },
