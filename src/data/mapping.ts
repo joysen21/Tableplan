@@ -88,7 +88,8 @@ export const toDb = {
     id: x.id, date: x.date, service_id: x.serviceId, time: x.time, duration: x.duration, adults: x.adults, children: x.children, name: x.name,
     phone: x.phone, email: x.email, occasion: x.occasion, allergies: x.allergies, allergens: x.allergens, notes: x.notes, highchair: x.highchair, vip: x.vip,
     source: x.source, status: x.status, wishes: x.wishes, stay_id: x.stayId, manual_table: x.manualTable, series_id: x.seriesId,
-    seated_at: x.seatedAt, finished_at: x.finishedAt, table_ids: x.tableIds
+    seated_at: x.seatedAt, finished_at: x.finishedAt, table_ids: x.tableIds,
+    expected_updated_at: x.updatedAt ?? null // Stand beim Bearbeiten → Konfliktprüfung in save_reservations
   })
 };
 

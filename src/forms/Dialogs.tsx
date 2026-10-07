@@ -1,4 +1,5 @@
-import { useDialogs } from '../store/dialogs';
+import { closeDialog, useDialogs, type Dialog } from '../store/dialogs';
+import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { StayForm, StayImport, StayTablePicker } from './HotelForms';
 import { ReservationForm } from './ReservationForm';
 import { DishForm, IngredientForm, MenuEditor } from './MenuForms';
@@ -7,7 +8,12 @@ import { BlockDialog, ResInfo, TablePopup, WalkIn } from './TableDialogs';
 /** Rendert den jeweils offenen Dialog */
 export function Dialogs() {
   const dlg = useDialogs(s => s.dialog);
+  const seq = useDialogs(s => s.seq);
   if (!dlg) return null;
+  return <ErrorBoundary area="dialog" resetKey={String(seq)} onClose={closeDialog}><OpenDialog dlg={dlg} /></ErrorBoundary>;
+}
+
+function OpenDialog({ dlg }: { dlg: Dialog }) {
   switch (dlg.type) {
     case 'reservation': return <ReservationForm key={dlg.r?.id ?? 'new'} r={dlg.r} preset={dlg.preset} />;
     case 'resinfo': return <ResInfo id={dlg.id} />;

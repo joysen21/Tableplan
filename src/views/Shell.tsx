@@ -15,6 +15,7 @@ import { useDialogs } from '../store/dialogs';
 import { dragState } from '../ui/drag';
 import { useThemeStore } from '../ui/theme';
 import { Dialogs } from '../forms/Dialogs';
+import { ErrorBoundary } from '../ui/ErrorBoundary';
 
 const VIEW_ICON: Record<ViewKey, LucideIcon> = {
   live: Utensils, zeit: ChartGantt, res: CalendarDays, hotel: BedDouble, menue: ChefHat, berichte: ChartColumn, editor: PencilRuler, settings: Settings
@@ -108,7 +109,7 @@ export function Shell() {
         <SyncIndicator />
         <button className="btn small usermenu-btn" aria-haspopup="menu" aria-expanded={menu !== null} onClick={toggleMenu} title={user.email}>{user.name}<ChevronDown /></button>
       </header>
-      <main id="main"><Outlet /></main>
+      <main id="main"><ErrorBoundary resetKey={loc.pathname}><Outlet /></ErrorBoundary></main>
       {bottom.length > 0 && (
         <nav className="bottomnav" aria-label="Hauptnavigation">
           {bottom.map(v => { const I = VIEW_ICON[v]; return <NavLink key={v} to={PATHS[v]} aria-label={t(v)} className={({ isActive }) => (isActive ? 'active' : '')}><I /><span>{t('kurz.' + v)}</span></NavLink>; })}

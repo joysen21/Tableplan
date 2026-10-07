@@ -27,7 +27,7 @@ export type ChangeEvent =
 
 export type LiveState = 'connecting' | 'live' | 'down';
 
-export type RepoErrorCode = 'overlap' | 'forbidden' | 'network' | 'auth' | 'other';
+export type RepoErrorCode = 'overlap' | 'conflict' | 'forbidden' | 'network' | 'auth' | 'other';
 export class RepoError extends Error {
   constructor(public code: RepoErrorCode, message: string) { super(message); }
 }
@@ -55,7 +55,8 @@ export interface Repo {
   loadVenue(venueId: string, venueName: string, historyDays: number): Promise<VenueData>;
   // Schreiben
   saveReservations(venueId: string, items: Reservation[], deleteIds?: string[]): Promise<Reservation[]>;
-  setStatus(venueId: string, id: string, patch: Pick<Reservation, 'status' | 'seatedAt' | 'finishedAt'>): Promise<void>;
+  /** Nur den Status ändern; liefert den neuen Bearbeitungsstand (updatedAt) */
+  setStatus(venueId: string, id: string, patch: Pick<Reservation, 'status' | 'seatedAt' | 'finishedAt'>): Promise<string | undefined>;
   saveStay(venueId: string, stay: Stay, items: Reservation[], deleteIds: string[]): Promise<{ stay: Stay; reservations: Reservation[] }>;
   deleteStay(venueId: string, stayId: string, deleteReservationIds: string[]): Promise<void>;
   upsert<K extends EntityKey>(venueId: string, kind: K, rows: EntityMap[K][]): Promise<void>;

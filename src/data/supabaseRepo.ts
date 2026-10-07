@@ -14,6 +14,8 @@ function wrap(e: any): RepoError {
   const code: string = e?.code || '';
   if (code === '23P01' || msg.includes('reservation_tables_no_overlap'))
     return new RepoError('overlap', 'Der Tisch ist in diesem Zeitraum bereits belegt (eine andere Reservierung wurde gerade gespeichert). Bitte anderen Tisch oder andere Zeit wählen.');
+  if (code === '40001' || msg.includes('inzwischen von jemand anderem geändert'))
+    return new RepoError('conflict', msg.includes('inzwischen') ? msg + ' Der aktuelle Stand wurde geladen – bitte nochmals speichern.' : 'Die Reservierung wurde inzwischen geändert. Bitte nochmals speichern.');
   if (code === '42501' || msg.includes('row-level security')) return new RepoError('forbidden', msg.startsWith('Keine Berechtigung') ? msg : 'Keine Berechtigung für diese Änderung.');
   if (msg === 'Invalid login credentials') return new RepoError('auth', 'E-Mail oder Passwort falsch');
   if (msg === 'Email not confirmed') return new RepoError('auth', 'E-Mail-Adresse noch nicht bestätigt');
@@ -123,7 +125,9 @@ export class SupabaseRepo implements Repo {
     return out;
   }
   async setStatus(venueId: string, id: string, patch: Pick<Reservation, 'status' | 'seatedAt' | 'finishedAt'>) {
-    await run(this.sb.from('reservations').update({ status: patch.status, seated_at: patch.seatedAt, finished_at: patch.finishedAt }).eq('venue_id', venueId).eq('id', id));
+    const row = await run<{ updated_at: string } | null>(this.sb.from('reservations').update({ status: patch.status, seated_at: patch.seatedAt, finished_at: patch.finishedAt })
+      .eq('venue_id', venueId).eq('id', id).select('updated_at').maybeSingle());
+    return row?.updated_at;
   }
   async saveStay(venueId: string, stay: Stay, items: Reservation[], deleteIds: string[]): Promise<{ stay: Stay; reservations: Reservation[] }> {
     const res = await run<any>(this.sb.rpc('save_stay', { p_venue: venueId, p_stay: toDb.stays(stay, venueId), p_items: items.map(toDb.reservation), p_delete: deleteIds }));

@@ -123,6 +123,12 @@ export class DemoRepo implements Repo {
   private applyReservations(d: VenueData, items: Reservation[], deleteIds: string[]): ChangeEvent[] {
     const events: ChangeEvent[] = [];
     d.reservations = d.reservations.filter(r => { if (deleteIds.includes(r.id)) { events.push({ kind: 'reservations', type: 'delete', id: r.id }); return false; } return true; });
+    // Bearbeitungskonflikt wie in der Datenbank: veralteter Stand wird abgelehnt
+    for (const it of items) {
+      const cur = d.reservations.find(r => r.id === it.id);
+      if (cur && cur.updatedAt && cur.updatedAt !== it.updatedAt)
+        throw new RepoError('conflict', `Die Reservierung „${it.name}“ wurde inzwischen von jemand anderem geändert. Der aktuelle Stand wurde geladen – bitte nochmals speichern.`);
+    }
     for (const it of items) {
       const i = d.reservations.findIndex(r => r.id === it.id);
       const row = { ...it, updatedAt: new Date().toISOString() };
@@ -153,11 +159,13 @@ export class DemoRepo implements Repo {
   async setStatus(venueId: string, id: string, patch: Pick<Reservation, 'status' | 'seatedAt' | 'finishedAt'>) {
     this.guard(venueId, this.user()?.role === 'service' ? 'status' : 'reservations');
     let events: ChangeEvent[] = [];
-    this.mutate(venueId, d => {
+    const updatedAt = this.mutate(venueId, d => {
       const r = d.reservations.find(x => x.id === id); if (!r) throw new RepoError('other', 'Reservierung nicht gefunden');
       events = this.applyReservations(d, [{ ...r, ...patch }], []);
+      return d.reservations.find(x => x.id === id)!.updatedAt;
     });
     this.emit(events);
+    return updatedAt;
   }
   async saveStay(venueId: string, stay: Stay, items: Reservation[], deleteIds: string[]) {
     this.guard(venueId, 'stays');
