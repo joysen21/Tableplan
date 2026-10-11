@@ -2,13 +2,14 @@
 import { useState } from 'react';
 import { guessAllergens } from '../domain/menu';
 import { AllergenPicker } from '../ui/AllergenPicker';
-import { Trash2 } from 'lucide-react';
+import { Trash2 } from '../ui/icons';
 import { newId } from '../domain/demo';
-import { BOARDS } from '../domain/constants';
-import { byId, capacity, isInHouse, needsTable, stayTableConflicts, tableNames } from '../domain/logic';
+import { BOARDS, MAX_ROOMS_PER_TABLE } from '../domain/constants';
+import { byId, capacity, isInHouse, needsTable, stayNights, stayTableConflicts, tableNames } from '../domain/logic';
 import type { Board, ServiceKind, Stay, VenueData } from '../domain/types';
 import { t } from '../lib/i18n';
 import { addDays, fmtShort, parseDate } from '../lib/time';
+import { readTextFile } from '../lib/text';
 import { useApp } from '../store/app';
 import { useData } from '../store/hooks';
 import { useUi } from '../store/ui';
@@ -20,7 +21,16 @@ import { Modal } from '../ui/Modal';
 export async function assignStayTable(d: VenueData, stay: Stay, tableIds: string[]): Promise<boolean> {
   const p = stay.adults + stay.children, cap = capacity(d, tableIds);
   const lines = stayTableConflicts(d, stay, tableIds);
-  if (tableIds.length && p > cap.max) lines.unshift(`Tisch zu klein: ${p} Pers., max. ${cap.max}`);
+  // Geteilter Tisch: Nacht mit den meisten Personen am Tisch (zusammen mit den anderen Zimmern) prüfen
+  let all = p, rooms: string[] = [];
+  if (tableIds.length) for (const date of stayNights(stay)) {
+    const here = d.stays.filter(s => s.id !== stay.id && isInHouse(s, date) && s.tableIds.some(x => tableIds.includes(x)));
+    const n = p + here.reduce((a, s) => a + s.adults + s.children, 0);
+    if (n > all) { all = n; rooms = here.map(s => s.roomNo); }
+  }
+  if (tableIds.length && all > cap.max) lines.unshift(rooms.length
+    ? `Tisch zu klein: ${all} Pers. zusammen mit Zi. ${rooms.join(', ')}, max. ${cap.max}`
+    : `Tisch zu klein: ${p} Pers., max. ${cap.max}`);
   if (lines.length && !(await confirmDialog('Hinweise zum festen Tisch', [...lines.slice(0, 12), ...(lines.length > 12 ? [`… und ${lines.length - 12} weitere`] : []),
     'Belegte Nächte bleiben ohne Tisch und müssen einzeln gesetzt werden.'], 'Trotzdem zuweisen'))) return false;
   const res = await useApp.getState().saveStay({ ...stay, tableIds }, { resetManual: true, logText: ['Fester Tisch zugewiesen', `Zi. ${stay.roomNo} ${stay.name} → ${tableNames(d, tableIds) || 'keiner'}`] });
@@ -28,22 +38,33 @@ export async function assignStayTable(d: VenueData, stay: Stay, tableIds: string
   return res.ok;
 }
 
-/** Freien Tisch antippen (Hotel-Plan): Hotelgast ohne festen Tisch auswählen – Alternative zum Ziehen */
+/** Tisch antippen (Hotel-Plan): Gäste am Tisch anzeigen und Hotelgast ohne festen Tisch dazusetzen – Alternative zum Ziehen.
+ *  Bis zu MAX_ROOMS_PER_TABLE Zimmer können sich einen Tisch teilen. */
 export function StayTablePicker({ tableId }: { tableId: string }) {
   const d = useData();
   const D = useUi(s => s.hotelDate);
   const tb = byId(d.tables, tableId);
   if (!tb) return null;
-  const open = d.stays.filter(s => isInHouse(s, D) && needsTable(d, s) && !s.tableIds.length)
-    .sort((a, b) => a.roomNo.localeCompare(b.roomNo, 'de', { numeric: true }));
+  const byRoom = (a: Stay, b: Stay) => a.roomNo.localeCompare(b.roomNo, 'de', { numeric: true });
+  const here = d.stays.filter(s => isInHouse(s, D) && s.tableIds.includes(tb.id)).sort(byRoom);
+  const open = d.stays.filter(s => isInHouse(s, D) && needsTable(d, s) && !s.tableIds.length).sort(byRoom);
+  const seated = here.reduce((a, s) => a + s.adults + s.children, 0);
   return (
     <Modal title={`Tisch ${tb.name} · fester Tisch`} onClose={closeDialog} width={520} footer={<button className="btn" onClick={closeDialog}>Schließen</button>}>
-      <p className="muted" style={{ marginTop: 0 }}>{tb.minPersons}–{tb.maxPersons} Personen · {byId(d.rooms, tb.roomId)?.name} · frei am {fmtShort(D)}</p>
-      <h4 style={{ margin: '0 0 6px' }}>Hotelgast ohne festen Tisch hier platzieren</h4>
-      <div className="sugg">{open.length ? open.map(s => (
-        <button key={s.id} className="btn" onClick={async () => { if (await assignStayTable(d, s, [tb.id])) closeDialog(); }}>
-          Zi. {s.roomNo} · {s.name} · {s.adults + s.children}P{s.adults + s.children > tb.maxPersons ? ' ⚠' : ''}</button>
-      )) : <span className="muted">Alle Gäste mit Verpflegung haben einen Tisch. ✓</span>}</div>
+      <p className="muted" style={{ marginTop: 0 }}>{tb.minPersons}–{tb.maxPersons} Personen · {byId(d.rooms, tb.roomId)?.name} · {here.length ? `${seated} Pers. am ${fmtShort(D)}` : `frei am ${fmtShort(D)}`}</p>
+      {here.length > 0 && <>
+        <h4 style={{ margin: '0 0 6px' }}>Am Tisch ({here.length} von max. {MAX_ROOMS_PER_TABLE} Zimmern)</h4>
+        <div className="sugg mb8">{here.map(s => (
+          <button key={s.id} className="btn" onClick={() => openDialog({ type: 'stay', stay: s })}>Zi. {s.roomNo} · {s.name} · {s.adults + s.children}P</button>
+        ))}</div>
+      </>}
+      {here.length < MAX_ROOMS_PER_TABLE ? <>
+        <h4 style={{ margin: '0 0 6px' }}>Hotelgast ohne festen Tisch hier platzieren</h4>
+        <div className="sugg">{open.length ? open.map(s => (
+          <button key={s.id} className="btn" onClick={async () => { if (await assignStayTable(d, s, [tb.id])) closeDialog(); }}>
+            Zi. {s.roomNo} · {s.name} · {s.adults + s.children}P{seated + s.adults + s.children > tb.maxPersons ? ' ⚠' : ''}</button>
+        )) : <span className="muted">Alle Gäste mit Verpflegung haben einen Tisch. ✓</span>}</div>
+      </> : <p className="muted">Der Tisch ist mit {MAX_ROOMS_PER_TABLE} Zimmern voll.</p>}
       <button className="btn mt12" onClick={() => openDialog({ type: 'stay' })}>Neuer Aufenthalt…</button>
     </Modal>
   );
@@ -126,7 +147,7 @@ export function StayImport() {
   async function run() {
     const lines = text.split(/\r?\n/).filter(l => l.trim());
     if (lines.length < 2) return toast('Keine Daten', 'err');
-    const sep = lines[0].includes(';') ? ';' : ',';
+    const sep = lines[0].includes(';') ? ';' : lines[0].includes('\t') ? '\t' : ',';
     let created = 0, updated = 0, failed = 0; const errs: string[] = [];
     setBusy(true);
     for (const [i, l] of lines.slice(1).entries()) {
@@ -147,8 +168,9 @@ export function StayImport() {
     <Modal title="Hotelgäste importieren (CSV)" onClose={closeDialog} footer={<><button className="btn" onClick={closeDialog}>Schließen</button><button className="btn primary" disabled={busy} onClick={run}>Importieren</button></>}>
       <p className="muted" style={{ marginTop: 0 }}>Spalten (Trennzeichen ; oder ,), erste Zeile = Überschrift:<br />
         <code>Zimmer;Name;Erwachsene;Kinder;Anreise;Abreise;Verpflegung;Allergien;Notiz</code><br />
+        Umlaute und ß werden erkannt (UTF-8 oder Excel-CSV/ANSI).<br />
         Datum als TT.MM.JJJJ oder JJJJ-MM-TT · Verpflegung UF / HP / VP / AI. Bestehende Aufenthalte (gleiches Zimmer + Anreise) werden aktualisiert.</p>
-      <input type="file" accept=".csv,text/csv,text/plain" onChange={e => { const f = e.target.files?.[0]; if (f) f.text().then(setText); }} />
+      <input type="file" accept=".csv,.txt,text/csv,text/plain" onChange={e => { const f = e.target.files?.[0]; if (f) readTextFile(f).then(setText); }} />
       <textarea style={{ minHeight: 160, marginTop: 8 }} value={text} placeholder="…oder hier einfügen" onChange={e => setText(e.target.value)} />
       {busy && <p className="muted">Import läuft…</p>}
       {result && <div className="infobox">{result}</div>}

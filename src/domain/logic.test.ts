@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { demoVenueData, emptyVenueData, newId } from './demo';
 import {
-  checkReservation, freeMinutes, hasErrors, mergeEdits, occupies, planStay, resEnd, resStart, stayTableConflicts, suggestTables, tableBusy, tableStatusAt, turnTime
+  checkReservation, freeMinutes, hasErrors, mergeEdits, occupies, planStay, resEnd, resStart, stayTableConflicts, suggestTables, tableBusy, tableConflicts, tableStatusAt, turnTime
 } from './logic';
 import type { Reservation, VenueData } from './types';
 import { addDays, today } from '../lib/time';
@@ -11,8 +11,8 @@ function base(): { d: VenueData; t1: string; t2: string; svc: string } {
   const room = d.rooms[0].id;
   const t1 = newId(), t2 = newId();
   d.tables.push(
-    { id: t1, roomId: room, name: 'T1', shape: 'square', x: 0, y: 0, width: 70, height: 70, rotation: 0, minPersons: 2, maxPersons: 4, stationId: null, features: ['fenster'] },
-    { id: t2, roomId: room, name: 'T2', shape: 'square', x: 0, y: 0, width: 70, height: 70, rotation: 0, minPersons: 2, maxPersons: 4, stationId: null, features: [] }
+    { id: t1, roomId: room, name: 'T1', shape: 'square', x: 0, y: 0, width: 70, height: 70, rotation: 0, minPersons: 2, maxPersons: 4, stationId: null, features: ['fenster'], chairs: true },
+    { id: t2, roomId: room, name: 'T2', shape: 'square', x: 0, y: 0, width: 70, height: 70, rotation: 0, minPersons: 2, maxPersons: 4, stationId: null, features: [], chairs: true }
   );
   return { d, t1, t2, svc: d.services.find(s => s.kind === 'abend')!.id };
 }
@@ -90,6 +90,26 @@ describe('Hotel', () => {
     expect(plan.skipped.length).toBe(1);
     expect(plan.upserts.find(r => r.date === '2026-10-11')!.tableIds).toEqual([]);
     expect(plan.upserts.find(r => r.date === '2026-10-12')!.tableIds).toEqual([t1]);
+  });
+  it('bis zu 3 Zimmer teilen sich einen Tisch, externe Gäste nie', () => {
+    const { d, t1, svc } = base();
+    const hotel = (room: string) => res({ serviceId: svc, tableIds: [t1], stayId: newId(), adults: 1, name: `Gast · Zi. ${room}` });
+    d.reservations.push(hotel('101'), hotel('102'));
+    const third = hotel('103');
+    expect(hasErrors(checkReservation(d, third))).toBe(false);
+    expect(tableConflicts(d, t1, third.date, resStart(third), resEnd(third), third)).toEqual([]);
+    d.reservations.push(third);
+    expect(hasErrors(checkReservation(d, hotel('104')))).toBe(true); // 4. Zimmer
+    expect(hasErrors(checkReservation(d, res({ serviceId: svc, tableIds: [t1] })))).toBe(true); // externe Reservierung
+    // 2 Zimmer × 1 Person + 3 weitere > max. 4 → Hinweis „zu klein“ mit den anderen Zimmern
+    d.reservations.pop();
+    const big = { ...hotel('105'), adults: 3 };
+    expect(checkReservation(d, big).some(i => i.level === 'warn' && i.text.includes('zusammen mit Zi. 101'))).toBe(true);
+  });
+  it('Hotelzimmer teilt keinen Tisch mit einer externen Reservierung', () => {
+    const { d, t1, svc } = base();
+    d.reservations.push(res({ serviceId: svc, tableIds: [t1], name: 'Extern' }));
+    expect(hasErrors(checkReservation(d, res({ serviceId: svc, tableIds: [t1], stayId: newId() })))).toBe(true);
   });
   it('entfernt offene Reservierungen bei verkürztem Aufenthalt', () => {
     const { d, svc } = base();

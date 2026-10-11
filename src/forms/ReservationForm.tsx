@@ -1,9 +1,9 @@
 /** Reservierung anlegen / bearbeiten */
 import { useState } from 'react';
-import { Trash2, X } from 'lucide-react';
+import { Trash2, X } from '../ui/icons';
 import { newId } from '../domain/demo';
 import { ALL_STATUS, FEATURES, OCCASIONS, SOURCES } from '../domain/constants';
-import { byId, capacity, checkReservation, isInHouse, mergeEdits, persons, resEnd, resStart, suggestTables, tableBusy, tableNames, turnTime } from '../domain/logic';
+import { byId, capacity, checkReservation, isInHouse, mergeEdits, persons, resEnd, resStart, suggestTables, tableBusy, tableConflicts, tableNames, turnTime } from '../domain/logic';
 import type { Reservation } from '../domain/types';
 import { t } from '../lib/i18n';
 import { addDays, fmtDate } from '../lib/time';
@@ -162,7 +162,7 @@ export function ReservationForm({ r, preset }: { r?: Reservation; preset?: Parti
         <select style={{ width: 'auto' }} value="" onChange={e => e.target.value && upd({ tableIds: [...draft.tableIds, e.target.value] })}>
           <option value="">Tisch manuell hinzufügen…</option>
           {d.rooms.map(rm => <optgroup key={rm.id} label={rm.name}>{d.tables.filter(x => x.roomId === rm.id && !draft.tableIds.includes(x.id)).map(x => (
-            <option key={x.id} value={x.id}>{x.name} ({x.minPersons}–{x.maxPersons}P){tableBusy(d, x.id, draft.date, resStart(draft), resEnd(draft), draft.id).length ? ' – belegt' : ''}</option>))}</optgroup>)}
+            <option key={x.id} value={x.id}>{x.name} ({x.minPersons}–{x.maxPersons}P){tableConflicts(d, x.id, draft.date, resStart(draft), resEnd(draft), draft).length ? ' – belegt' : ''}</option>))}</optgroup>)}
         </select>
       </div>
       <div className="muted mt8" style={{ fontSize: 12 }}>Vorschläge:</div>

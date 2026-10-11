@@ -1,7 +1,7 @@
 /** Zeitleiste (Gantt): Tische × Uhrzeit, Balken verschieben / Dauer ändern */
 import { useEffect, useRef, useState, type MouseEvent as RME, type PointerEvent as RPE } from 'react';
 import { hasAllergy } from '../domain/menu';
-import { Plus } from 'lucide-react';
+import { Plus } from '../ui/icons';
 import { canEdit, RES_STATUS_COLOR } from '../domain/constants';
 import { byId, checkReservation, isBlocked, occupies, persons, resEnd, resStart } from '../domain/logic';
 import type { Reservation } from '../domain/types';
@@ -15,6 +15,18 @@ import { saveChecked } from '../forms/actions';
 
 const PX = 2.2; // Pixel pro Minute
 const LONG_PRESS = 400; // ms – so lange drücken, bis ein Balken am Handy gezogen werden kann
+const LANE = 31; // Höhe einer Balken-Spur (geteilter Tisch)
+
+/** Reservierungen eines Tisches auf Spuren verteilen, damit sich zeitgleiche Balken nicht überdecken */
+function laneOf(list: Reservation[]): [Reservation, number][] {
+  const ends: number[] = [];
+  return [...list].sort((a, b) => resStart(a) - resStart(b)).map(r => {
+    let l = ends.findIndex(e => e <= resStart(r));
+    if (l < 0) l = ends.length;
+    ends[l] = resEnd(r);
+    return [r, l];
+  });
+}
 
 export function TimelineView() {
   const d = useData();
@@ -127,12 +139,12 @@ export function TimelineView() {
   const markRow = (key: string) => (e: RME) => { if (!(e.target as Element).closest('.g-bar')) setMark(m => (m === key ? null : key)); };
   const rowCls = (key: string) => 'g-row' + (mark === key ? ' marked' : '');
 
-  const Bar = ({ r, tid }: { r: Reservation; tid: string }) => {
+  const Bar = ({ r, tid, lane = 0 }: { r: Reservation; tid: string; lane?: number }) => {
     const issues = checkReservation(d, r).filter(i => i.level === 'error' || i.text.includes('gesperrt') || i.text.includes('zu klein'));
     return (
       <div className={'g-bar' + (issues.length ? ' conflict' : '')} data-res={r.id} onPointerDown={e => onBarDown(e, r, tid)}
         title={`${r.name} · ${persons(r)}P · ${r.time}–${fromMin(resEnd(r))}${issues.length ? '\n' + issues.map(i => i.text).join('\n') : ''}`}
-        style={{ left: x(resStart(r)), width: Math.max(18, r.duration * PX - 2), background: RES_STATUS_COLOR[r.status] }}>
+        style={{ left: x(resStart(r)), top: 4 + lane * LANE, width: Math.max(18, r.duration * PX - 2), background: RES_STATUS_COLOR[r.status] }}>
         {r.stayId ? '⌂ ' : ''}{r.vip ? '★ ' : ''}{r.name} · {persons(r)}P{hasAllergy(r) ? ' ⚠' : ''}{edit && <span className="rs" />}
       </div>
     );
@@ -161,12 +173,15 @@ export function TimelineView() {
             {d.tables.filter(tb => tb.roomId === room.id).map(tb => {
               const bl = isBlocked(d, tb.id, ui.date, serviceId);
               const st = byId(d.stations, tb.stationId);
+              // Geteilter Tisch (mehrere Hotelzimmer gleichzeitig): Balken in eigene Spuren untereinander
+              const rows = laneOf(dayRes.filter(r => r.tableIds.includes(tb.id)));
+              const n = Math.max(1, ...rows.map(([, l]) => l + 1));
               return (
-                <div key={tb.id} className={rowCls(tb.id)} data-table-id={tb.id} onClick={markRow(tb.id)}>
+                <div key={tb.id} className={rowCls(tb.id)} data-table-id={tb.id} onClick={markRow(tb.id)} style={n > 1 ? { height: 38 + (n - 1) * LANE } : undefined}>
                   <div className="g-label"><i style={{ width: 8, height: 8, borderRadius: '50%', background: st?.color ?? 'transparent', display: 'inline-block' }} />
                     <b>{tb.name}</b><span className="muted">{tb.minPersons}–{tb.maxPersons}P</span>{bl && <span className="badge">gesperrt</span>}</div>
                   <div className="g-track" style={{ width: W, background: bl ? 'repeating-linear-gradient(45deg,transparent 0 8px,var(--panel2) 8px 16px)' : undefined }}>
-                    <Ticks />{nowLine}{dayRes.filter(r => r.tableIds.includes(tb.id)).map(r => <Bar key={r.id} r={r} tid={tb.id} />)}
+                    <Ticks />{nowLine}{rows.map(([r, l]) => <Bar key={r.id} r={r} tid={tb.id} lane={l} />)}
                   </div>
                 </div>
               );

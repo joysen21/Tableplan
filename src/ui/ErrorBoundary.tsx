@@ -1,7 +1,7 @@
 /** Auffangnetz für Programmfehler beim Anzeigen: statt einer weißen Seite eine Meldung mit „Neu laden“.
  *  `resetKey` ändert sich z. B. beim Wechsel der Ansicht – dann wird es erneut versucht. */
 import { Component, type ErrorInfo, type ReactNode } from 'react';
-import { RotateCcw, TriangleAlert } from 'lucide-react';
+import { RotateCcw, TriangleAlert } from './icons';
 
 interface Props { children: ReactNode; resetKey?: string; area?: 'app' | 'view' | 'dialog'; onClose?: () => void }
 interface State { error: Error | null }

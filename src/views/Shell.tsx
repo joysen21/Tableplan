@@ -1,7 +1,7 @@
 /** Rahmen der angemeldeten App: Kopfzeile mit Navigation, Datum/Service, Status; Benutzermenü;
  *  am Handy zusätzlich die Navigationsleiste unten (Hauptansichten + „Mehr“); Dialoge */
 import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react';
-import { BedDouble, CalendarDays, ChartColumn, ChartGantt, ChefHat, ChevronDown, ChevronLeft, ChevronRight, Ellipsis, LogOut, Moon, PencilRuler, Settings, Sun, Utensils, type LucideIcon } from 'lucide-react';
+import { BedDouble, CalendarDays, ChartColumn, ChartGantt, ChefHat, ChevronDown, ChevronLeft, ChevronRight, Ellipsis, LogOut, Moon, PencilRuler, Settings, Sun, Utensils, type LucideIcon } from '../ui/icons';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { repo } from '../data';
 import { ROLE_VIEWS, type ViewKey } from '../domain/constants';

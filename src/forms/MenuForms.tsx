@@ -1,6 +1,6 @@
 /** Dialoge der Menüverwaltung: Tagesmenü, Gericht (Rezept), Zutat */
 import { useMemo, useState } from 'react';
-import { ListChecks, Plus, Trash2, X } from 'lucide-react';
+import { ListChecks, Plus, Trash2, X } from '../ui/icons';
 import { useNavigate } from 'react-router-dom';
 import { newId } from '../domain/demo';
 import { COURSES, DIETS, UNITS, canEditMenu } from '../domain/constants';

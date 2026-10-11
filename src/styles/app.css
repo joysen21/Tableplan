@@ -29,9 +29,14 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%}
-body{background:var(--bg);color:var(--text);font:15px/1.4 "Inter Variable",Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--text);font:15px/1.4 "Outfit Variable",Outfit,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
+/* Duoton-Icons (wie im Planner): Linie + halbtransparente Fläche in der Icon-Farbe (currentColor).
+   Gefüllt werden nur geschlossene Formen, offene Linien bleiben Linien. Zusatzflächen (.duo) siehe src/ui/icons.tsx. */
+svg.lucide{stroke-width:1.75}
+svg.lucide :is(rect,circle,ellipse,polygon,path[d$="z" i]){fill:currentColor;fill-opacity:.16}
+svg.lucide .duo{stroke:none}
 /* ---------- Buttons ----------
    .btn          sekundär (grau gefüllt)      .btn.primary  Hauptaktion (Akzent gefüllt)
    .btn.danger   Löschen (rot getönt)         .btn.danger.solid  Bestätigung einer Löschung

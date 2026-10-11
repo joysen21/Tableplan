@@ -19,7 +19,7 @@ export const fromDb = {
   stations: (r: Row): Station => ({ id: r.id, name: r.name, color: r.color }),
   tables: (r: Row): DiningTable => ({
     id: r.id, roomId: r.room_id, name: r.name, shape: r.shape, x: +r.x, y: +r.y, width: +r.width, height: +r.height, rotation: +r.rotation || 0,
-    minPersons: r.min_persons, maxPersons: r.max_persons, stationId: r.station_id ?? null, features: r.features ?? []
+    minPersons: r.min_persons, maxPersons: r.max_persons, stationId: r.station_id ?? null, features: r.features ?? [], chairs: r.show_chairs ?? true
   }),
   decor: (r: Row): Decor => ({ id: r.id, roomId: r.room_id, kind: r.kind, x: +r.x, y: +r.y, width: +r.width, height: +r.height, rotation: +r.rotation || 0, label: r.label ?? '' }),
   combos: (r: Row): TableCombo => ({ id: r.id, name: r.name, tableIds: r.table_ids ?? [] }),
@@ -63,7 +63,7 @@ export const toDb = {
   stations: (x: Station, v: string) => ({ id: x.id, venue_id: v, name: x.name, color: x.color }),
   tables: (x: DiningTable, v: string) => ({
     id: x.id, venue_id: v, room_id: x.roomId, name: x.name, shape: x.shape, x: x.x, y: x.y, width: x.width, height: x.height, rotation: x.rotation,
-    min_persons: x.minPersons, max_persons: x.maxPersons, station_id: x.stationId, features: x.features
+    min_persons: x.minPersons, max_persons: x.maxPersons, station_id: x.stationId, features: x.features, show_chairs: x.chairs !== false
   }),
   decor: (x: Decor, v: string) => ({ id: x.id, venue_id: v, room_id: x.roomId, kind: x.kind, x: x.x, y: x.y, width: x.width, height: x.height, rotation: x.rotation, label: x.label }),
   combos: (x: TableCombo, v: string) => ({ id: x.id, venue_id: v, name: x.name, table_ids: x.tableIds }),

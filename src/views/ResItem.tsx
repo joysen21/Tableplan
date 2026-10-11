@@ -1,6 +1,6 @@
 import type { PointerEvent as RPE } from 'react';
 import { allergyText, hasAllergy } from '../domain/menu';
-import { GripVertical } from 'lucide-react';
+import { GripVertical } from '../ui/icons';
 import { RES_STATUS_COLOR } from '../domain/constants';
 import { checkReservation, occupies, persons, tableNames } from '../domain/logic';
 import type { Reservation, VenueData } from '../domain/types';

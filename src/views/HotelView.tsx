@@ -1,5 +1,6 @@
 /** Hotelgäste: Anreise/Abreise, Gäste ohne Tisch, feste Tische per Ziehen */
-import { ChevronLeft, ChevronRight, Plus, Upload } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Upload } from '../ui/icons';
+import { MAX_ROOMS_PER_TABLE } from '../domain/constants';
 import { allergyText, hasAllergy } from '../domain/menu';
 import { byId, isBlocked, isInHouse, needsTable, occupies, tableNames, type TableStatus } from '../domain/logic';
 import type { DiningTable, Stay } from '../domain/types';
@@ -10,6 +11,7 @@ import { openDialog } from '../store/dialogs';
 import { dropTableId, startDrag, startDragOrTap } from '../ui/drag';
 import { FloorPlan } from '../ui/FloorPlan';
 import { assignStayTable } from '../forms/HotelForms';
+import { toast } from '../ui/notify';
 
 export function HotelView() {
   const d = useData();
@@ -22,8 +24,13 @@ export function HotelView() {
   const open = inHouse.filter(s => needsTable(d, s) && !s.tableIds.length);
   const dinner = d.services.find(s => s.kind === 'abend') ?? d.services[0];
   const status = (tb: DiningTable): TableStatus => {
-    const st = inHouse.find(s => s.tableIds.includes(tb.id));
-    if (st) return { st: 'reserviert', r: { id: st.id, name: st.name, time: 'Zi.' + st.roomNo, adults: st.adults, children: st.children, stayId: st.id, allergies: st.allergies, allergens: st.allergens, vip: st.vip, tableIds: st.tableIds } as any };
+    // bis zu MAX_ROOMS_PER_TABLE Zimmer können sich einen Tisch teilen – Anzeige: erster Gast +n, Zimmer und Personen zusammen
+    const sts = inHouse.filter(s => s.tableIds.includes(tb.id));
+    if (sts.length) {
+      const st = sts[0], sum = (k: 'adults' | 'children') => sts.reduce((a, s) => a + s[k], 0);
+      return { st: 'reserviert', more: sts.length - 1 || undefined, r: { id: st.id, name: st.name, time: 'Zi.' + sts.map(s => s.roomNo).join('/'), adults: sum('adults'), children: sum('children'),
+        stayId: st.id, allergies: sts.map(s => s.allergies).filter(Boolean).join(', '), allergens: [...new Set(sts.flatMap(s => s.allergens ?? []))], vip: sts.some(s => s.vip), tableIds: st.tableIds } as any };
+    }
     const ext = d.reservations.find(r => r.date === D && r.serviceId === dinner?.id && occupies(r) && !r.stayId && r.tableIds.includes(tb.id));
     if (ext) return { st: 'bald', r: ext };
     if (dinner && isBlocked(d, tb.id, D, dinner.id)) return { st: 'gesperrt' };
@@ -80,13 +87,19 @@ export function HotelView() {
           const s = status(tb);
           const st = s.r?.stayId ? byId(d.stays, s.r.stayId) : undefined;
           startDragOrTap(e, {
-            label: st ? `Zi. ${st.roomNo} → ?` : tb.name,
-            onClick: () => st ? openDialog({ type: 'stay', stay: st }) : s.r ? openDialog({ type: 'reservation', r: s.r }) : openDialog({ type: 'staytable', tableId: tb.id }),
-            onDrop: el => { const to = dropTableId(el); if (st && to && to !== tb.id) assignStayTable(d, st, st.tableIds.map(x => (x === tb.id ? to : x))); }
+            label: st ? `Zi. ${s.r!.time.slice(3)} → ?` : tb.name,
+            // Antippen: Gäste am Tisch ansehen/ändern und weitere Zimmer dazusetzen
+            onClick: () => !st && s.r ? openDialog({ type: 'reservation', r: s.r }) : openDialog({ type: 'staytable', tableId: tb.id }),
+            onDrop: el => {
+              const to = dropTableId(el);
+              if (!st || !to || to === tb.id) return;
+              if (s.more) return void toast('Mehrere Zimmer am Tisch – bitte einzeln über den Gast umsetzen', 'err');
+              assignStayTable(d, st, st.tableIds.map(x => (x === tb.id ? to : x)));
+            }
           });
         }} />}</div>
         <div className="legend"><span><i style={{ background: 'var(--st-reserviert)' }} />Hotelgast (fester Tisch)</span><span><i style={{ background: 'var(--st-bald)' }} />Externe Reservierung</span>
-          <span><i style={{ background: 'var(--st-frei)' }} />frei</span><span className="tip-desktop">Ziehen: Gast-Chip → Tisch, oder Tisch → anderer Tisch</span><span className="tip-touch">Freien Tisch antippen = Gast zuweisen · belegten Tisch antippen = ändern</span></div>
+          <span><i style={{ background: 'var(--st-frei)' }} />frei</span><span className="tip-desktop">Ziehen: Gast-Chip → Tisch, oder Tisch → anderer Tisch</span><span className="tip-touch">Tisch antippen = Gast zuweisen oder ändern</span><span>bis {MAX_ROOMS_PER_TABLE} Zimmer je Tisch</span></div>
       </div>
     </div>
   );

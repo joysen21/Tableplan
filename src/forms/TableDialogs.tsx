@@ -1,10 +1,10 @@
 /** Tisch-Popup, Reservierungs-Info (Service), Walk-in, Tischsperre */
 import { useState } from 'react';
 import { allergyText, hasAllergy } from '../domain/menu';
-import { Minus, Plus, PersonStanding } from 'lucide-react';
+import { Minus, Plus, PersonStanding } from '../ui/icons';
 import { newId } from '../domain/demo';
 import { canEdit, canStatus, RES_STATUS_COLOR, SEATED_STATES } from '../domain/constants';
-import { byId, capacity, freeMinutes, isBlocked, occupies, persons, resEnd, resStart, suggestTables, tableBusy, tableNames, tableStatusAt, turnTime } from '../domain/logic';
+import { byId, capacity, freeMinutes, isBlocked, occupies, persons, resEnd, resStart, suggestTables, tableConflicts, tableNames, tableStatusAt, turnTime } from '../domain/logic';
 import type { Reservation, ResStatus } from '../domain/types';
 import { t } from '../lib/i18n';
 import { fmtDate, fmtShort, fromMin, nowMin, today, toMin } from '../lib/time';
@@ -58,7 +58,7 @@ export function TablePopup({ tableId }: { tableId: string }) {
   const block = d.blocks.find(b => b.tableId === tb.id && b.date === ui.date && (!b.serviceId || b.serviceId === serviceId));
   const station = byId(d.stations, tb.stationId);
   const edit = canEdit(role);
-  const freeT = r ? d.tables.filter(x => x.id !== tb.id && !r.tableIds.includes(x.id) && !tableBusy(d, x.id, r.date, resStart(r), resEnd(r), r.id).length) : [];
+  const freeT = r ? d.tables.filter(x => x.id !== tb.id && !r.tableIds.includes(x.id) && !tableConflicts(d, x.id, r.date, resStart(r), resEnd(r), r).length) : [];
   // Reservierungen dieses Service ohne Tisch – lassen sich per Antippen hier platzieren (Alternative zum Ziehen)
   const waiting = !r && !block && edit ? d.reservations.filter(x => x.date === ui.date && x.serviceId === serviceId && occupies(x) && !x.tableIds.length)
     .sort((a, b) => resStart(a) - resStart(b)) : [];

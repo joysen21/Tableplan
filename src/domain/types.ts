@@ -27,6 +27,8 @@ export interface DiningTable {
   id: string; roomId: string; name: string; shape: TableShape;
   x: number; y: number; width: number; height: number; rotation: number;
   minPersons: number; maxPersons: number; stationId: string | null; features: TableFeature[];
+  /** Stühle im Raumplan zeichnen (aus = z. B. Stehtisch, Bar, Bank ohne Stühle) */
+  chairs: boolean;
 }
 
 export interface Decor { id: string; roomId: string; kind: DecorKind; x: number; y: number; width: number; height: number; rotation: number; label: string }
