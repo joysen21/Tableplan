@@ -23,7 +23,8 @@ test('Gleichzeitige Änderung: fremder Status bleibt erhalten, eigene Notiz wird
   // bestätigte Reservierung der nächsten Tage mit eindeutigem Namen
   const target = await changeStored(page, `
     const day = new Date().toLocaleDateString('sv-SE'), end = new Date(Date.now() + 5 * 864e5).toLocaleDateString('sv-SE');
-    const r = venue.reservations.find(x => x.date >= day && x.date <= end && x.status === 'bestaetigt' && !x.stayId
+    // ohne vorhandene Notiz: sonst gehört deren Text zum Feldnamen „Notizen“ (Demo-Daten hängen von der Uhrzeit ab)
+    const r = venue.reservations.find(x => x.date >= day && x.date <= end && x.status === 'bestaetigt' && !x.stayId && !x.notes
       && venue.reservations.filter(y => y.name === x.name).length === 1);
     return { id: r.id, name: r.name };`, null) as { id: string; name: string };
 

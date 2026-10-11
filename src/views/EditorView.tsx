@@ -1,6 +1,6 @@
 /** Raumplan-Editor (Admin): Räume, Tische, Deko, Reviere, Kombinationen, Layout-Varianten */
 import { useRef, useState, type PointerEvent as RPE } from 'react';
-import { Plus, Trash2, X } from 'lucide-react';
+import { Plus, Trash2, X } from '../ui/icons';
 import { repo } from '../data';
 import { newId } from '../domain/demo';
 import { FEATURES } from '../domain/constants';
@@ -34,6 +34,8 @@ export function EditorView() {
   const svgRef = useRef<SVGSVGElement>(null);
   const [preview, setPreview] = useState<{ id: string; x: number; y: number; width: number; height: number } | null>(null);
   const [comboText, setComboText] = useState('');
+  // Vorlage "Tisch hinzufügen": neue Tische mit oder ohne Stühle anlegen
+  const [withChairs, setWithChairs] = useState(true);
   const room = byId(d.rooms, ui.editRoomId) ?? d.rooms[0];
   const selT = byId(d.tables, ui.editSel), selD = byId(d.decor, ui.editSel);
   const layouts = d.layouts.filter(l => l.roomId === room?.id);
@@ -94,7 +96,7 @@ export function EditorView() {
     if (!room) return;
     const dims = { round: [90, 90, 2, 4], square: [70, 70, 2, 4], rect: [160, 80, 4, 8], bench: [60, 160, 3, 5] }[shape];
     let n = d.tables.length + 1; while (d.tables.some(x => x.name === 'T' + n)) n++;
-    const tb: DiningTable = { id: newId(), roomId: room.id, name: 'T' + n, shape, x: room.width / 2, y: room.height / 2, width: dims[0], height: dims[1], rotation: 0, minPersons: dims[2], maxPersons: dims[3], stationId: null, features: [] };
+    const tb: DiningTable = { id: newId(), roomId: room.id, name: 'T' + n, shape, x: room.width / 2, y: room.height / 2, width: dims[0], height: dims[1], rotation: 0, minPersons: dims[2], maxPersons: dims[3], stationId: null, features: [], chairs: withChairs };
     if (await store.upsert('tables', [tb], ['Tisch angelegt', tb.name])) ui.set({ editSel: tb.id });
   }
   async function addDecor(kind: DecorKind) {
@@ -165,7 +167,8 @@ export function EditorView() {
           {room && <button className="btn danger" onClick={() => deleteRoom(room)}><Trash2 />Raum löschen</button>}
         </div>
         <h3>Tisch hinzufügen</h3>
-        <div className="body">{SHAPES.map(s => <button key={s} className="btn" onClick={() => addTable(s)}>{t(s)}</button>)}</div>
+        <div className="body">{SHAPES.map(s => <button key={s} className="btn" onClick={() => addTable(s)}>{t(s)}</button>)}
+          <label className="chk mt8"><input type="checkbox" checked={withChairs} onChange={e => setWithChairs(e.target.checked)} /> mit Stühlen</label></div>
         <h3>Element hinzufügen</h3>
         <div className="body">{DECOR.map(k => <button key={k} className="btn" onClick={() => addDecor(k)}>{t(k)}</button>)}</div>
         <h3>Layout-Varianten</h3>
@@ -201,6 +204,7 @@ export function EditorView() {
               <label>Revier<select value={selT.stationId ?? ''} onChange={e => saveTable(selT, { stationId: e.target.value || null })}><option value="">–</option>{d.stations.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
               <label>Raum<select value={selT.roomId} onChange={e => { saveTable(selT, { roomId: e.target.value }); ui.set({ editRoomId: e.target.value }); }}>{d.rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}</select></label>
             </div>
+            <label className="chk mt8"><input type="checkbox" checked={selT.chairs !== false} onChange={e => saveTable(selT, { chairs: e.target.checked })} /> Stühle anzeigen</label>
             <div style={{ margin: '8px 0' }}>{FEATURES.map(f => <label key={f} className="chk"><input type="checkbox" checked={selT.features.includes(f)}
               onChange={e => saveTable(selT, { features: e.target.checked ? [...selT.features, f] : selT.features.filter(x => x !== f) })} /> {t(f)}</label>)}</div>
             <div className="row"><button className="btn small" onClick={duplicate}>Duplizieren</button><button className="btn small danger" onClick={deleteSelected}><Trash2 />Löschen</button></div>

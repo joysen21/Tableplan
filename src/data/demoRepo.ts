@@ -4,7 +4,8 @@
  * Doppelbuchungsschutz und Rollenrechte werden wie in der Datenbank nachgebildet.
  */
 import { demoVenueData, newId, normalizeVenueData } from '../domain/demo';
-import { occupies, tableBusy, resEnd, resStart } from '../domain/logic';
+import { MAX_ROOMS_PER_TABLE } from '../domain/constants';
+import { occupies, tableConflicts, resEnd, resStart } from '../domain/logic';
 import type { Member, Reservation, Role, Stay, VenueData } from '../domain/types';
 import { RepoError, type AuthUser, type ChangeEvent, type EntityKey, type EntityMap, type LiveState, type Membership, type Repo } from './repo';
 
@@ -143,8 +144,12 @@ export class DemoRepo implements Repo {
     for (const it of items) {
       const r = d.reservations.find(x => x.id === it.id)!;
       if (!occupies(r)) continue;
-      for (const tid of r.tableIds) if (tableBusy(d, tid, r.date, resStart(r), resEnd(r), r.id).length)
-        throw new RepoError('overlap', 'Der Tisch ist in diesem Zeitraum bereits belegt. Bitte anderen Tisch oder andere Zeit wählen.');
+      for (const tid of r.tableIds) {
+        const busy = tableConflicts(d, tid, r.date, resStart(r), resEnd(r), r);
+        if (busy.length && busy.every(o => o.stayId))
+          throw new RepoError('overlap', `An diesem Tisch sitzen in diesem Zeitraum bereits ${MAX_ROOMS_PER_TABLE} Zimmer. Bitte anderen Tisch wählen.`);
+        if (busy.length) throw new RepoError('overlap', 'Der Tisch ist in diesem Zeitraum bereits belegt. Bitte anderen Tisch oder andere Zeit wählen.');
+      }
     }
     return events;
   }

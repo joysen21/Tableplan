@@ -2,7 +2,7 @@
  * Fachlogik (rein funktional, ohne UI und Datenbank):
  * Verweildauer, Konfliktprüfung, Tischvorschläge, Live-Status, Hotel-Planung.
  */
-import { BOARD_SERVICES, OPEN_STATES, SEATED_STATES } from './constants';
+import { BOARD_SERVICES, MAX_ROOMS_PER_TABLE, OPEN_STATES, SEATED_STATES } from './constants';
 import type { DiningTable, Reservation, Service, Stay, TableState, VenueData } from './types';
 import { addDays, fromMin, fmtShort, overlaps, toMin } from '../lib/time';
 
@@ -39,6 +39,30 @@ export function tableBusy(d: VenueData, tableId: string, date: string, start: nu
     o.tableIds.includes(tableId) && overlaps(start, end, resStart(o), resEnd(o)));
 }
 
+/**
+ * Belegungen, die einer (geplanten) Reservierung auf diesem Tisch im Weg stehen.
+ * Hotelgäste verschiedener Zimmer dürfen sich einen Tisch teilen (max. MAX_ROOMS_PER_TABLE Zimmer gleichzeitig),
+ * externe Reservierungen teilen nie. Dieselbe Regel prüft die Datenbank (Trigger reservation_tables_shared).
+ */
+export function tableConflicts(d: VenueData, tableId: string, date: string, start: number, end: number, r: { id?: string; stayId: string | null }) {
+  const busy = tableBusy(d, tableId, date, start, end, r.id);
+  if (!r.stayId) return busy;
+  const foreign = busy.filter(o => !o.stayId);
+  if (foreign.length) return foreign;
+  const others = busy.filter(o => o.stayId !== r.stayId);
+  return new Set(others.map(o => o.stayId)).size + 1 > MAX_ROOMS_PER_TABLE ? others : [];
+}
+
+/** Andere Hotelzimmer, die gleichzeitig an denselben Tischen sitzen */
+export function tableSharers(d: VenueData, r: Reservation): Reservation[] {
+  if (!r.stayId) return [];
+  const out = new Map<string, Reservation>();
+  for (const tid of r.tableIds) for (const o of tableBusy(d, tid, r.date, resStart(r), resEnd(r), r.id))
+    if (o.stayId && o.stayId !== r.stayId) out.set(o.id, o);
+  return [...out.values()];
+}
+const roomOf = (r: Reservation) => r.name.split(' · ').pop() ?? r.name;
+
 export function capacity(d: VenueData, ids: string[]) {
   const tb = ids.map(id => byId(d.tables, id)).filter(Boolean) as DiningTable[];
   return { max: tb.reduce((a, x) => a + x.maxPersons, 0), min: tb.reduce((a, x) => a + x.minPersons, 0) };
@@ -60,12 +84,14 @@ export function checkReservation(d: VenueData, r: Reservation): Issue[] {
     const tb = byId(d.tables, tid);
     if (!tb) { add('error', 'Tisch existiert nicht mehr'); continue; }
     if (isBlocked(d, tid, r.date, r.serviceId)) add('warn', `Tisch ${tb.name} ist gesperrt`);
-    for (const o of tableBusy(d, tid, r.date, st, en, r.id))
-      add('error', `Tisch ${tb.name} ist belegt: ${o.name} (${o.time}–${fromMin(resEnd(o))})`);
+    const busy = tableConflicts(d, tid, r.date, st, en, r);
+    if (r.stayId && busy.length && busy.every(o => o.stayId)) add('error', `Tisch ${tb.name}: schon ${MAX_ROOMS_PER_TABLE} Zimmer am Tisch`);
+    else for (const o of busy) add('error', `Tisch ${tb.name} ist belegt: ${o.name} (${o.time}–${fromMin(resEnd(o))})`);
   }
   if (r.tableIds.length) {
-    const c = capacity(d, r.tableIds);
-    if (p > c.max) add('warn', `Tisch zu klein: ${p} Pers., max. ${c.max}`);
+    const c = capacity(d, r.tableIds), shared = tableSharers(d, r), all = p + shared.reduce((a, o) => a + persons(o), 0);
+    if (shared.length && all > c.max) add('warn', `Tisch zu klein: ${all} Pers. zusammen mit ${shared.map(roomOf).join(', ')}, max. ${c.max}`);
+    else if (p > c.max) add('warn', `Tisch zu klein: ${p} Pers., max. ${c.max}`);
     else if (p < c.min) add('warn', `Tisch größer als nötig: ${p} Pers., min. ${c.min}`);
   }
   if (s && s.pacing > 0) {
@@ -88,7 +114,7 @@ export interface Suggestion { ids: string[]; score: number }
 /** Tischvorschläge (Einzeltische und Kombinationen), beste Passung zuerst */
 export function suggestTables(d: VenueData, r: Reservation, preferredRoomId?: string | null, limit = 6): Suggestion[] {
   const st = resStart(r), en = resEnd(r), p = persons(r);
-  const free = (tid: string) => !!byId(d.tables, tid) && !isBlocked(d, tid, r.date, r.serviceId) && !tableBusy(d, tid, r.date, st, en, r.id).length;
+  const free = (tid: string) => !!byId(d.tables, tid) && !isBlocked(d, tid, r.date, r.serviceId) && !tableConflicts(d, tid, r.date, st, en, r).length;
   const out: Suggestion[] = [];
   for (const tb of d.tables) {
     if (p > tb.maxPersons || !free(tb.id)) continue;
@@ -119,18 +145,20 @@ export function freeMinutes(d: VenueData, tableIds: string[], date: string, star
   return limit;
 }
 
-export interface TableStatus { st: TableState; r?: Reservation; next?: Reservation }
+/** more = weitere Hotelzimmer, die gleichzeitig am selben Tisch sitzen */
+export interface TableStatus { st: TableState; r?: Reservation; next?: Reservation; more?: number }
 
 /** Status eines Tisches zu einem Zeitpunkt (Live-Plan) */
 export function tableStatusAt(d: VenueData, tb: DiningTable, date: string, serviceId: string | null, tm: number): TableStatus {
   if (isBlocked(d, tb.id, date, serviceId)) return { st: 'gesperrt' };
   const rs = d.reservations.filter(r => r.date === date && r.tableIds.includes(tb.id) && occupies(r)).sort((a, b) => resStart(a) - resStart(b));
+  const more = (r: Reservation) => rs.filter(o => o.id !== r.id && overlaps(resStart(o), resEnd(o), resStart(r), resEnd(r))).length || undefined;
   const seated = rs.find(r => SEATED_STATES.includes(r.status));
-  if (seated) return { st: seated.status === 'rechnung' ? 'rechnung' : tm > resEnd(seated) ? 'ueberzogen' : 'platziert', r: seated };
+  if (seated) return { st: seated.status === 'rechnung' ? 'rechnung' : tm > resEnd(seated) ? 'ueberzogen' : 'platziert', r: seated, more: more(seated) };
   const cur = rs.find(r => resStart(r) <= tm && tm < resEnd(r));
-  if (cur) return { st: tm > resStart(cur) + 15 ? 'ueberfaellig' : 'reserviert', r: cur };
+  if (cur) return { st: tm > resStart(cur) + 15 ? 'ueberfaellig' : 'reserviert', r: cur, more: more(cur) };
   const next = rs.find(r => resStart(r) > tm);
-  if (next && resStart(next) - tm <= 60) return { st: 'bald', r: next };
+  if (next && resStart(next) - tm <= 60) return { st: 'bald', r: next, more: more(next) };
   return { st: 'frei', next };
 }
 
@@ -180,7 +208,7 @@ export function planStay(d: VenueData, stay: Stay, newId: () => string, resetMan
     }
     // Tisch in dieser Nacht schon anderweitig belegt → Reservierung ohne Tisch anlegen und melden
     if (open && next.tableIds.length && occupies(next)) {
-      const busy = next.tableIds.some(tid => tableBusy(d, tid, next.date, resStart(next), resEnd(next), next.id).some(o => o.stayId !== stay.id));
+      const busy = next.tableIds.some(tid => tableConflicts(d, tid, next.date, resStart(next), resEnd(next), next).length);
       if (busy) { skipped.push(`${fmtShort(next.date)} ${n.svc.name}`); next.tableIds = []; }
     }
     if (!ex || JSON.stringify(ex) !== JSON.stringify(next)) upserts.push(next);
@@ -197,8 +225,9 @@ export function stayTableConflicts(d: VenueData, stay: Stay, tableIds: string[])
     const st = own ? resStart(own) : toMin(stay.times[s.kind] || s.hotelTime || s.start);
     const en = own ? resEnd(own) : st + turnTime(d, s.id, p);
     for (const tid of tableIds) {
-      const busy = tableBusy(d, tid, date, st, en, own?.id).filter(o => o.stayId !== stay.id);
-      if (busy.length) days.push(`${fmtShort(date)} ${s.name}: ${byId(d.tables, tid)?.name} belegt (${busy[0].name})`);
+      const busy = tableConflicts(d, tid, date, st, en, { id: own?.id, stayId: stay.id });
+      if (busy.length) days.push(`${fmtShort(date)} ${s.name}: ${byId(d.tables, tid)?.name} ` +
+        (busy.every(o => o.stayId) ? `schon ${MAX_ROOMS_PER_TABLE} Zimmer am Tisch` : `belegt (${busy[0].name})`));
     }
   }
   return days;

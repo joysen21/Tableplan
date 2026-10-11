@@ -1,5 +1,6 @@
 /** Datenzugriff über Supabase (Postgres + Auth + Realtime + Storage) */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { MAX_ROOMS_PER_TABLE } from '../domain/constants';
 import type { Reservation, Role, Stay, VenueData } from '../domain/types';
 import { addDays, today } from '../lib/time';
 import { entityFromDb, entityToDb, fromDb, KIND_OF, TABLE_OF, toDb } from './mapping';
@@ -12,6 +13,8 @@ function wrap(e: any): RepoError {
   if (e instanceof RepoError) return e;
   const msg: string = e?.message || e?.error_description || String(e);
   const code: string = e?.code || '';
+  if (msg.includes('reservation_tables_max_rooms'))
+    return new RepoError('overlap', `An diesem Tisch sitzen in diesem Zeitraum bereits ${MAX_ROOMS_PER_TABLE} Zimmer. Bitte anderen Tisch wählen.`);
   if (code === '23P01' || msg.includes('reservation_tables_no_overlap'))
     return new RepoError('overlap', 'Der Tisch ist in diesem Zeitraum bereits belegt (eine andere Reservierung wurde gerade gespeichert). Bitte anderen Tisch oder andere Zeit wählen.');
   if (code === '40001' || msg.includes('inzwischen von jemand anderem geändert'))

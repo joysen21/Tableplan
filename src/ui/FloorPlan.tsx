@@ -89,8 +89,8 @@ export function FloorPlan(p: Props) {
         const small = Math.min(w, h) < 66, maxLen = small ? 7 : 12;
         const r = s.r || (mode === 'assign' ? s.next : undefined);
         if (mode !== 'edit' && r && s.r) {
-          const nm = r.name.split(' · ')[0];
-          lineEls.push(<tspan key="a" x={0} dy={14} fontSize={11}>{nm.length > maxLen ? nm.slice(0, maxLen - 1) + '…' : nm}</tspan>);
+          const nm = r.name.split(' · ')[0], more = s.more ? ` +${s.more}` : '', len = maxLen - more.length;
+          lineEls.push(<tspan key="a" x={0} dy={14} fontSize={11}>{nm.length > len ? nm.slice(0, len - 1) + '…' : nm}{more}</tspan>);
           lineEls.push(small
             ? <tspan key="b" x={0} dy={13} fontSize={10}>{persons(r)}P{r.stayId ? '⌂' : ''}{hasAllergy(r) ? '⚠' : ''}</tspan>
             : <tspan key="b" x={0} dy={13} fontSize={11}>{r.time} · {persons(r)}P{r.stayId ? ' ⌂' : ''}{hasAllergy(r) ? ' ⚠' : ''}{r.vip ? ' ★' : ''}</tspan>);
@@ -106,7 +106,7 @@ export function FloorPlan(p: Props) {
             style={{ cursor: mode === 'edit' ? 'move' : 'pointer' }} onPointerDown={p.onTableDown ? e => p.onTableDown!(e, tb) : undefined}
             aria-label={`Tisch ${tb.name}, ${t(s.st)}`}>
             {(sel || hl) && <rect x={-w / 2 - 16} y={-h / 2 - 16} width={w + 32} height={h + 32} rx={12} fill="none" stroke={hl ? 'var(--hotel)' : 'var(--hl)'} strokeWidth={3} strokeDasharray="6 4" />}
-            <Chairs tb={tb} />
+            {tb.chairs !== false && <Chairs tb={tb} />}
             {outline}
             {tb.shape === 'round' ? <ellipse rx={w / 2} ry={h / 2} fill={fill} className="tbody" /> : <rect x={-w / 2} y={-h / 2} width={w} height={h} rx={7} fill={fill} className="tbody" />}
             <text textAnchor="middle" y={dy} fill={col} transform={`rotate(${-(tb.rotation || 0)})`} pointerEvents="none">{lineEls}</text>

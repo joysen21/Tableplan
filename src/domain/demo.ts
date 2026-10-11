@@ -1,7 +1,7 @@
 /** Demo-Daten: Hotelrestaurant mit 2 Räumen, 30 Tischen und einer Woche Reservierungen */
 import { OCCASIONS } from './constants';
 import { guessAllergens, snapshotItems } from './menu';
-import { planStay, resEnd, resStart, stayTableConflicts, suggestTables, turnTime } from './logic';
+import { planStay, resEnd, resStart, stayTableConflicts, suggestTables, tableBusy, turnTime } from './logic';
 import type { Allergen, Course, Dish, DiningTable, Ingredient, Menu, MenuItem, Reservation, Service, Stay, TableFeature, TableShape, Unit, VenueData } from './types';
 import { addDays, fromMin, nowMin, toMin, today } from '../lib/time';
 
@@ -35,6 +35,7 @@ export function normalizeVenueData(d: VenueData): VenueData {
   for (const k of L) (out as any)[k] = (d as any)[k] ?? [];
   out.reservations = out.reservations.map(r => (r.allergens ? r : { ...r, allergens: [] }));
   out.stays = out.stays.map(s => (s.allergens ? s : { ...s, allergens: [] }));
+  out.tables = out.tables.map(x => (typeof x.chairs === 'boolean' ? x : { ...x, chairs: true }));
   return out;
 }
 
@@ -54,7 +55,7 @@ export function demoVenueData(venueId: string, name: string): VenueData {
     ingredients: [], dishes: [], menus: []
   };
   const T = (roomId: string, nm: string, shape: TableShape, x: number, y: number, w: number, h: number, min: number, max: number, stationId: string, features: TableFeature[] = []) =>
-    d.tables.push({ id: newId(), roomId, name: nm, shape, x, y, width: w, height: h, rotation: 0, minPersons: min, maxPersons: max, stationId, features } as DiningTable);
+    d.tables.push({ id: newId(), roomId, name: nm, shape, x, y, width: w, height: h, rotation: 0, minPersons: min, maxPersons: max, stationId, features, chairs: true } as DiningTable);
   for (let i = 0; i < 6; i++) T(r1, 'T' + (i + 1), 'square', 110 + i * 140, 90, 72, 72, 2, 4, sA, ['fenster']);
   for (let i = 0; i < 5; i++) T(r1, 'T' + (i + 7), 'round', 130 + i * 160, 260, 92, 92, 4, 6, i < 3 ? sA : sB);
   for (let i = 0; i < 6; i++) T(r1, 'T' + (i + 12), 'square', 110 + i * 120, 420, 58, 58, 1, 2, sB, i === 0 ? ['rollstuhl'] : []);
@@ -115,7 +116,9 @@ export function demoVenueData(venueId: string, name: string): VenueData {
     if ((st.arrival === t0 || st.arrival === addDays(t0, 1)) && openLeft > 0) { openLeft--; continue; }
     const p = st.adults + st.children;
     const cand = [...d.tables].filter(x => p <= x.maxPersons && p >= x.minPersons).sort((a, b) => a.maxPersons - b.maxPersons)
-      .find(x => !stayTableConflicts(d, st, [x.id]).length);
+      // Demo: jedes Zimmer bekommt einen eigenen Tisch (Teilen ist möglich, aber nicht der Normalfall)
+      // – kein anderer Gast darf zu den Zeiten dieses Zimmers am Tisch sitzen
+      .find(x => !stayTableConflicts(d, st, [x.id]).length && d.reservations.every(r => r.stayId !== st.id || !tableBusy(d, x.id, r.date, resStart(r), resEnd(r), r.id).length));
     if (cand) { st.tableIds = [cand.id]; applyPlan(st); }
   }
   // Externe Reservierungen

@@ -24,11 +24,12 @@ Dieselben Prüfungen laufen in GitHub Actions (`.github/workflows/ci.yml`) bei j
 - `supabase/migrations/` – Datenbankschema. **Schemaänderungen immer als neue Migrationsdatei** (z. B. `20261101000000_beschreibung.sql`), bestehende nicht ändern. Der Nutzer führt sie im Supabase SQL Editor aus – darauf hinweisen.
 
 ## Wichtige Regeln
-- Doppelbuchungsschutz liegt in der DB (Exclusion Constraint `reservation_tables_no_overlap`). Nicht aufweichen.
+- Doppelbuchungsschutz liegt in der DB (Exclusion Constraint `reservation_tables_no_overlap` für externe Reservierungen, Trigger `reservation_tables_shared` für Hotelgäste). Einzige Ausnahme: bis zu 3 Hotelzimmer dürfen sich gleichzeitig einen Tisch teilen (`MAX_ROOMS_PER_TABLE`, Fachlogik `tableConflicts` in `logic.ts`). Nicht weiter aufweichen.
 - Reservierungen immer über `save_reservations` / `save_stay` (RPC, atomar) speichern, nicht direkt in Tabellen schreiben.
 - Rollenrechte (admin, empfang, service, kueche) werden per RLS + Trigger in der DB erzwungen; UI-Rechte in `src/domain/constants.ts` (`ROLE_VIEWS`, `canEdit`) passend halten.
 - Niemals Zugangsdaten committen: `.env.local` ist in `.gitignore`. Nur den anon/publishable Key verwenden, nie `service_role`.
 - Texte zentral in `src/lib/i18n.ts` ergänzen, wo sinnvoll.
+- Design (JoKe): Schrift **Outfit** (`@fontsource-variable/outfit`), Logo-Dateien in `public/` aus dem JoKe-Logo-Paket. Icons im **Duoton-Stil**: immer aus `src/ui/icons.tsx` importieren (nicht direkt aus `lucide-react`); Icons ohne geschlossene Form dort mit `duo(...)` eine Fläche geben.
 
 ## Umgebungsvariablen
 `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (lokal in `.env.local`, live in Vercel → Settings → Environment Variables; nach Änderung in Vercel neu deployen).
