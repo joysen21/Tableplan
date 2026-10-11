@@ -1,6 +1,6 @@
 /** Menüverwaltung: Wochenplan (Tage × Services), Gerichte, Zutaten */
 import { useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Copy, Plus, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Copy, Plus, Search } from '../ui/icons';
 import { newId } from '../domain/demo';
 import { COURSES, canEditMenu } from '../domain/constants';
 import { dishAllergens, allergenWarnings, copyPreviousWeek, findMenu, ingredientUsage, itemAllergens, itemName, menuPortions, weekDates } from '../domain/menu';

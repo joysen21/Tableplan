@@ -1,7 +1,7 @@
 /** Live-Tischplan: Raumplan mit Status, Reservierungsliste, Walk-ins.
  *  Am Handy umschaltbar „Plan | Liste“; Tische antippen (statt ziehen) öffnet das Tisch-Popup mit Zuweisen/Umsetzen. */
 import { useMemo } from 'react';
-import { Clock, List, Map as MapIcon, Plus, PersonStanding, TriangleAlert } from 'lucide-react';
+import { Clock, List, Map as MapIcon, Plus, PersonStanding, TriangleAlert } from '../ui/icons';
 import { canEdit, SEATED_STATES } from '../domain/constants';
 import { byId, isCancelled, occupies, persons, resStart, tableStatusAt } from '../domain/logic';
 import { fromMin, nowMin, today, toMin } from '../lib/time';

@@ -1,7 +1,7 @@
 /** Reservierungsliste mit Filtern und CSV-Export – am Handy als Karten nach Datum, Filter aufklappbar */
 import { useState } from 'react';
 import { allergyText, hasAllergy } from '../domain/menu';
-import { Download, Plus, SlidersHorizontal } from 'lucide-react';
+import { Download, Plus, SlidersHorizontal } from '../ui/icons';
 import { canEdit, RES_STATUS_COLOR, ALL_STATUS } from '../domain/constants';
 import { byId, checkReservation, occupies, persons, resEnd, resStart, tableNames } from '../domain/logic';
 import type { Reservation } from '../domain/types';

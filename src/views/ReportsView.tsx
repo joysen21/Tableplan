@@ -1,6 +1,6 @@
 /** Berichte: Tagesübersicht, Küchenvorschau, Allergien, Hotel-Tischliste, Tischplan – druckbar */
 import { useState, type ReactNode } from 'react';
-import { Printer } from 'lucide-react';
+import { Printer } from '../ui/icons';
 import { byId, isBlocked, isCancelled, isInHouse, needsTable, persons, resStart, tableNames, tableStatusAt } from '../domain/logic';
 import type { Menu, Reservation, VenueData } from '../domain/types';
 import { ALLERGENS, allergenNo, COURSES } from '../domain/constants';

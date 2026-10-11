@@ -1,6 +1,6 @@
 /** Einstellungen (Admin): Betrieb, Services, Benutzer & Rollen, Daten, Protokoll */
 import { useEffect, useState } from 'react';
-import { Download, Plus, Upload, X } from 'lucide-react';
+import { Download, Plus, Upload, X } from '../ui/icons';
 import { repo } from '../data';
 import { demoVenueData, newId } from '../domain/demo';
 import { ROLES } from '../domain/constants';
