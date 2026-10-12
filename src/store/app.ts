@@ -8,7 +8,7 @@ import { RepoError, type ChangeEvent, type EntityKey, type EntityMap, type LiveS
 import { demoVenueData, emptyVenueData, newId, normalizeVenueData } from '../domain/demo';
 import { OPEN_STATES } from '../domain/constants';
 import { planStay } from '../domain/logic';
-import type { ModuleKey, Reservation, ResStatus, SessionUser, Stay, VenueData } from '../domain/types';
+import type { ModuleKey, Reservation, ResStatus, RosterSettings, SessionUser, Stay, VenueData } from '../domain/types';
 import { EDITION } from '../lib/edition';
 import { nowMin, today } from '../lib/time';
 import { toast } from '../ui/notify';
@@ -35,6 +35,7 @@ interface AppState {
   remove(kind: EntityKey, ids: string[], logText?: [string, string]): Promise<boolean>;
   renameVenue(name: string): Promise<void>;
   setModules(modules: ModuleKey[]): Promise<boolean>;
+  setRosterSettings(settings: Partial<RosterSettings>): Promise<boolean>;
   replaceAll(data: VenueData, logText: string): Promise<boolean>;
   log(action: string, details?: string): void;
 }
@@ -51,7 +52,7 @@ export function applyEvent(d: VenueData, e: ChangeEvent): VenueData {
     return i >= 0 ? list.map((x, j) => (j === i ? row : x)) : [...list, row];
   };
   switch (e.kind) {
-    case 'venue': return { ...d, venue: { ...d.venue, name: e.name, modules: e.modules ?? d.venue.modules } };
+    case 'venue': return { ...d, venue: { ...d.venue, name: e.name, modules: e.modules ?? d.venue.modules, rosterSettings: e.rosterSettings ?? d.venue.rosterSettings } };
     case 'audit': return d.audit.some(a => a.id === e.row.id) ? d : { ...d, audit: [e.row, ...d.audit].slice(0, 500) };
     case 'reservation_tables': {
       const r = d.reservations.find(x => x.id === e.reservationId);
@@ -235,7 +236,7 @@ export const useApp = create<AppState>((set, get) => {
     async remove(kind, ids, logText) {
       const ok = await write(async () => { await repo.remove(venueId(), kind, ids); return true; });
       if (!ok) return false;
-      if (kind === 'tables' || kind === 'rooms' || kind === 'services' || kind === 'departments' || kind === 'positions') await get().reload(); // Folgeänderungen (Kaskaden) übernehmen
+      if (kind === 'tables' || kind === 'rooms' || kind === 'services' || kind === 'departments' || kind === 'positions' || kind === 'staff' || kind === 'shiftTemplates') await get().reload(); // Folgeänderungen (Kaskaden) übernehmen
       else set(s => (s.data ? { data: { ...s.data, [kind]: (s.data[kind] as unknown as { id: string }[]).filter(x => !ids.includes(x.id)) } } : {}));
       if (logText) get().log(...logText);
       return true;
@@ -249,6 +250,13 @@ export const useApp = create<AppState>((set, get) => {
       if (!ok) return false;
       set(s => (s.data ? { data: { ...s.data, venue: { ...s.data.venue, modules } } } : {}));
       get().log(modules.includes('dienstplan') ? 'Modul eingeschaltet' : 'Modul ausgeschaltet', 'Dienstplan');
+      return true;
+    },
+    async setRosterSettings(settings) {
+      const ok = await write(async () => { await repo.setRosterSettings(venueId(), settings); return true; });
+      if (!ok) return false;
+      set(s => (s.data ? { data: { ...s.data, venue: { ...s.data.venue, rosterSettings: settings } } } : {}));
+      get().log('Prüfregeln Dienstplan geändert');
       return true;
     },
     async replaceAll(data, logText) {

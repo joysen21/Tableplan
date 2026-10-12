@@ -17,9 +17,20 @@ import { EditorView } from './views/EditorView';
 import { SettingsView } from './views/SettingsView';
 import { MenuView } from './views/MenuView';
 import { RosterView } from './views/RosterView';
+import { PublicRoster } from './views/PublicRoster';
 
-
+/** Öffentlicher Lesezugang /p/<token> läuft ohne Anmeldung, alles andere über die angemeldete App */
 export function App() {
+  const m = location.pathname.match(/^\/p\/([0-9a-zA-Z-]+)\/?$/);
+  return m ? <PublicPage token={m[1]} /> : <MainApp />;
+}
+
+function PublicPage({ token }: { token: string }) {
+  useTheme();
+  return <PublicRoster token={token} />;
+}
+
+function MainApp() {
   const phase = useApp(s => s.phase);
   const user = useApp(s => s.user);
   const data = useApp(s => s.data);

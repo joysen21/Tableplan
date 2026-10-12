@@ -1,10 +1,10 @@
 /** Datenzugriff über Supabase (Postgres + Auth + Realtime + Storage) */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { MAX_ROOMS_PER_TABLE } from '../domain/constants';
-import type { ModuleKey, Reservation, Role, Stay, VenueData } from '../domain/types';
+import type { ModuleKey, OnDuty, PublicRoster, Reservation, Role, RosterSettings, Stay, VenueData } from '../domain/types';
 import { addDays, today } from '../lib/time';
 import { entityFromDb, entityToDb, fromDb, KIND_OF, TABLE_OF, toDb } from './mapping';
-import { ENTITY_KEYS, ROSTER_KEYS, RepoError, type AuthUser, type ChangeEvent, type EntityKey, type EntityMap, type LiveState, type Membership, type Repo } from './repo';
+import { ENTITY_KEYS, ROSTER_BASE_KEYS, ROSTER_KEYS, ROSTER_PLAN_KEYS, RepoError, type AuthUser, type ChangeEvent, type EntityKey, type EntityMap, type LiveState, type Membership, type Repo } from './repo';
 
 const INITIAL_URL = typeof location !== 'undefined' ? location.href : '';
 
@@ -13,6 +13,8 @@ function wrap(e: any): RepoError {
   if (e instanceof RepoError) return e;
   const msg: string = e?.message || e?.error_description || String(e);
   const code: string = e?.code || '';
+  if (msg.includes('shift_overlap'))
+    return new RepoError('overlap', 'Diese Person hat zu dieser Zeit schon einen Dienst (eventuell gerade auf einem anderen Gerät eingetragen).');
   if (msg.includes('reservation_tables_max_rooms'))
     return new RepoError('overlap', `An diesem Tisch sitzen in diesem Zeitraum bereits ${MAX_ROOMS_PER_TABLE} Zimmer. Bitte anderen Tisch wählen.`);
   if (code === '23P01' || msg.includes('reservation_tables_no_overlap'))
@@ -38,6 +40,8 @@ export class SupabaseRepo implements Repo {
   private signedOutCbs: (() => void)[] = [];
   /** false, solange die Dienstplan-Migration in der Datenbank noch fehlt */
   private rosterReady = true;
+  /** false, solange die Migration für Wochenplan/Abwesenheiten (20261014000000) fehlt */
+  private planReady = true;
 
   constructor(url: string, key: string, headers?: Record<string, string>) {
     this.sb = createClient(url, key, {
@@ -75,6 +79,17 @@ export class SupabaseRepo implements Repo {
     if (!this.rosterReady) throw new RepoError('other', 'Das Dienstplan-Modul ist in der Datenbank noch nicht eingerichtet (Migration 20261012000000_dienstplan.sql im Supabase SQL Editor ausführen).');
     await run(this.sb.from('venues').update({ modules }).eq('id', venueId));
   }
+  async setRosterSettings(venueId: string, settings: Partial<RosterSettings>) {
+    await run(this.sb.from('venues').update({ roster_settings: settings }).eq('id', venueId));
+  }
+  async publicRoster(token: string): Promise<PublicRoster | null> {
+    if (!/^[0-9a-f-]{36}$/i.test(token)) return null;
+    return (await run<PublicRoster | null>(this.sb.rpc('public_roster', { p_token: token }))) ?? null;
+  }
+  async onDuty(venueId: string, date: string): Promise<OnDuty[]> {
+    if (!this.planReady) return [];
+    return (await run<OnDuty[]>(this.sb.rpc('on_duty', { p_venue: venueId, p_date: date }))) ?? [];
+  }
   async members(venueId: string) {
     const rows = await run(this.sb.from('members').select('user_id, role, name, email').eq('venue_id', venueId).order('name'));
     return (rows as any[]).map(fromDb.member);
@@ -108,10 +123,10 @@ export class SupabaseRepo implements Repo {
       run<any[]>(this.sb.from('audit_log').select('*').eq('venue_id', venueId).order('ts', { ascending: false }).limit(300)),
       run<any>(this.sb.from('venues').select('*').eq('id', venueId).maybeSingle()),
       this.all('ingredients', byVenue), this.all('dishes', byVenue), this.all('menus', q => byVenue(q).gte('date', cutoff)),
-      this.loadRoster(venueId)
+      this.loadRoster(venueId, cutoff)
     ]);
     return {
-      venue: { id: venueId, name: venue?.name ?? venueName, modules: this.rosterReady ? venue?.modules ?? [] : [] },
+      venue: { id: venueId, name: venue?.name ?? venueName, modules: this.rosterReady ? venue?.modules ?? [] : [], rosterSettings: venue?.roster_settings ?? {} },
       rooms: rooms.map(fromDb.rooms).sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name)),
       stations: stations.map(fromDb.stations), tables: tables.map(fromDb.tables), decor: decor.map(fromDb.decor),
       combos: combos.map(fromDb.combos), layouts: layouts.map(fromDb.layouts),
@@ -124,21 +139,28 @@ export class SupabaseRepo implements Repo {
     };
   }
   /** Dienstplan-Stammdaten; fehlt die Migration noch, bleibt das Modul einfach aus */
-  private async loadRoster(venueId: string) {
+  private async loadRoster(venueId: string, cutoff: string) {
     const byVenue = (q: any) => q.eq('venue_id', venueId).order('id');
+    // 42P01 / PGRST205: Tabelle unbekannt (Migration fehlt)
+    const missing = (e: any) => /42P01|PGRST205|does not exist|Could not find the table/.test(String(e?.message) + (e?.code ?? ''));
+    const empty = { departments: [], positions: [], staff: [], shiftTemplates: [], shifts: [], absences: [], publications: [] };
+    let base;
+    try { base = await Promise.all(ROSTER_BASE_KEYS.map(k => this.all(TABLE_OF[k], byVenue))); this.rosterReady = true; }
+    catch (e) { if (!missing(e)) throw e; this.rosterReady = false; this.planReady = false; return empty; }
+    let plan: any[][];
     try {
-      const [departments, positions, staff, shiftTemplates] = await Promise.all(ROSTER_KEYS.map(k => this.all(TABLE_OF[k], byVenue)));
-      this.rosterReady = true;
-      return {
-        departments: departments.map(fromDb.departments), positions: positions.map(fromDb.positions),
-        staff: staff.map(fromDb.staff), shiftTemplates: shiftTemplates.map(fromDb.shiftTemplates)
-      };
-    } catch (e: any) {
-      // 42P01 / PGRST205: Tabelle unbekannt
-      if (!/42P01|PGRST205|does not exist|Could not find the table/.test(String(e?.message) + (e?.code ?? ''))) throw e;
-      this.rosterReady = false;
-      return { departments: [], positions: [], staff: [], shiftTemplates: [] };
-    }
+      plan = await Promise.all([
+        this.all('shifts', q => byVenue(q).gte('date', cutoff)), this.all('absences', q => byVenue(q).gte('date_to', cutoff)),
+        this.all('roster_publications', q => byVenue(q).gte('week_start', addDays(cutoff, -7)))
+      ]);
+      this.planReady = true;
+    } catch (e) { if (!missing(e)) throw e; this.planReady = false; plan = [[], [], []]; }
+    const [departments, positions, staff, shiftTemplates] = base;
+    return {
+      departments: departments.map(fromDb.departments), positions: positions.map(fromDb.positions),
+      staff: staff.map(fromDb.staff), shiftTemplates: shiftTemplates.map(fromDb.shiftTemplates),
+      shifts: plan[0].map(fromDb.shifts), absences: plan[1].map(fromDb.absences), publications: plan[2].map(fromDb.publications)
+    };
   }
 
   /* ---------- Schreiben ---------- */
@@ -166,8 +188,11 @@ export class SupabaseRepo implements Repo {
     await run(this.sb.from('stays').delete().eq('venue_id', venueId).eq('id', stayId));
   }
   async upsert<K extends EntityKey>(venueId: string, kind: K, rows: EntityMap[K][]) {
+    // Spalten der Planungs-Migration weglassen, solange sie noch nicht eingespielt ist
+    const strip = this.planReady ? [] : ['guests_per_staff', 'min_staff', 'vacation_days', 'share_token'];
+    const toRow = (r: EntityMap[K]) => { const row = entityToDb(kind, r, venueId); strip.forEach(k => delete row[k]); return row; };
     for (let i = 0; i < rows.length; i += 500)
-      await run(this.sb.from(TABLE_OF[kind]).upsert(rows.slice(i, i + 500).map(r => entityToDb(kind, r, venueId))));
+      await run(this.sb.from(TABLE_OF[kind]).upsert(rows.slice(i, i + 500).map(toRow)));
   }
   async remove(venueId: string, kind: EntityKey, ids: string[]) {
     if (ids.length) await run(this.sb.from(TABLE_OF[kind]).delete().eq('venue_id', venueId).in('id', ids));
@@ -177,10 +202,13 @@ export class SupabaseRepo implements Repo {
   }
   async replaceAll(venueId: string, d: VenueData) {
     // Bestehendes löschen (Reservierungen zuerst, Tischbelegung kaskadiert)
-    const roster = this.rosterReady ? ['shift_templates', 'staff', 'positions', 'departments'] : [];
+    const roster = [...(this.planReady ? ['roster_publications', 'absences', 'shifts'] : []), ...(this.rosterReady ? ['shift_templates', 'staff', 'positions', 'departments'] : [])];
     for (const t of [...roster, 'menus', 'dishes', 'ingredients', 'reservations', 'stays', 'table_blocks', 'table_combos', 'layouts', 'decor', 'dining_tables', 'stations', 'rooms', 'services'])
       await run(this.sb.from(t).delete().eq('venue_id', venueId));
-    for (const k of ENTITY_KEYS) if (this.rosterReady || !ROSTER_KEYS.includes(k)) await this.upsert(venueId, k, d[k] as any);
+    for (const k of ENTITY_KEYS) {
+      if ((!this.rosterReady && ROSTER_KEYS.includes(k)) || (!this.planReady && ROSTER_PLAN_KEYS.includes(k))) continue;
+      await this.upsert(venueId, k, d[k] as any);
+    }
     await this.upsertStaysRaw(venueId, d.stays);
     await this.saveReservations(venueId, d.reservations);
   }
@@ -199,11 +227,11 @@ export class SupabaseRepo implements Repo {
   subscribe(venueId: string, onEvent: (e: ChangeEvent) => void, onState: (s: LiveState) => void) {
     onState('connecting');
     const ch = this.sb.channel(`venue-${venueId}-${crypto.randomUUID()}`);
-    const skip = this.rosterReady ? [] : ROSTER_KEYS.map(k => TABLE_OF[k]);
+    const skip = (this.rosterReady ? this.planReady ? [] : ROSTER_PLAN_KEYS : ROSTER_KEYS).map(k => TABLE_OF[k]);
     const tables = Object.values(TABLE_OF).filter(t => !skip.includes(t)).concat('venues');
     const handle = (p: any) => {
       const table: string = p.table;
-      if (table === 'venues') { if (p.new?.id === venueId) onEvent({ kind: 'venue', type: 'upsert', name: p.new.name, modules: this.rosterReady ? p.new.modules : undefined }); return; }
+      if (table === 'venues') { if (p.new?.id === venueId) onEvent({ kind: 'venue', type: 'upsert', name: p.new.name, modules: this.rosterReady ? p.new.modules : undefined, rosterSettings: p.new.roster_settings }); return; }
       const kind = KIND_OF[table];
       if (!kind) return;
       if (p.eventType === 'DELETE') {

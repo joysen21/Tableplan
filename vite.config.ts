@@ -7,5 +7,5 @@ export default defineConfig({
   // nur die App scannen (nicht den archivierten Prototyp)
   optimizeDeps: { entries: ['index.html'] },
   build: { sourcemap: true, chunkSizeWarningLimit: 900 },
-  test: { include: ['src/**/*.test.ts'], environment: 'node' }
+  test: { include: ['src/**/*.test.ts', 'api/**/*.test.js'], environment: 'node' }
 });

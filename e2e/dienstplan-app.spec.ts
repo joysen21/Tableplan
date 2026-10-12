@@ -14,7 +14,7 @@ test('Admin: nur Dienstplan und Einstellungen, ohne Tischplan-Funktionen', async
   await loginDemo(page);
   await expect(page).toHaveURL(/\/dienstplan$/);
   await expect(page.locator('header nav.topnav a')).toHaveText(['Dienstplan', 'Einstellungen']);
-  await expect(page.locator('table.list')).toContainText('Karl Pichler');
+  await expect(page.locator('.roster-grid')).toContainText('Karl Pichler');
   await page.screenshot({ path: 'test-results/dienstplan-app.png' });
 
   await page.getByRole('link', { name: 'Einstellungen' }).click();

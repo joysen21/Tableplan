@@ -7,7 +7,9 @@ import { demoVenueData, newId, normalizeVenueData } from '../domain/demo';
 import { MAX_ROOMS_PER_TABLE } from '../domain/constants';
 import { occupies, tableConflicts, resEnd, resStart } from '../domain/logic';
 import { canPlanDept } from '../domain/roster';
-import type { Member, ModuleKey, Reservation, Role, Stay, VenueData } from '../domain/types';
+import { shiftsOverlap, weekStart } from '../domain/rosterPlan';
+import type { Member, ModuleKey, OnDuty, PublicRoster, Reservation, Role, RosterSettings, Shift, Stay, VenueData } from '../domain/types';
+import { addDays, today } from '../lib/time';
 import { ROSTER_KEYS, RepoError, type AuthUser, type ChangeEvent, type EntityKey, type EntityMap, type LiveState, type Membership, type Repo } from './repo';
 
 const KEY = 'tischplan.demo.v2';
@@ -69,11 +71,13 @@ export class DemoRepo implements Repo {
     if (m.role === 'admin') return;
     const deny = () => { throw new RepoError('forbidden', 'Keine Berechtigung: Diese Daten gehören zu einem Bereich, den Sie nicht leiten.'); };
     if (kind === 'departments') deny();
-    const list = (d as any)[kind] as { id: string; departmentId: string | null }[];
-    for (const r of rows) {
+    const list = (d as any)[kind] as { id: string; departmentId?: string | null; staffId?: string }[];
+    // Abwesenheiten gehören zum Stammbereich der Person
+    const dep = (x: { departmentId?: string | null; staffId?: string }) => kind === 'absences' ? d.staff.find(s => s.id === x.staffId)?.departmentId ?? null : x.departmentId ?? null;
+    for (const r of rows as { id: string; departmentId?: string | null; staffId?: string }[]) {
       const old = list.find(x => x.id === r.id);
-      if (old && !canPlanDept(m.role, d.departments, m.userId, old.departmentId)) deny();
-      if (r.departmentId !== undefined && !canPlanDept(m.role, d.departments, m.userId, r.departmentId ?? null)) deny();
+      if (old && !canPlanDept(m.role, d.departments, m.userId, dep(old))) deny();
+      if ((r.departmentId !== undefined || r.staffId !== undefined) && !canPlanDept(m.role, d.departments, m.userId, dep(r))) deny();
     }
   }
   private mutate<T>(venueId: string, fn: (d: VenueData, db: DemoDb) => T): T {
@@ -120,6 +124,45 @@ export class DemoRepo implements Repo {
     let name = '';
     this.mutate(venueId, d => { d.venue.modules = [...modules]; name = d.venue.name; });
     this.emit([{ kind: 'venue', type: 'upsert', name, modules }]);
+  }
+  async setRosterSettings(venueId: string, settings: Partial<RosterSettings>) {
+    this.guard(venueId, 'venue');
+    let name = '';
+    this.mutate(venueId, d => { d.venue.rosterSettings = { ...settings }; name = d.venue.name; });
+    this.emit([{ kind: 'venue', type: 'upsert', name, rosterSettings: settings }]);
+  }
+  /** wie public_roster() in der DB: ohne Anmeldung, nur veröffentlichte Wochen, Vorwoche bis 6 Wochen voraus */
+  async publicRoster(token: string): Promise<PublicRoster | null> {
+    const db = this.read();
+    for (const d of Object.values(db.data).map(x => normalizeVenueData(x))) {
+      const st = d.staff.find(s => s.shareToken === token && s.active);
+      if (!st) continue;
+      const from = addDays(weekStart(today()), -7), to = addDays(from, 48);
+      const inR = (s: Shift) => s.date >= from && s.date <= to;
+      const deps = new Set([st.departmentId, ...d.shifts.filter(s => s.staffId === st.id && inR(s)).map(s => s.departmentId)].filter(Boolean));
+      const pubOf = (s: Shift) => d.publications.find(p => p.departmentId === s.departmentId && p.weekStart === weekStart(s.date));
+      const shifts = d.shifts.filter(s => inR(s) && pubOf(s) && (s.staffId === st.id || deps.has(s.departmentId)))
+        .sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start))
+        .map(s => {
+          const dep = d.departments.find(x => x.id === s.departmentId)!;
+          return { ...s, staffName: d.staff.find(x => x.id === s.staffId)?.name ?? 'Offene Schicht', departmentName: dep.name,
+            color: d.shiftTemplates.find(t => t.id === s.templateId)?.color ?? dep.color, mine: s.staffId === st.id,
+            changed: !!(s.updatedAt && s.updatedAt > pubOf(s)!.publishedAt) };
+        });
+      const pubs = d.publications.filter(p => deps.has(p.departmentId)).map(p => p.publishedAt).sort();
+      return { venueName: d.venue.name, staffName: st.name, from, to, shifts,
+        absences: d.absences.filter(a => a.staffId === st.id && a.to >= from && a.from <= to).map(a => ({ ...a, note: '' })), publishedAt: pubs.at(-1) ?? null };
+    }
+    return null;
+  }
+  async onDuty(venueId: string, date: string): Promise<OnDuty[]> {
+    const d = this.read().data[venueId]; if (!d) return [];
+    const n = normalizeVenueData(structuredClone(d));
+    return n.shifts.filter(s => s.date === date && s.staffId && n.publications.some(p => p.departmentId === s.departmentId && p.weekStart === weekStart(s.date)))
+      .map(s => { const dep = n.departments.find(x => x.id === s.departmentId)!; return { s, dep }; })
+      .sort((a, b) => a.dep.sort - b.dep.sort || a.s.start.localeCompare(b.s.start))
+      .map(({ s, dep }) => ({ staffName: n.staff.find(x => x.id === s.staffId)?.name ?? '', departmentName: dep.name,
+        color: n.shiftTemplates.find(t => t.id === s.templateId)?.color ?? dep.color, start: s.start, end: s.end, start2: s.start2, end2: s.end2 }));
   }
   async members(venueId: string) { return this.read().members.filter(m => m.venueId === venueId).map(({ venueId: _v, ...m }) => m); }
   async addMember(venueId: string, email: string, role: Role, name: string) {
@@ -222,11 +265,21 @@ export class DemoRepo implements Repo {
   }
   async upsert<K extends EntityKey>(venueId: string, kind: K, rows: EntityMap[K][]) {
     if (ROSTER_KEYS.includes(kind)) this.rosterGuard(venueId, kind, rows as any); else this.guard(venueId, kind);
+    const now = new Date().toISOString();
+    // Server-Felder wie in der DB: updated_at der Dienste, published_at der Veröffentlichung
+    const stamped = rows.map(r => kind === 'shifts' ? { ...r, updatedAt: now } : kind === 'publications' ? { ...r, publishedAt: now } : r) as EntityMap[K][];
     this.mutate(venueId, d => {
       const list = ((d as any)[kind] ??= []) as { id: string }[];
-      for (const r of rows) { const i = list.findIndex(x => x.id === r.id); if (i >= 0) list[i] = { ...r }; else list.push({ ...r }); }
+      if (kind === 'shifts') {
+        // Doppelbelegung sperren wie der Trigger shifts_no_overlap
+        for (const r of stamped as unknown as Shift[]) {
+          if (r.staffId && (list as Shift[]).some(o => o.id !== r.id && o.staffId === r.staffId && !(stamped as unknown as Shift[]).some(x => x.id === o.id) && shiftsOverlap(o, r)))
+            throw new RepoError('overlap', 'Diese Person hat zu dieser Zeit schon einen Dienst (eventuell gerade auf einem anderen Gerät eingetragen).');
+        }
+      }
+      for (const r of stamped) { const i = list.findIndex(x => x.id === r.id); if (i >= 0) list[i] = { ...r }; else list.push({ ...r }); }
     });
-    this.emit(rows.map(row => ({ kind, type: 'upsert', row }) as ChangeEvent));
+    this.emit(stamped.map(row => ({ kind, type: 'upsert', row }) as ChangeEvent));
   }
   async remove(venueId: string, kind: EntityKey, ids: string[]) {
     if (ROSTER_KEYS.includes(kind)) this.rosterGuard(venueId, kind, ids.map(id => ({ id }))); else this.guard(venueId, kind);
@@ -240,7 +293,11 @@ export class DemoRepo implements Repo {
       }
       if (kind === 'rooms') { const tids = d.tables.filter(t => ids.includes(t.roomId)).map(t => t.id); d.tables = d.tables.filter(t => !tids.includes(t.id)); d.decor = d.decor.filter(x => !ids.includes(x.roomId)); d.reservations.forEach(r => { r.tableIds = r.tableIds.filter(t => !tids.includes(t)); }); }
       // Kaskaden wie in der DB
+      if (kind === 'staff') { d.shifts = (d.shifts ?? []).filter(x => !x.staffId || !ids.includes(x.staffId)); d.absences = (d.absences ?? []).filter(x => !ids.includes(x.staffId)); }
+      if (kind === 'shiftTemplates') (d.shifts ?? []).forEach(x => { if (x.templateId && ids.includes(x.templateId)) x.templateId = null; });
       if (kind === 'departments') {
+        d.shifts = (d.shifts ?? []).filter(x => !ids.includes(x.departmentId));
+        d.publications = (d.publications ?? []).filter(x => !ids.includes(x.departmentId));
         const pids = d.positions.filter(x => ids.includes(x.departmentId)).map(x => x.id);
         d.positions = d.positions.filter(x => !pids.includes(x.id));
         d.shiftTemplates = d.shiftTemplates.filter(x => !ids.includes(x.departmentId));
@@ -249,6 +306,7 @@ export class DemoRepo implements Repo {
       if (kind === 'positions') {
         d.staff.forEach(s => { s.positionIds = s.positionIds.filter(p => !ids.includes(p)); });
         d.shiftTemplates.forEach(x => { if (x.positionId && ids.includes(x.positionId)) x.positionId = null; });
+        (d.shifts ?? []).forEach(x => { if (x.positionId && ids.includes(x.positionId)) x.positionId = null; });
       }
       if (kind === 'services') { d.reservations = d.reservations.filter(r => !ids.includes(r.serviceId)); d.menus = (d.menus ?? []).filter(m => !ids.includes(m.serviceId)); }
     });
@@ -262,7 +320,7 @@ export class DemoRepo implements Repo {
   async replaceAll(venueId: string, data: VenueData) {
     this.guard(venueId, '*');
     // Module gehören zum Betrieb, nicht zum Datenstand (wie in der DB)
-    this.mutate(venueId, (cur, db) => { db.data[venueId] = normalizeVenueData({ ...structuredClone(data), venue: { id: venueId, name: data.venue.name, modules: cur.venue.modules ?? [] } }); });
+    this.mutate(venueId, (cur, db) => { db.data[venueId] = normalizeVenueData({ ...structuredClone(data), venue: { id: venueId, name: data.venue.name, modules: cur.venue.modules ?? [], rosterSettings: cur.venue.rosterSettings } }); });
   }
   async uploadBackground(_venueId: string, file: File): Promise<string> {
     if (file.size > 1_500_000) throw new RepoError('other', 'Bild zu groß (max. 1,5 MB im Demo-Modus)');

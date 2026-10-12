@@ -13,7 +13,9 @@ interface UiState {
   /** Menüverwaltung: Reiter und angezeigte Woche (irgendein Tag der Woche) */
   menuTab: 'plan' | 'gerichte' | 'zutaten'; menuWeek: string;
   /** Dienstplan: Reiter und Bereichsfilter ('' = alle Bereiche) */
-  rosterTab: 'staff' | 'positions' | 'templates'; rosterDept: string;
+  rosterTab: 'plan' | 'absences' | 'staff' | 'positions' | 'templates'; rosterDept: string;
+  /** Dienstplan: angezeigter Tag/Woche/Monat, Ansicht und gewählte Vorlage („Pinsel“, null = aus) */
+  rosterDate: string; rosterMode: 'woche' | 'tag' | 'monat'; rosterBrush: string | null;
   set: (p: Partial<UiState>) => void;
   goToday: () => void;
 }
@@ -21,7 +23,7 @@ interface UiState {
 export const useUi = create<UiState>(set => ({
   date: today(), serviceId: null, roomId: null, time: nowMin(), follow: true,
   showStations: false, liveActiveOnly: false, hotelDate: today(), report: '', liveTab: 'plan',
-  resFilter: null, editRoomId: null, editSel: null, menuTab: 'plan', menuWeek: today(), rosterTab: 'staff', rosterDept: '',
+  resFilter: null, editRoomId: null, editSel: null, menuTab: 'plan', menuWeek: today(), rosterTab: 'plan', rosterDept: '', rosterDate: today(), rosterMode: 'woche', rosterBrush: null,
   set: p => set(p),
   goToday: () => set({ date: today(), time: nowMin(), follow: true, serviceId: null })
 }));

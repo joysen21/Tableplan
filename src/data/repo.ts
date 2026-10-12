@@ -3,20 +3,23 @@
  * und der Demo-Implementierung (Daten im Browser) erfüllt wird.
  */
 import type {
-  AuditEntry, Decor, Department, DiningTable, Dish, Ingredient, Layout, Member, Menu, ModuleKey, Position, Reservation, Role, Room, Service, ShiftTemplate, Staff,
-  Station, Stay, TableBlock, TableCombo, VenueData
+  Absence, AuditEntry, Decor, Department, DiningTable, Dish, Ingredient, Layout, Member, Menu, ModuleKey, OnDuty, Position, Publication, PublicRoster, Reservation,
+  Role, Room, RosterSettings, Service, Shift, ShiftTemplate, Staff, Station, Stay, TableBlock, TableCombo, VenueData
 } from '../domain/types';
 
 export interface EntityMap {
   rooms: Room; stations: Station; tables: DiningTable; decor: Decor; combos: TableCombo; layouts: Layout; services: Service; blocks: TableBlock;
   ingredients: Ingredient; dishes: Dish; menus: Menu;
   departments: Department; positions: Position; staff: Staff; shiftTemplates: ShiftTemplate;
+  shifts: Shift; absences: Absence; publications: Publication;
 }
 export type EntityKey = keyof EntityMap;
 export const ENTITY_KEYS: EntityKey[] = ['services', 'rooms', 'stations', 'tables', 'decor', 'combos', 'layouts', 'blocks', 'ingredients', 'dishes', 'menus',
-  'departments', 'positions', 'staff', 'shiftTemplates'];
-/** Tabellen des Dienstplan-Moduls (eigene Migration – fehlen sie, läuft der Rest der App trotzdem) */
-export const ROSTER_KEYS: EntityKey[] = ['departments', 'positions', 'staff', 'shiftTemplates'];
+  'departments', 'positions', 'staff', 'shiftTemplates', 'shifts', 'absences', 'publications'];
+/** Tabellen des Dienstplan-Moduls (eigene Migrationen – fehlen sie, läuft der Rest der App trotzdem) */
+export const ROSTER_BASE_KEYS: EntityKey[] = ['departments', 'positions', 'staff', 'shiftTemplates'];
+export const ROSTER_PLAN_KEYS: EntityKey[] = ['shifts', 'absences', 'publications'];
+export const ROSTER_KEYS: EntityKey[] = [...ROSTER_BASE_KEYS, ...ROSTER_PLAN_KEYS];
 
 export interface AuthUser { id: string; email: string }
 export interface Membership { venueId: string; venueName: string; role: Role; name: string }
@@ -28,7 +31,7 @@ export type ChangeEvent =
   | { kind: 'reservations'; type: 'upsert'; row: Omit<Reservation, 'tableIds'> }
   | { kind: 'reservation_tables'; type: 'link' | 'unlink'; reservationId: string; tableId: string }
   | { kind: 'audit'; type: 'insert'; row: AuditEntry }
-  | { kind: 'venue'; type: 'upsert'; name: string; modules?: ModuleKey[] };
+  | { kind: 'venue'; type: 'upsert'; name: string; modules?: ModuleKey[]; rosterSettings?: Partial<RosterSettings> };
 
 export type LiveState = 'connecting' | 'live' | 'down';
 
@@ -54,6 +57,12 @@ export interface Repo {
   renameVenue(venueId: string, name: string): Promise<void>;
   /** Zusatzmodule ein-/ausschalten (nur Admin) */
   setModules(venueId: string, modules: ModuleKey[]): Promise<void>;
+  /** Prüfregeln des Dienstplans (nur Admin) */
+  setRosterSettings(venueId: string, settings: Partial<RosterSettings>): Promise<void>;
+  /** Lesezugang ohne Anmeldung (Mitarbeiter-Link); null = Link ungültig */
+  publicRoster(token: string): Promise<PublicRoster | null>;
+  /** Veröffentlichte Dienste eines Tages */
+  onDuty(venueId: string, date: string): Promise<OnDuty[]>;
   members(venueId: string): Promise<Member[]>;
   addMember(venueId: string, email: string, role: Role, name: string): Promise<void>;
   updateMember(venueId: string, userId: string, patch: Partial<Pick<Member, 'role' | 'name'>>): Promise<void>;

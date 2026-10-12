@@ -5,7 +5,8 @@ import { repo } from '../data';
 import { newId } from '../domain/demo';
 import { ROSTER_COLORS } from '../domain/constants';
 import { departmentUsage, sortDepartments } from '../domain/roster';
-import type { Department, Member } from '../domain/types';
+import type { Department, Member, RosterSettings } from '../domain/types';
+import { DEFAULT_ROSTER_SETTINGS, rosterSettings } from '../domain/rosterPlan';
 import { useApp } from '../store/app';
 import { EDITION } from '../lib/edition';
 import { useData } from '../store/hooks';
@@ -15,7 +16,10 @@ import { Dot } from './RosterView';
 export function ModulesPanel() {
   const d = useData();
   // eigenständige Dienstplan-App: Modul ist immer an, nur Bereiche & Leitungen
-  if (EDITION === 'dienstplan') return <div className="panel mt12"><h3>Bereiche & Leitungen</h3><div className="body"><DepartmentsAdmin heading={false} /></div></div>;
+  if (EDITION === 'dienstplan') return <>
+    <div className="panel mt12"><h3>Bereiche & Leitungen</h3><div className="body"><DepartmentsAdmin heading={false} /></div></div>
+    <div className="panel mt12"><h3>Prüfregeln</h3><div className="body"><RulesForm /></div></div>
+  </>;
   const setModules = useApp(s => s.setModules);
   const on = d.venue.modules.includes('dienstplan');
   return (
@@ -24,7 +28,33 @@ export function ModulesPanel() {
         <b>Dienstplan</b></label>
       <p className="muted" style={{ fontSize: 12, margin: '4px 0 0' }}>Personalplanung je Bereich (Küche, Service …). Sichtbar für Admins und die Bereichsleitungen; ausschalten blendet das Modul nur aus, die Daten bleiben erhalten.</p>
       {on && <DepartmentsAdmin />}
+      {on && <><h4 style={{ margin: '14px 0 6px' }}>Prüfregeln</h4><RulesForm /></>}
     </div></div>
+  );
+}
+
+/** Prüfregeln des Dienstplans (Warnungen, keine Sperren) */
+function RulesForm() {
+  const d = useData();
+  const setRosterSettings = useApp(s => s.setRosterSettings);
+  const cur = rosterSettings(d.venue);
+  const field = (key: keyof RosterSettings, label: string, max: number) => (
+    <label>{label}<input type="number" min={0} max={max} step={key === 'minBreakMin' ? 5 : 1} key={key + cur[key]} defaultValue={cur[key]} aria-label={label}
+      onBlur={e => { const v = Math.max(0, Math.min(max, +e.target.value || 0)); if (v !== cur[key]) setRosterSettings({ ...(d.venue.rosterSettings ?? {}), [key]: v }); }} /></label>
+  );
+  const changed = JSON.stringify(cur) !== JSON.stringify(DEFAULT_ROSTER_SETTINGS);
+  return (
+    <>
+      <div className="grid3 rules-grid">
+        {field('restHours', 'Ruhezeit (Std.)', 24)}
+        {field('maxWeekHours', 'Max. Wochenstunden', 80)}
+        {field('freeDaysPerWeek', 'Freie Tage / Woche', 7)}
+        {field('breakAfterHours', 'Pause ab (Std.)', 24)}
+        {field('minBreakMin', 'Mindestpause (Min.)', 120)}
+      </div>
+      <p className="muted" style={{ fontSize: 12, margin: '6px 0 0' }}>Standard nach D.Lgs. 66/2003 und CCNL Turismo: 11 h Ruhezeit, max. 48 h, 1 freier Tag, Pause ab 6 h (mind. 10 Min.). Abweichungen erscheinen im Dienstplan als Hinweis.
+        {changed && <> <button className="link" onClick={() => setRosterSettings({})}>Standard wiederherstellen</button></>}</p>
+    </>
   );
 }
 
@@ -38,7 +68,7 @@ function DepartmentsAdmin({ heading = true }: { heading?: boolean }) {
   async function add() {
     const n = name.trim(); if (!n) return;
     if (list.some(x => x.name.trim().toLowerCase() === n.toLowerCase())) return toast('Diesen Bereich gibt es schon', 'err');
-    const dep: Department = { id: newId(), name: n, color: ROSTER_COLORS[list.length % ROSTER_COLORS.length], sort: Math.max(-1, ...list.map(x => x.sort)) + 1, leadIds: [] };
+    const dep: Department = { id: newId(), name: n, color: ROSTER_COLORS[list.length % ROSTER_COLORS.length], sort: Math.max(-1, ...list.map(x => x.sort)) + 1, leadIds: [], guestsPerStaff: null, minStaff: 0 };
     if (await store.upsert('departments', [dep], ['Bereich angelegt', n])) setName('');
   }
   return (
@@ -82,6 +112,12 @@ function DepartmentRow({ dep, members }: { dep: Department; members: Member[] })
           onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} />
         <input type="color" aria-label={`Farbe Bereich ${dep.name}`} value={dep.color} onChange={e => save({ color: e.target.value }, 'Farbe')} className="color-input" />
         <button className="btn small icon ghost danger" aria-label={`Bereich ${dep.name} löschen`} title="Bereich löschen" onClick={remove}><Trash2 /></button>
+      </div>
+      <div className="row mt8 dept-staffing">
+        <label>1 Kraft je … Gäste<input type="number" min={0} placeholder="aus" aria-label={`Besetzungsschlüssel ${dep.name}`} key={'g' + dep.guestsPerStaff} defaultValue={dep.guestsPerStaff ?? ''}
+          onBlur={e => { const v = +e.target.value > 0 ? Math.round(+e.target.value) : null; if (v !== dep.guestsPerStaff) save({ guestsPerStaff: v }, 'Besetzungsschlüssel'); }} /></label>
+        <label>Mindestbesetzung<input type="number" min={0} aria-label={`Mindestbesetzung ${dep.name}`} key={'m' + dep.minStaff} defaultValue={dep.minStaff}
+          onBlur={e => { const v = Math.max(0, Math.round(+e.target.value || 0)); if (v !== dep.minStaff) save({ minStaff: v }, 'Mindestbesetzung'); }} /></label>
       </div>
       <div className="chips mt8" role="group" aria-label={`Leitung ${dep.name}`}>
         <small className="muted" style={{ alignSelf: 'center' }}>Leitung:</small>

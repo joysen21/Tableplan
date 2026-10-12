@@ -8,13 +8,13 @@ import {
 } from './roster';
 import type { Department, ShiftTemplate, Staff } from './types';
 
-const dept = (name: string, leadIds: string[] = [], sort = 0): Department => ({ id: newId(), name, color: '#000', sort, leadIds });
+const dept = (name: string, leadIds: string[] = [], sort = 0): Department => ({ id: newId(), name, color: '#000', sort, leadIds, guestsPerStaff: null, minStaff: 0 });
 const tpl = (p: Partial<ShiftTemplate> = {}): ShiftTemplate => ({
   id: newId(), departmentId: 'k', positionId: null, name: 'Früh', short: 'F', start: '06:00', end: '14:00', start2: null, end2: null, breakMin: 30, color: '#000', sort: 0, ...p
 });
 const staff = (p: Partial<Staff> = {}): Staff => ({
   id: newId(), name: 'Maria Gruber', short: 'MG', departmentId: null, positionIds: [], contract: 'unbefristet', weeklyHours: 40,
-  contractFrom: null, contractTo: null, phone: '', email: '', color: '#000', notes: '', active: true, ...p
+  contractFrom: null, contractTo: null, phone: '', email: '', color: '#000', notes: '', active: true, vacationDays: 26, shareToken: newId(), ...p
 });
 
 describe('Planungsrechte', () => {

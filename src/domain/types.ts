@@ -17,7 +17,7 @@ export type TableState = 'frei' | 'reserviert' | 'bald' | 'platziert' | 'rechnun
 
 export type ModuleKey = 'dienstplan';
 /** modules: zugeschaltete Zusatzmodule des Betriebs */
-export interface Venue { id: string; name: string; modules: ModuleKey[] }
+export interface Venue { id: string; name: string; modules: ModuleKey[]; rosterSettings?: Partial<RosterSettings> }
 
 export interface Member { userId: string; role: Role; name: string; email: string }
 
@@ -80,7 +80,8 @@ export interface Menu { id: string; date: string; serviceId: string; portions: n
 /* ---------- Dienstplan ---------- */
 export type ContractType = 'unbefristet' | 'befristet' | 'saison' | 'lehrling' | 'aushilfe';
 /** Bereich/Abteilung (Küche, Service …). leadIds = Benutzer (user_id), die den Bereich planen dürfen */
-export interface Department { id: string; name: string; color: string; sort: number; leadIds: string[] }
+/** guestsPerStaff: Besetzungsschlüssel (1 Kraft je n Gäste im Spitzen-Service, null = aus), minStaff: Mindestbesetzung pro Tag */
+export interface Department { id: string; name: string; color: string; sort: number; leadIds: string[]; guestsPerStaff: number | null; minStaff: number }
 /** Tätigkeit innerhalb eines Bereichs (Koch, Commis …) */
 export interface Position { id: string; departmentId: string; name: string; sort: number }
 /** Mitarbeiter/in. departmentId = Stammbereich; positionIds = Qualifikationen (auch aus anderen Bereichen) */
@@ -88,7 +89,32 @@ export interface Staff {
   id: string; name: string; short: string; departmentId: string | null; positionIds: string[];
   contract: ContractType; weeklyHours: number; contractFrom: string | null; contractTo: string | null;
   phone: string; email: string; color: string; notes: string; active: boolean;
+  /** Urlaubsanspruch in Tagen pro Jahr */
+  vacationDays: number;
+  /** geheimer Schlüssel für den Lesezugang (Link /p/<token>, Kalender-Abo) */
+  shareToken: string;
 }
+/** Dienst. staffId null = offene Schicht. Zeiten wie bei der Vorlage (Ende vor Beginn = über Mitternacht) */
+export interface Shift {
+  id: string; departmentId: string; staffId: string | null; positionId: string | null; templateId: string | null;
+  date: string; start: string; end: string; start2: string | null; end2: string | null; breakMin: number; note: string; updatedAt?: string;
+}
+export type AbsenceKind = 'urlaub' | 'krank' | 'frei' | 'sonstiges';
+export interface Absence { id: string; staffId: string; from: string; to: string; kind: AbsenceKind; note: string }
+/** Veröffentlichter Dienstplan eines Bereichs für eine Woche (weekStart = Montag) */
+export interface Publication { id: string; departmentId: string; weekStart: string; publishedAt: string; publishedBy: string }
+/** Prüfregeln (Warnungen) – Standard nach D.Lgs. 66/2003 / CCNL Turismo, je Betrieb anpassbar */
+export interface RosterSettings {
+  restHours: number; maxWeekHours: number; breakAfterHours: number; minBreakMin: number; freeDaysPerWeek: number;
+}
+/** Lesezugang einer Mitarbeiterin / eines Mitarbeiters (öffentliche Seite, Kalender-Abo) */
+export interface PublicRoster {
+  venueName: string; staffName: string; from: string; to: string;
+  shifts: (Shift & { staffName: string; departmentName: string; color: string; mine: boolean; changed: boolean })[];
+  absences: Absence[]; publishedAt: string | null;
+}
+/** „Heute im Dienst“ (nur veröffentlichte Dienste) */
+export interface OnDuty { staffName: string; departmentName: string; color: string; start: string; end: string; start2: string | null; end2: string | null }
 /** Schichtvorlage, optional als Teildienst mit zweitem Block (start2/end2). Ende vor Beginn = über Mitternacht */
 export interface ShiftTemplate {
   id: string; departmentId: string; positionId: string | null; name: string; short: string;
@@ -105,6 +131,7 @@ export interface VenueData {
   stays: Stay[]; reservations: Reservation[]; audit: AuditEntry[];
   ingredients: Ingredient[]; dishes: Dish[]; menus: Menu[];
   departments: Department[]; positions: Position[]; staff: Staff[]; shiftTemplates: ShiftTemplate[];
+  shifts: Shift[]; absences: Absence[]; publications: Publication[];
 }
 
 export interface SessionUser { id: string; name: string; email: string; role: Role }

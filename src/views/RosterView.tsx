@@ -6,12 +6,14 @@ import { newId } from '../domain/demo';
 import { canPlanDept, contractActive, fmtHours, plannableDepartments, positionUsage, sortDepartments, sortStaff, templateTimes, workMin } from '../domain/roster';
 import type { Department, Staff } from '../domain/types';
 import { t } from '../lib/i18n';
-import { today } from '../lib/time';
+import { addDays, fmtShort, today } from '../lib/time';
 import { useApp } from '../store/app';
 import { useData, useRole, useUserId } from '../store/hooks';
 import { useUi } from '../store/ui';
 import { openDialog } from '../store/dialogs';
 import { confirmDialog, toast } from '../ui/notify';
+import { RosterPlan } from './RosterPlan';
+import { ABSENCE_LABEL, vacationUsed } from '../domain/rosterPlan';
 
 /** "JJJJ-MM-TT" → "TT.MM.JJJJ" */
 const dmy = (s: string) => s.split('-').reverse().join('.');
@@ -32,10 +34,12 @@ export function RosterView() {
   return (
     <div className="panel roster-view">
       <div className="row" style={{ padding: '10px 14px', borderBottom: '1px solid var(--line)' }}>
-        <div className="seg" role="group" aria-label="Bereich">
+        <div className="seg roster-tabs" role="group" aria-label="Bereich">
+          <button className="btn" aria-pressed={tab === 'plan'} onClick={() => ui.set({ rosterTab: 'plan' })}>Dienstplan</button>
+          <button className="btn" aria-pressed={tab === 'absences'} onClick={() => ui.set({ rosterTab: 'absences' })}>Abwesenheiten</button>
           <button className="btn" aria-pressed={tab === 'staff'} onClick={() => ui.set({ rosterTab: 'staff' })}>Mitarbeitende <span className="count">{d.staff.filter(x => x.active).length}</span></button>
           <button className="btn" aria-pressed={tab === 'positions'} onClick={() => ui.set({ rosterTab: 'positions' })}>Positionen</button>
-          <button className="btn" aria-pressed={tab === 'templates'} onClick={() => ui.set({ rosterTab: 'templates' })}>Schichtvorlagen</button>
+          <button className="btn" aria-pressed={tab === 'templates'} onClick={() => ui.set({ rosterTab: 'templates' })}>Vorlagen</button>
         </div>
         <select aria-label="Bereichsfilter" value={dept} onChange={e => ui.set({ rosterDept: e.target.value })} style={{ width: 'auto' }}>
           <option value="">Alle Bereiche</option>
@@ -44,12 +48,48 @@ export function RosterView() {
         <span className="spacer" />
         {preset && tab === 'staff' && <button className="btn primary" onClick={() => openDialog({ type: 'staff', departmentId: preset })}><Plus />Mitarbeiter/in</button>}
         {preset && tab === 'templates' && <button className="btn primary" onClick={() => openDialog({ type: 'shifttemplate', departmentId: preset })}><Plus />Vorlage</button>}
+        {preset && tab === 'absences' && <button className="btn primary" onClick={() => openDialog({ type: 'absence', preset: {} })}><Plus />Abwesenheit</button>}
       </div>
       {!depts.length ? <NoDepartments admin={role === 'admin'} />
+        : tab === 'plan' ? <RosterPlan dept={dept} />
+        : tab === 'absences' ? <AbsenceList dept={dept} />
         : tab === 'staff' ? <StaffList dept={dept} />
         : tab === 'positions' ? <PositionList depts={dept ? depts.filter(x => x.id === dept) : depts} />
         : <TemplateList depts={dept ? depts.filter(x => x.id === dept) : depts} />}
       {depts.length > 0 && !mine.length && <p className="body muted" style={{ fontSize: 12 }}>Sie leiten keinen Bereich und können hier nur ansehen.</p>}
+    </div>
+  );
+}
+
+function AbsenceList({ dept }: { dept: string }) {
+  const d = useData();
+  const [year, setYear] = useState(+today().slice(0, 4));
+  const t0 = today();
+  const staff = sortStaff(d.staff).filter(s => s.active && (!dept || s.departmentId === dept));
+  const sick = (sid: string) => d.absences.filter(a => a.staffId === sid && a.kind === 'krank' && a.from.slice(0, 4) <= String(year) && a.to.slice(0, 4) >= String(year))
+    .reduce((n, a) => n + Math.round((Date.parse(a.to) - Date.parse(a.from)) / 86400000) + 1, 0);
+  const list = d.absences.filter(a => a.to >= addDays(t0, -60) && staff.some(s => s.id === a.staffId)).sort((a, b) => a.from.localeCompare(b.from));
+  const name = (id: string) => d.staff.find(x => x.id === id)?.name ?? '?';
+  return (
+    <div className="body absence-view">
+      <div className="row mb8"><h4 style={{ margin: 0 }}>Urlaubskonto</h4>
+        <button className="btn small icon" aria-label="Vorjahr" onClick={() => setYear(year - 1)}>‹</button><b>{year}</b>
+        <button className="btn small icon" aria-label="Folgejahr" onClick={() => setYear(year + 1)}>›</button></div>
+      <div className="table-scroll"><table className="list"><thead><tr><th>Name</th><th>Anspruch</th><th>Genommen/geplant</th><th>Rest</th><th>Krankheitstage</th></tr></thead>
+        <tbody>{staff.map(s => {
+          const used = vacationUsed(d, s.id, year), rest = s.vacationDays - used;
+          return <tr key={s.id} className="clickable" onClick={() => openDialog({ type: 'staff', staff: s })}>
+            <td><Dot color={s.color} /><b>{s.name}</b></td><td>{s.vacationDays.toLocaleString('de-DE')}</td><td>{used}</td>
+            <td style={{ color: rest < 0 ? 'var(--danger)' : undefined, fontWeight: 600 }}>{rest.toLocaleString('de-DE')}</td><td>{sick(s.id) || '–'}</td></tr>;
+        })}</tbody></table></div>
+      <p className="muted" style={{ fontSize: 12 }}>Gezählt werden Urlaubstage ohne Sonntage und Feiertage (Italien, Pfingstmontag Südtirol). Anspruch im Mitarbeiter-Dialog eintragen.</p>
+      <h4 style={{ margin: '16px 0 6px' }}>Abwesenheiten (letzte 60 Tage und geplant)</h4>
+      {list.length ? <div className="table-scroll"><table className="list"><thead><tr><th>Name</th><th>Art</th><th>Von</th><th>Bis</th><th>Notiz</th></tr></thead>
+        <tbody>{list.map(a => (
+          <tr key={a.id} className={'clickable' + (a.to < t0 ? ' inactive' : '')} onClick={() => openDialog({ type: 'absence', absence: a })}>
+            <td>{name(a.staffId)}</td><td><span className={'abs-chip static ' + a.kind}>{ABSENCE_LABEL[a.kind]}</span></td>
+            <td>{fmtShort(a.from)}</td><td>{fmtShort(a.to)}</td><td style={{ fontSize: 13 }}>{a.note}</td></tr>
+        ))}</tbody></table></div> : <p className="muted">Keine Abwesenheiten eingetragen.</p>}
     </div>
   );
 }

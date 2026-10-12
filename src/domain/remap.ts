@@ -23,8 +23,12 @@ export function remapIds(d: VenueData, newId: () => string): VenueData {
     menus: (d.menus ?? []).map(x => ({ ...x, id: m(x.id)!, serviceId: m(x.serviceId)!, items: x.items.map(i => ({ ...i, dishId: m(i.dishId)! })) })),
     // Bereichsleitungen sind Benutzer des alten Betriebs → im neuen Betrieb neu zuweisen
     departments: (d.departments ?? []).map(x => ({ ...x, id: m(x.id)!, leadIds: [] })),
+    shifts: (d.shifts ?? []).map(x => ({ ...x, id: m(x.id)!, departmentId: m(x.departmentId)!, staffId: m(x.staffId), positionId: m(x.positionId), templateId: m(x.templateId) })),
+    absences: (d.absences ?? []).map(x => ({ ...x, id: m(x.id)!, staffId: m(x.staffId)! })),
+    publications: (d.publications ?? []).map(x => ({ ...x, id: m(x.id)!, departmentId: m(x.departmentId)! })),
     positions: (d.positions ?? []).map(x => ({ ...x, id: m(x.id)!, departmentId: m(x.departmentId)! })),
-    staff: (d.staff ?? []).map(x => ({ ...x, id: m(x.id)!, departmentId: m(x.departmentId), positionIds: mm(x.positionIds) })),
+    // neue Links: die alten gehören zum anderen Betrieb
+    staff: (d.staff ?? []).map(x => ({ ...x, id: m(x.id)!, departmentId: m(x.departmentId), positionIds: mm(x.positionIds), shareToken: newId() })),
     shiftTemplates: (d.shiftTemplates ?? []).map(x => ({ ...x, id: m(x.id)!, departmentId: m(x.departmentId)!, positionId: m(x.positionId) }))
   };
 }

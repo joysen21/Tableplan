@@ -472,3 +472,126 @@ table.list td .badge{margin-left:6px}
   .staff-table th:nth-child(3),.staff-table td:nth-child(3){display:none}
   .staff-table td:first-child .badge{display:none}
 }
+
+/* ---------- Dienstplan: Planung ---------- */
+.roster-tabs{flex-wrap:wrap}
+.roster-plan{padding:10px 14px}
+.roster-toolbar{margin-bottom:8px}
+.roster-title{min-width:150px;text-align:center}
+.roster-publish{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.pub-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 6px 4px 10px;border:1px dashed var(--line);border-radius:10px;font-size:13px;background:var(--panel2)}
+.pub-chip.on{border-style:solid;border-color:rgba(45,164,78,.5);background:rgba(45,164,78,.07)}
+.roster-palette{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:10px}
+.roster-palette>small{flex-basis:100%}
+.tpl-btn{cursor:grab}
+.tpl-btn .tpl-chip{margin-right:6px}
+.roster-grid{display:grid;grid-template-columns:minmax(150px,1.3fr) repeat(var(--days),minmax(92px,1fr)) 62px;border:1px solid var(--line);border-radius:10px;overflow:hidden;min-width:900px}
+.roster-grid>div{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:4px 5px;min-width:0}
+.rg-head{background:var(--panel2);font-size:12px;display:flex;flex-direction:column;gap:2px;position:sticky;top:0;z-index:1}
+.rg-head.today,.rg-cell.today{background:var(--accent-soft)}
+.rg-head .badge{align-self:flex-start;font-size:10px}
+.rg-name{display:flex;align-items:center;font-size:13px;gap:2px;background:var(--panel)}
+.rg-name span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rg-name.inactive{color:var(--muted)}
+.rg-name.open-row{font-style:italic;color:var(--muted)}
+.rg-sum{font-size:13px;font-weight:600;text-align:right;display:flex;align-items:center;justify-content:flex-end;gap:1px}
+.rg-sum small{font-weight:400;color:var(--muted)}
+.rg-sum.over{color:var(--warn)}
+.rg-sum.danger{color:var(--danger)}
+.rg-cell{display:flex;flex-direction:column;gap:3px;min-height:52px;position:relative}
+.rg-cell.holiday{background-image:repeating-linear-gradient(135deg,transparent 0 8px,rgba(79,123,209,.06) 8px 16px)}
+.staffing{display:inline-flex;align-items:center;font-weight:600}
+.staffing .dot{width:8px;height:8px;margin-right:3px}
+.staffing.low{color:var(--danger)}
+.shift-chip{--c:#4F7BD1;display:flex;align-items:center;gap:4px;width:100%;border:0;border-left:4px solid var(--c);background:color-mix(in srgb,var(--c) 14%,var(--panel));color:var(--text);border-radius:6px;padding:3px 5px;font-size:12px;cursor:pointer;text-align:left;line-height:1.2}
+.shift-chip b{font-size:12px}
+.shift-chip small{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shift-chip.other{opacity:.5}
+.shift-chip.warn{box-shadow:inset 0 0 0 1px var(--danger)}
+.shift-chip .w{width:13px;height:13px;color:var(--danger);flex:none}
+.shift-chip .note{font-style:normal;color:var(--hl);font-weight:800}
+.shift-chip[draggable=true]{cursor:grab}
+.abs-chip{display:inline-flex;align-items:center;gap:4px;border:0;border-radius:6px;padding:3px 6px;font-size:12px;font-weight:700;cursor:pointer;background:rgba(74,91,125,.15);color:var(--text)}
+.abs-chip span{font-weight:400}
+.abs-chip.urlaub{background:rgba(45,164,78,.18)}
+.abs-chip.krank{background:rgba(207,34,46,.16)}
+.abs-chip.frei{background:rgba(191,135,0,.18)}
+.abs-chip.static{cursor:default}
+.cell-add{border:1px dashed transparent;background:none;color:var(--muted);border-radius:6px;min-height:20px;flex:1;cursor:pointer;font-size:16px;line-height:1}
+.rg-cell:hover .cell-add{border-color:var(--line)}
+.cell-add:focus-visible{border-color:var(--hl)}
+.roster-warnings{margin-top:12px;border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:var(--panel2)}
+.roster-warnings summary{cursor:pointer;display:flex;align-items:center;gap:8px;font-weight:600}
+.roster-warnings summary svg{width:16px;height:16px;color:var(--warn)}
+.roster-warnings ul{margin:8px 0 0;padding-left:18px;font-size:13px;display:flex;flex-direction:column;gap:3px}
+.roster-warnings li.severe{color:var(--danger)}
+.roster-warnings .link{margin-left:6px}
+.roster-ok{font-size:13px;margin:10px 0 0}
+.roster-day{display:flex;flex-direction:column;gap:4px}
+.rd-guests{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.rd-row{display:grid;grid-template-columns:170px 1fr;gap:8px;align-items:center}
+.rd-name{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rd-track{position:relative;height:30px;background:var(--panel2);border-radius:6px;cursor:pointer}
+.rd-scale .rd-track{background:none;height:16px;cursor:default}
+.rd-scale span{position:absolute;transform:translateX(-50%);font-size:11px;color:var(--muted)}
+.rd-bar{position:absolute;top:3px;bottom:3px;border:0;border-radius:5px;color:#fff;font-size:11px;font-weight:600;padding:0 6px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer;text-align:left}
+.rd-bar.other{opacity:.5}
+table.roster-month{font-size:12px;min-width:900px}
+table.roster-month th,table.roster-month td{padding:3px 2px;text-align:center}
+table.roster-month th small{color:var(--muted);font-weight:400}
+table.roster-month td.nm{text-align:left;white-space:nowrap;padding-right:8px}
+table.roster-month .today{background:var(--accent-soft)}
+table.roster-month th.holiday{color:var(--hl)}
+table.roster-month td.mc{cursor:pointer}
+table.roster-month td.abs{font-weight:700}
+table.roster-month td.abs.urlaub{background:rgba(45,164,78,.15)}
+table.roster-month td.abs.krank{background:rgba(207,34,46,.13)}
+table.roster-month td.sum{white-space:nowrap;font-weight:600}
+.mc-shift{display:inline-block;min-width:18px;padding:1px 2px;border-radius:4px;color:#fff;font-size:10px;font-weight:700}
+.print-only{display:none}
+.on-duty{border-bottom:1px solid var(--line);padding:8px 12px;font-size:13px}
+.on-duty summary{cursor:pointer;font-weight:600}
+.on-duty ul{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:3px}
+.on-duty .t{float:right;color:var(--muted)}
+.share-link{border-top:1px solid var(--line);margin-top:12px}
+.share-link input{margin:0;font-size:12px}
+.shift-warns div+div{margin-top:3px}
+.dept-staffing label{flex:1}
+.dept-staffing input{margin-top:2px}
+/* öffentliche Seite (Mitarbeiter-Link) */
+.pub-page{max-width:980px;margin:0 auto;padding:16px}
+.pub-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.pub-head .login-logo{height:30px;width:auto;margin:0}
+.pub-title{font-size:22px;margin:0 0 4px}
+.pub-mine{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.pub-mine li{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:6px 8px;border-radius:8px;background:var(--panel2)}
+.pub-mine li.today{background:var(--accent-soft)}
+.pub-mine .d{min-width:70px}
+.pub-mine .tm{border-left:4px solid;padding-left:8px;font-weight:600}
+.pub-weekbar{padding:10px 12px;border-bottom:1px solid var(--line)}
+table.pub-team td,table.pub-team th{font-size:13px}
+table.pub-team th.today{background:var(--accent-soft)}
+table.pub-team tr.me td{background:var(--accent-soft)}
+.pub-shift{display:block;border-left:3px solid;padding-left:5px;margin:1px 0;white-space:nowrap}
+@media (max-width:760px){
+  .roster-plan{padding:8px}
+  .roster-title{min-width:0;flex:1}
+  .rd-row{grid-template-columns:100px 1fr}
+  .pub-page{padding:10px}
+}
+@media print{
+  .print-only{display:block;font-size:16px;margin:0 0 8px}
+  .roster-grid{min-width:0;font-size:10px;border-radius:0}
+  .roster-grid .cell-add{display:none}
+  .shift-chip{background:#fff;border-left-width:3px}
+  .rg-head{position:static}
+}
+/* Namensspalte bleibt beim seitlichen Scrollen stehen; Reiter am Handy wischbar statt gequetscht */
+.roster-grid .rg-name{position:sticky;left:0;z-index:2}
+.roster-grid .rg-head.rg-name{z-index:3}
+@media (max-width:760px){
+  .roster-view .seg.roster-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  .roster-view .seg.roster-tabs .btn{flex:none;padding:8px 12px}
+  .roster-grid{grid-template-columns:110px repeat(var(--days),minmax(88px,1fr)) 54px}
+  .rg-name{font-size:12px}
+}

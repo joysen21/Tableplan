@@ -30,6 +30,7 @@ test('Admin: Bereich anlegen, Leitung zuweisen – die neue Leitung plant ihren 
   // Eva (Empfang) sieht den Dienstplan nur als Leitung von Housekeeping
   await switchUser(page, 'Eva (Empfang)');
   await goView(page, 'Dienstplan');
+  await page.getByRole('group', { name: 'Bereich' }).getByRole('button', { name: /^Mitarbeitende/ }).click();
   await page.getByRole('button', { name: 'Mitarbeiter/in' }).click();
   const dlg = page.locator('.modal');
   await expect(dlg.getByLabel('Stammbereich').locator('option')).toHaveText(['Housekeeping']);
@@ -45,6 +46,7 @@ test('Admin: Bereich anlegen, Leitung zuweisen – die neue Leitung plant ihren 
 test('Küchenleitung: Vorlage mit Teildienst und Position anlegen, Service nur ansehen', async ({ page }) => {
   await loginDemo(page, 'Karl (Küche)');
   await goView(page, 'Dienstplan');
+  await page.getByRole('group', { name: 'Bereich' }).getByRole('button', { name: /^Mitarbeitende/ }).click();
   await page.screenshot({ path: 'test-results/dienstplan-mitarbeitende.png' });
 
   // fremder Bereich: nur Ansicht
@@ -56,7 +58,7 @@ test('Küchenleitung: Vorlage mit Teildienst und Position anlegen, Service nur a
 
   // Schichtvorlage mit Teildienst
   const tabs = page.getByRole('group', { name: 'Bereich' });
-  await tabs.getByRole('button', { name: 'Schichtvorlagen' }).click();
+  await tabs.getByRole('button', { name: 'Vorlagen' }).click();
   await page.getByRole('button', { name: 'Vorlage', exact: true }).first().click();
   const dlg = page.locator('.modal');
   await expect(dlg.getByRole('combobox', { name: /^Bereich/ }).locator('option')).toHaveText(['Küche']);

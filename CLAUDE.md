@@ -9,7 +9,7 @@ Oberfläche und Texte auf **Deutsch**. Arbeitssprache mit dem Nutzer: Deutsch.
 - `npm run dev` – Entwicklungsserver (http://localhost:5173), mit `?demo` im Demo-Modus ohne Datenbank
 - `npm run typecheck` – TypeScript prüfen (muss fehlerfrei sein)
 - `npm test` – Unit-Tests (vitest, `src/**/*.test.ts`)
-- `npm run e2e` – Playwright-Oberflächentests im Demo-Modus
+- `npm run e2e` – Playwright-Oberflächentests im Demo-Modus (Ports 4173/4174; belegt → `PW_PORT=4183 PW_PORT2=4184 npm run e2e`)
 - `npm run build` – Produktions-Build
 - `npm run dev:dienstplan` / `npm run build:dienstplan` – eigenständige Dienstplan-App (gleicher Code, `VITE_APP=dienstplan`, siehe `src/lib/edition.ts`)
 

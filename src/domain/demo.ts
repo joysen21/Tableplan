@@ -1,6 +1,7 @@
 /** Demo-Daten: Hotelrestaurant mit 2 Räumen, 30 Tischen und einer Woche Reservierungen */
 import { OCCASIONS } from './constants';
 import { guessAllergens, snapshotItems } from './menu';
+import { shiftFromTemplate, weekStart } from './rosterPlan';
 import { planStay, resEnd, resStart, stayTableConflicts, suggestTables, tableBusy, turnTime } from './logic';
 import type { Allergen, Course, Dish, DiningTable, Ingredient, Menu, MenuItem, Reservation, Service, ShiftTemplate, Staff, Stay, TableFeature, TableShape, Unit, VenueData } from './types';
 import { addDays, fromMin, nowMin, toMin, today } from '../lib/time';
@@ -24,17 +25,20 @@ export function emptyVenueData(venueId: string, name: string): VenueData {
     venue: { id: venueId, name, modules: [] },
     rooms: [{ id: newId(), name: 'Restaurant', width: 1000, height: 650, backgroundUrl: null, sort: 0 }],
     stations: [], tables: [], decor: [], combos: [], layouts: [], services: defaultServices(), blocks: [], stays: [], reservations: [], audit: [],
-    ingredients: [], dishes: [], menus: [], departments: [], positions: [], staff: [], shiftTemplates: []
+    ingredients: [], dishes: [], menus: [], departments: [], positions: [], staff: [], shiftTemplates: [], shifts: [], absences: [], publications: []
   };
 }
 
 /** Fehlende Listen/Felder ergänzen (ältere Sicherungen, Demo-Daten aus früheren Versionen) */
 export function normalizeVenueData(d: VenueData): VenueData {
   const L = ['rooms', 'stations', 'tables', 'decor', 'combos', 'layouts', 'services', 'blocks', 'stays', 'reservations', 'audit', 'ingredients', 'dishes', 'menus',
-    'departments', 'positions', 'staff', 'shiftTemplates'] as const;
+    'departments', 'positions', 'staff', 'shiftTemplates', 'shifts', 'absences', 'publications'] as const;
   const out = { ...d } as VenueData;
   for (const k of L) (out as any)[k] = (d as any)[k] ?? [];
   out.venue = { ...d.venue, modules: d.venue?.modules ?? [] };
+  out.departments = out.departments.map(x => ({ ...x, guestsPerStaff: x.guestsPerStaff ?? null, minStaff: x.minStaff ?? 0 }));
+  out.staff = out.staff.map(x => ({ ...x, vacationDays: x.vacationDays ?? 0, shareToken: x.shareToken || newId() }));
+  out.shifts = out.shifts.map(x => ({ ...x, note: x.note ?? '', breakMin: x.breakMin ?? 0 }));
   out.reservations = out.reservations.map(r => (r.allergens ? r : { ...r, allergens: [] }));
   out.stays = out.stays.map(s => (s.allergens ? s : { ...s, allergens: [] }));
   out.tables = out.tables.map(x => (typeof x.chairs === 'boolean' ? x : { ...x, chairs: true }));
@@ -54,7 +58,7 @@ export function demoVenueData(venueId: string, name: string): VenueData {
     ],
     stations: [{ id: sA, name: 'Revier A', color: '#1f6feb' }, { id: sB, name: 'Revier B', color: '#e36209' }, { id: sC, name: 'Revier Stube', color: '#1a7f37' }],
     tables: [], decor: [], combos: [], layouts: [], services: defaultServices(), blocks: [], stays: [], reservations: [], audit: [],
-    ingredients: [], dishes: [], menus: [], departments: [], positions: [], staff: [], shiftTemplates: []
+    ingredients: [], dishes: [], menus: [], departments: [], positions: [], staff: [], shiftTemplates: [], shifts: [], absences: [], publications: []
   };
   const T = (roomId: string, nm: string, shape: TableShape, x: number, y: number, w: number, h: number, min: number, max: number, stationId: string, features: TableFeature[] = []) =>
     d.tables.push({ id: newId(), roomId, name: nm, shape, x, y, width: w, height: h, rotation: 0, minPersons: min, maxPersons: max, stationId, features, chairs: true } as DiningTable);
@@ -162,8 +166,8 @@ export function demoVenueData(venueId: string, name: string): VenueData {
 /** Demo-Dienstplan: Bereiche mit Positionen, Mitarbeitende (inkl. Saisonkräfte) und Schichtvorlagen.
  *  Bereichsleitungen (Benutzer) setzt das Demo-Repo, weil die Benutzer-IDs nur dort bekannt sind. */
 export function demoRoster(d: VenueData) {
-  const dep = (name: string, color: string, sort: number) => ({ id: newId(), name, color, sort, leadIds: [] as string[] });
-  const kueche = dep('Küche', '#e36209', 0), service = dep('Service', '#4F7BD1', 1), bar = dep('Bar', '#a371f7', 2), rez = dep('Rezeption', '#2da44e', 3);
+  const dep = (name: string, color: string, sort: number, guestsPerStaff: number | null, minStaff: number) => ({ id: newId(), name, color, sort, leadIds: [] as string[], guestsPerStaff, minStaff });
+  const kueche = dep('Küche', '#e36209', 0, 40, 2), service = dep('Service', '#4F7BD1', 1, 25, 2), bar = dep('Bar', '#a371f7', 2, null, 1), rez = dep('Rezeption', '#2da44e', 3, null, 1);
   d.departments = [kueche, service, bar, rez];
   const P: Record<string, string> = {};
   const pos = (departmentId: string, names: string[]) => names.forEach((name, sort) => { const id = newId(); P[name] = id; d.positions.push({ id, departmentId, name, sort }); });
@@ -174,7 +178,7 @@ export function demoRoster(d: VenueData) {
   const season = { contractFrom: addDays(today(), -60), contractTo: addDays(today(), 120) };
   const st = (name: string, short: string, departmentId: string, positions: string[], contract: Staff['contract'], weeklyHours: number, color: string, extra: Partial<Staff> = {}): Staff =>
     ({ id: newId(), name, short, departmentId, positionIds: positions.map(p => P[p]), contract, weeklyHours, contractFrom: null, contractTo: null,
-      phone: '', email: '', color, notes: '', active: true, ...(contract === 'saison' ? season : {}), ...extra });
+      phone: '', email: '', color, notes: '', active: true, vacationDays: contract === 'aushilfe' ? 0 : 26, shareToken: newId(), ...(contract === 'saison' ? season : {}), ...extra });
   d.staff = [
     st('Karl Pichler', 'KP', kueche.id, ['Küchenchef', 'Koch'], 'unbefristet', 40, '#e36209'),
     st('Lukas Mair', 'LM', kueche.id, ['Koch'], 'unbefristet', 40, '#bf8700'),
@@ -205,6 +209,37 @@ export function demoRoster(d: VenueData) {
     tp(rez.id, 'Früh', 'F', '07:00', '15:00', 30, '#2da44e'),
     tp(rez.id, 'Spät', 'S', '15:00', '23:00', 30, '#4F7BD1')
   ].map((x, i) => ({ ...x, sort: i }));
+  demoShifts(d);
+}
+
+/** Demo-Dienste für diese und nächste Woche (gleiche Vorlage je Person und Woche, 2 freie Tage),
+ *  Urlaub/Krankheit, eine offene Schicht und veröffentlichte Pläne für Küche und Service */
+function demoShifts(d: VenueData) {
+  const t0 = today(), mon = weekStart(t0);
+  const by = (name: string) => d.staff.find(s => s.name === name)!;
+  d.absences = [
+    { id: newId(), staffId: by('Sara Rossi').id, from: addDays(mon, 7), to: addDays(mon, 9), kind: 'urlaub', note: 'Familienfeier' },
+    { id: newId(), staffId: by('Jonas Egger').id, from: t0, to: addDays(t0, 1), kind: 'krank', note: '' }
+  ];
+  const earlier = new Date(Date.now() - 86400000).toISOString();
+  for (const dep of d.departments) {
+    const tpls = d.shiftTemplates.filter(x => x.departmentId === dep.id);
+    const people = d.staff.filter(s => s.active && s.departmentId === dep.id);
+    people.forEach((s, i) => {
+      for (let w = 0; w < 2; w++) {
+        const days = s.contract === 'aushilfe' ? [5, 6] : s.weeklyHours < 35 ? [0, 2, 4, 5] : [0, 1, 2, 3, 4, 5, 6].filter(k => k !== (i + w) % 7 && k !== (i + w + 3) % 7);
+        const t = s.contract === 'aushilfe' ? tpls.find(x => x.name === 'Abend') ?? tpls[0] : tpls[(i + w) % tpls.length];
+        for (const k of days) {
+          const date = addDays(mon, w * 7 + k);
+          if (d.absences.some(a => a.staffId === s.id && date >= a.from && date <= a.to)) continue;
+          d.shifts.push({ ...shiftFromTemplate(t, s.id, date, newId()), updatedAt: earlier });
+        }
+      }
+    });
+  }
+  const abend = d.shiftTemplates.find(x => x.name === 'Abend')!;
+  d.shifts.push({ ...shiftFromTemplate(abend, null, addDays(mon, 12), newId()), note: 'Hochzeit – Verstärkung gesucht', updatedAt: earlier });
+  d.publications = [d.departments[0], d.departments[1]].map(x => ({ id: newId(), departmentId: x.id, weekStart: mon, publishedAt: earlier, publishedBy: 'Anna (Admin)' }));
 }
 
 /** Demo-Küche: Zutaten, Gerichte und Menüs für Mittag- und Abendessen von vorgestern bis in einer Woche */

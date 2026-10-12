@@ -6,6 +6,7 @@ const DE: Record<string, string> = {
   'kurz.live': 'Live', 'kurz.zeit': 'Zeitleiste', 'kurz.res': 'Reserv.', 'kurz.hotel': 'Hotel', 'kurz.berichte': 'Berichte',
   'kurz.editor': 'Editor', 'kurz.settings': 'Einstellungen', 'kurz.menue': 'Menü', 'kurz.dienst': 'Dienste',
   // Dienstplan: Vertragsarten
+  urlaub: 'Urlaub', krank: 'Krank',
   unbefristet: 'Unbefristet', befristet: 'Befristet', saison: 'Saisonvertrag', lehrling: 'Lehrling', aushilfe: 'Aushilfe (Extra)',
   // Allergene (LMIV Anhang II)
   gluten: 'Gluten', krebstiere: 'Krebstiere', eier: 'Eier', fisch: 'Fisch', erdnuesse: 'Erdnüsse', soja: 'Soja', milch: 'Milch/Laktose',

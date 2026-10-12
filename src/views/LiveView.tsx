@@ -13,6 +13,7 @@ import { dropTableId, startDragOrTap } from '../ui/drag';
 import { FloorPlan, Legend } from '../ui/FloorPlan';
 import { saveChecked } from '../forms/actions';
 import { ResItem } from './ResItem';
+import { OnDutyPanel } from './OnDutyPanel';
 
 export function LiveView() {
   const d = useData();
@@ -77,6 +78,7 @@ export function LiveView() {
           <div className="kpi"><b>{freeNow}</b><small>Tische frei</small></div>
           <div className="kpi" style={unassigned ? { color: 'var(--danger)' } : undefined}><b>{unassigned}</b><small>ohne Tisch</small></div>
         </div>
+        {d.venue.modules.includes('dienstplan') && <OnDutyPanel date={ui.date} />}
         <div className="row" style={{ padding: '10px 12px', borderBottom: '1px solid var(--line)' }}>
           {edit && <><button className="btn primary" onClick={() => openDialog({ type: 'reservation', preset: {} })}><Plus />Reservierung</button>
             <button className="btn" onClick={() => openDialog({ type: 'walkin' })}><PersonStanding />Walk-in</button></>}
