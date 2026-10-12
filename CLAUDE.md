@@ -30,6 +30,7 @@ Dieselben Prüfungen laufen in GitHub Actions (`.github/workflows/ci.yml`) bei j
 - Rollenrechte (admin, empfang, service, kueche) werden per RLS + Trigger in der DB erzwungen; UI-Rechte in `src/domain/constants.ts` (`ROLE_VIEWS`, `canEdit`) passend halten.
 - Niemals Zugangsdaten committen: `.env.local` ist in `.gitignore`. Nur den anon/publishable Key verwenden, nie `service_role`.
 - Texte zentral in `src/lib/i18n.ts` ergänzen, wo sinnvoll.
+- Gäste-Speisekarte per QR (`/m/<Tisch-Schlüssel>`, öffentlich ohne Anmeldung): Seite in `src/guest/` (eigenes Layout, Texte DE/IT/EN in `src/guest/texts.ts`), Fachlogik `src/domain/guestMenu.ts`. Gäste greifen **nur** über die DB-Funktionen `guest_menu` / `guest_menu_save` (security definer, anon) zu – keine Tabellenrechte für `anon` vergeben. Prüfregeln dort und in `cleanCounts` gleich halten.
 - Design (JoKe): Schrift **Outfit** (`@fontsource-variable/outfit`), Logo-Dateien in `public/` aus dem JoKe-Logo-Paket. Icons im **Duoton-Stil**: immer aus `src/ui/icons.tsx` importieren (nicht direkt aus `lucide-react`); Icons ohne geschlossene Form dort mit `duo(...)` eine Fläche geben.
 
 ## Umgebungsvariablen

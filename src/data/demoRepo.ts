@@ -7,7 +7,9 @@ import { demoVenueData, newId, normalizeVenueData } from '../domain/demo';
 import { MAX_ROOMS_PER_TABLE } from '../domain/constants';
 import { occupies, tableConflicts, resEnd, resStart } from '../domain/logic';
 import { canPlanDept } from '../domain/roster';
-import type { Member, ModuleKey, Reservation, Role, Stay, VenueData } from '../domain/types';
+import type { Branding, Member, MenuChoice, ModuleKey, Reservation, Role, Stay, VenueData } from '../domain/types';
+import { buildGuestMenu, cleanCounts, newQrToken } from '../domain/guestMenu';
+import { today } from '../lib/time';
 import { ROSTER_KEYS, RepoError, type AuthUser, type ChangeEvent, type EntityKey, type EntityMap, type LiveState, type Membership, type Repo } from './repo';
 
 const KEY = 'tischplan.demo.v2';
@@ -21,7 +23,7 @@ export const DEMO_USERS: { email: string; name: string; role: Role }[] = [
   { email: 'kueche@demo.local', name: 'Karl (Küche)', role: 'kueche' }
 ];
 const WRITE: Record<Role, string[]> = {
-  admin: ['*'], empfang: ['reservations', 'stays', 'blocks', 'audit'], service: ['status', 'audit'], kueche: ['ingredients', 'dishes', 'menus']
+  admin: ['*'], empfang: ['reservations', 'stays', 'blocks', 'menuChoices', 'audit'], service: ['status', 'audit'], kueche: ['ingredients', 'dishes', 'menus', 'menuChoices']
 };
 
 export class DemoRepo implements Repo {
@@ -36,7 +38,17 @@ export class DemoRepo implements Repo {
 
   /* ---------- Speicher ---------- */
   private read(): DemoDb {
-    try { const raw = localStorage.getItem(KEY); if (raw) return JSON.parse(raw); } catch { /* leer */ }
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (raw) {
+        const db: DemoDb = JSON.parse(raw);
+        // ältere Demo-Daten: QR-Schlüssel der Tische einmalig vergeben und speichern (müssen stabil bleiben)
+        let added = false;
+        for (const d of Object.values(db.data)) for (const t of d.tables ?? []) if (!t.qrToken) { t.qrToken = newQrToken(); added = true; }
+        if (added) this.write(db);
+        return db;
+      }
+    } catch { /* leer */ }
     const id = newId();
     const db: DemoDb = { venues: [{ id, name: 'Hotel Sonnenhof – Restaurant' }], members: [], data: {} };
     db.members = DEMO_USERS.map((u, i) => ({ venueId: id, userId: 'demo-' + i, role: u.role, name: u.name, email: u.email }));
@@ -267,6 +279,41 @@ export class DemoRepo implements Repo {
   async uploadBackground(_venueId: string, file: File): Promise<string> {
     if (file.size > 1_500_000) throw new RepoError('other', 'Bild zu groß (max. 1,5 MB im Demo-Modus)');
     return await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result)); fr.onerror = () => rej(fr.error); fr.readAsDataURL(file); });
+  }
+
+  async setBranding(venueId: string, branding: Branding) {
+    this.guard(venueId, 'venue');
+    let name = '';
+    this.mutate(venueId, d => { d.venue.branding = { ...branding }; name = d.venue.name; });
+    this.emit([{ kind: 'venue', type: 'upsert', name, branding }]);
+  }
+
+  /* ---------- Gäste-Speisekarte (ohne Anmeldung, wie guest_menu / guest_menu_save in der DB) ---------- */
+  private guestVenue(token: string): VenueData | undefined {
+    return Object.values(this.read().data).find(d => d.tables?.some(t => t.qrToken === token));
+  }
+  async guestMenu(token: string) {
+    const d = this.guestVenue(token);
+    return d ? buildGuestMenu(normalizeVenueData(d), token, today()) : null;
+  }
+  async guestSave(token: string, menuId: string, stayId: string, counts: Record<string, number>) {
+    const found = this.guestVenue(token);
+    if (!found) throw new RepoError('other', 'Unbekannter Tisch');
+    const view = buildGuestMenu(normalizeVenueData(found), token, today())!;
+    const m = view.menus.find(x => x.id === menuId);
+    if (!m || m.state !== 'offen') throw new RepoError('other', 'Auswahl ist geschlossen');
+    const room = m.rooms.find(x => x.stayId === stayId);
+    if (!room) throw new RepoError('other', 'Zimmer sitzt nicht an diesem Tisch');
+    const res = cleanCounts(m.items, room.persons, counts);
+    if ('error' in res) throw new RepoError('other', res.error);
+    let row: MenuChoice | undefined;
+    this.mutate(found.venue.id, d => {
+      d.menuChoices ??= [];
+      const ex = d.menuChoices.find(c => c.menuId === menuId && c.stayId === stayId);
+      row = { id: ex?.id ?? newId(), menuId, stayId, counts: res.counts, updatedAt: new Date().toISOString() };
+      d.menuChoices = ex ? d.menuChoices.map(c => (c === ex ? row! : c)) : [...d.menuChoices, row];
+    });
+    this.emit([{ kind: 'menuChoices', type: 'upsert', row: row! }]);
   }
 
   /* ---------- Live-Aktualisierung ---------- */

@@ -20,6 +20,8 @@ export const BOARD_SERVICES: Record<Board, ServiceKind[]> = { UF: [], HP: ['aben
 export const ALLERGENS: Allergen[] = ['gluten', 'krebstiere', 'eier', 'fisch', 'erdnuesse', 'soja', 'milch', 'schalenfruechte', 'sellerie', 'senf', 'sesam', 'sulfite', 'lupinen', 'weichtiere'];
 export const allergenNo = (a: Allergen) => ALLERGENS.indexOf(a) + 1;
 export const COURSES: Course[] = ['vorspeise', 'suppe', 'zwischengang', 'hauptgang', 'beilage', 'dessert', 'sonstiges'];
+/** Gänge, die beim Anlegen/Bearbeiten eines Gerichts zur Auswahl stehen (Zwischengang und Beilage entfallen; alte Gerichte behalten ihren Gang) */
+export const DISH_COURSES: Course[] = COURSES.filter(c => c !== 'zwischengang' && c !== 'beilage');
 export const UNITS: Unit[] = ['g', 'ml', 'stk'];
 export const DIETS: Diet[] = ['vegetarisch', 'vegan'];
 export const ROLES: Role[] = ['admin', 'empfang', 'service', 'kueche'];

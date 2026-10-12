@@ -1,7 +1,8 @@
 /** Datenzugriff über Supabase (Postgres + Auth + Realtime + Storage) */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { MAX_ROOMS_PER_TABLE } from '../domain/constants';
-import type { ModuleKey, Reservation, Role, Stay, VenueData } from '../domain/types';
+import type { Branding, ModuleKey, Reservation, Role, Stay, VenueData } from '../domain/types';
+import type { GuestMenuData } from '../domain/guestMenu';
 import { addDays, today } from '../lib/time';
 import { entityFromDb, entityToDb, fromDb, KIND_OF, TABLE_OF, toDb } from './mapping';
 import { ENTITY_KEYS, ROSTER_KEYS, RepoError, type AuthUser, type ChangeEvent, type EntityKey, type EntityMap, type LiveState, type Membership, type Repo } from './repo';
@@ -15,6 +16,8 @@ function wrap(e: any): RepoError {
   const code: string = e?.code || '';
   if (msg.includes('reservation_tables_max_rooms'))
     return new RepoError('overlap', `An diesem Tisch sitzen in diesem Zeitraum bereits ${MAX_ROOMS_PER_TABLE} Zimmer. Bitte anderen Tisch wählen.`);
+  // Gäste-Speisekarte: verständlicher Text steht hinter dem Präfix
+  if (msg.includes('guest_menu: ')) return new RepoError('other', msg.slice(msg.indexOf('guest_menu: ') + 12));
   if (code === '23P01' || msg.includes('reservation_tables_no_overlap'))
     return new RepoError('overlap', 'Der Tisch ist in diesem Zeitraum bereits belegt (eine andere Reservierung wurde gerade gespeichert). Bitte anderen Tisch oder andere Zeit wählen.');
   if (code === '40001' || msg.includes('inzwischen von jemand anderem geändert'))
@@ -38,6 +41,8 @@ export class SupabaseRepo implements Repo {
   private signedOutCbs: (() => void)[] = [];
   /** false, solange die Dienstplan-Migration in der Datenbank noch fehlt */
   private rosterReady = true;
+  /** Tabelle menu_choices vorhanden (Migration Gäste-Speisekarte)? */
+  private choicesReady = true;
 
   constructor(url: string, key: string, headers?: Record<string, string>) {
     this.sb = createClient(url, key, {
@@ -99,7 +104,7 @@ export class SupabaseRepo implements Repo {
   async loadVenue(venueId: string, venueName: string, historyDays: number): Promise<VenueData> {
     const cutoff = addDays(today(), -historyDays);
     const byVenue = (q: any) => q.eq('venue_id', venueId).order('id');
-    const [rooms, stations, tables, decor, combos, layouts, services, blocks, stays, reservations, audit, venue, ingredients, dishes, menus, roster] = await Promise.all([
+    const [rooms, stations, tables, decor, combos, layouts, services, blocks, stays, reservations, audit, venue, ingredients, dishes, menus, roster, choices] = await Promise.all([
       this.all('rooms', byVenue), this.all('stations', byVenue), this.all('dining_tables', byVenue), this.all('decor', byVenue),
       this.all('table_combos', byVenue), this.all('layouts', byVenue), this.all('services', byVenue),
       this.all('table_blocks', q => byVenue(q).gte('date', cutoff)),
@@ -108,10 +113,10 @@ export class SupabaseRepo implements Repo {
       run<any[]>(this.sb.from('audit_log').select('*').eq('venue_id', venueId).order('ts', { ascending: false }).limit(300)),
       run<any>(this.sb.from('venues').select('*').eq('id', venueId).maybeSingle()),
       this.all('ingredients', byVenue), this.all('dishes', byVenue), this.all('menus', q => byVenue(q).gte('date', cutoff)),
-      this.loadRoster(venueId)
+      this.loadRoster(venueId), this.loadChoices(venueId)
     ]);
     return {
-      venue: { id: venueId, name: venue?.name ?? venueName, modules: this.rosterReady ? venue?.modules ?? [] : [] },
+      venue: { id: venueId, name: venue?.name ?? venueName, modules: this.rosterReady ? venue?.modules ?? [] : [], branding: venue?.branding ?? undefined },
       rooms: rooms.map(fromDb.rooms).sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name)),
       stations: stations.map(fromDb.stations), tables: tables.map(fromDb.tables), decor: decor.map(fromDb.decor),
       combos: combos.map(fromDb.combos), layouts: layouts.map(fromDb.layouts),
@@ -120,8 +125,22 @@ export class SupabaseRepo implements Repo {
       audit: audit.map(fromDb.audit),
       ingredients: ingredients.map(fromDb.ingredients).sort((a, b) => a.name.localeCompare(b.name, 'de')),
       dishes: dishes.map(fromDb.dishes).sort((a, b) => a.name.localeCompare(b.name, 'de')), menus: menus.map(fromDb.menus),
+      // nur Auswahl zu geladenen Menüs (ältere fallen weg)
+      menuChoices: choices.filter(c => menus.some(m => m.id === c.menuId)),
       ...roster
     };
+  }
+  /** Gäste-Auswahl der Menüs (QR); fehlt die Migration noch, bleibt die Liste leer */
+  private async loadChoices(venueId: string) {
+    try {
+      const rows = await this.all('menu_choices', q => q.eq('venue_id', venueId).order('id'));
+      this.choicesReady = true;
+      return rows.map(fromDb.menuChoices);
+    } catch (e: any) {
+      if (!/42P01|PGRST205|does not exist|Could not find the table/.test(String(e?.message) + (e?.code ?? ''))) throw e;
+      this.choicesReady = false;
+      return [];
+    }
   }
   /** Dienstplan-Stammdaten; fehlt die Migration noch, bleibt das Modul einfach aus */
   private async loadRoster(venueId: string) {
@@ -195,15 +214,27 @@ export class SupabaseRepo implements Repo {
     return this.sb.storage.from('floorplans').getPublicUrl(path).data.publicUrl;
   }
 
+  async setBranding(venueId: string, branding: Branding) {
+    await run(this.sb.from('venues').update({ branding }).eq('id', venueId));
+  }
+
+  /* ---------- Gäste-Speisekarte (ohne Anmeldung) ---------- */
+  async guestMenu(token: string) {
+    return (await run<GuestMenuData | null>(this.sb.rpc('guest_menu', { p_token: token }))) ?? null;
+  }
+  async guestSave(token: string, menuId: string, stayId: string, counts: Record<string, number>) {
+    await run(this.sb.rpc('guest_menu_save', { p_token: token, p_menu: menuId, p_stay: stayId, p_counts: counts }));
+  }
+
   /* ---------- Live-Aktualisierung ---------- */
   subscribe(venueId: string, onEvent: (e: ChangeEvent) => void, onState: (s: LiveState) => void) {
     onState('connecting');
     const ch = this.sb.channel(`venue-${venueId}-${crypto.randomUUID()}`);
-    const skip = this.rosterReady ? [] : ROSTER_KEYS.map(k => TABLE_OF[k]);
+    const skip = [...(this.rosterReady ? [] : ROSTER_KEYS.map(k => TABLE_OF[k])), ...(this.choicesReady ? [] : ['menu_choices'])];
     const tables = Object.values(TABLE_OF).filter(t => !skip.includes(t)).concat('venues');
     const handle = (p: any) => {
       const table: string = p.table;
-      if (table === 'venues') { if (p.new?.id === venueId) onEvent({ kind: 'venue', type: 'upsert', name: p.new.name, modules: this.rosterReady ? p.new.modules : undefined }); return; }
+      if (table === 'venues') { if (p.new?.id === venueId) onEvent({ kind: 'venue', type: 'upsert', name: p.new.name, modules: this.rosterReady ? p.new.modules : undefined, branding: p.new.branding ?? undefined }); return; }
       const kind = KIND_OF[table];
       if (!kind) return;
       if (p.eventType === 'DELETE') {

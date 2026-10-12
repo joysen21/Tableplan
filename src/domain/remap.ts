@@ -1,4 +1,5 @@
 /** Vergibt neue IDs für einen kompletten Datenstand (z. B. beim Einspielen einer Sicherung in einen anderen Betrieb) */
+import { newQrToken } from './guestMenu';
 import type { VenueData } from './types';
 
 export function remapIds(d: VenueData, newId: () => string): VenueData {
@@ -10,7 +11,8 @@ export function remapIds(d: VenueData, newId: () => string): VenueData {
     rooms: d.rooms.map(x => ({ ...x, id: m(x.id)! })),
     stations: d.stations.map(x => ({ ...x, id: m(x.id)! })),
     services: d.services.map(x => ({ ...x, id: m(x.id)! })),
-    tables: d.tables.map(x => ({ ...x, id: m(x.id)!, roomId: m(x.roomId)!, stationId: m(x.stationId) })),
+    // neuer QR-Schlüssel je Tisch (muss in der Datenbank eindeutig sein; alte QR-Codes gehören zum alten Betrieb)
+    tables: d.tables.map(x => ({ ...x, id: m(x.id)!, roomId: m(x.roomId)!, stationId: m(x.stationId), qrToken: newQrToken() })),
     decor: d.decor.map(x => ({ ...x, id: m(x.id)!, roomId: m(x.roomId)! })),
     combos: d.combos.map(x => ({ ...x, id: m(x.id)!, tableIds: mm(x.tableIds) })),
     layouts: d.layouts.map(x => ({ ...x, id: m(x.id)!, roomId: m(x.roomId)!, positions: Object.fromEntries(Object.entries(x.positions).map(([k, v]) => [m(k)!, v])) })),
@@ -21,6 +23,7 @@ export function remapIds(d: VenueData, newId: () => string): VenueData {
     ingredients: (d.ingredients ?? []).map(x => ({ ...x, id: m(x.id)! })),
     dishes: (d.dishes ?? []).map(x => ({ ...x, id: m(x.id)!, ingredients: x.ingredients.map(l => ({ ...l, ingredientId: m(l.ingredientId)! })) })),
     menus: (d.menus ?? []).map(x => ({ ...x, id: m(x.id)!, serviceId: m(x.serviceId)!, items: x.items.map(i => ({ ...i, dishId: m(i.dishId)! })) })),
+    menuChoices: [], // Gäste-Auswahl wird nicht übernommen
     // Bereichsleitungen sind Benutzer des alten Betriebs → im neuen Betrieb neu zuweisen
     departments: (d.departments ?? []).map(x => ({ ...x, id: m(x.id)!, leadIds: [] })),
     positions: (d.positions ?? []).map(x => ({ ...x, id: m(x.id)!, departmentId: m(x.departmentId)! })),

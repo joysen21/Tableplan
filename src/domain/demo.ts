@@ -1,6 +1,7 @@
 /** Demo-Daten: Hotelrestaurant mit 2 Räumen, 30 Tischen und einer Woche Reservierungen */
 import { OCCASIONS } from './constants';
 import { guessAllergens, snapshotItems } from './menu';
+import { menuCourses, menuRooms, newQrToken } from './guestMenu';
 import { planStay, resEnd, resStart, stayTableConflicts, suggestTables, tableBusy, turnTime } from './logic';
 import type { Allergen, Course, Dish, DiningTable, Ingredient, Menu, MenuItem, Reservation, Service, ShiftTemplate, Staff, Stay, TableFeature, TableShape, Unit, VenueData } from './types';
 import { addDays, fromMin, nowMin, toMin, today } from '../lib/time';
@@ -24,13 +25,13 @@ export function emptyVenueData(venueId: string, name: string): VenueData {
     venue: { id: venueId, name, modules: [] },
     rooms: [{ id: newId(), name: 'Restaurant', width: 1000, height: 650, backgroundUrl: null, sort: 0 }],
     stations: [], tables: [], decor: [], combos: [], layouts: [], services: defaultServices(), blocks: [], stays: [], reservations: [], audit: [],
-    ingredients: [], dishes: [], menus: [], departments: [], positions: [], staff: [], shiftTemplates: []
+    ingredients: [], dishes: [], menus: [], menuChoices: [], departments: [], positions: [], staff: [], shiftTemplates: []
   };
 }
 
 /** Fehlende Listen/Felder ergänzen (ältere Sicherungen, Demo-Daten aus früheren Versionen) */
 export function normalizeVenueData(d: VenueData): VenueData {
-  const L = ['rooms', 'stations', 'tables', 'decor', 'combos', 'layouts', 'services', 'blocks', 'stays', 'reservations', 'audit', 'ingredients', 'dishes', 'menus',
+  const L = ['rooms', 'stations', 'tables', 'decor', 'combos', 'layouts', 'services', 'blocks', 'stays', 'reservations', 'audit', 'ingredients', 'dishes', 'menus', 'menuChoices',
     'departments', 'positions', 'staff', 'shiftTemplates'] as const;
   const out = { ...d } as VenueData;
   for (const k of L) (out as any)[k] = (d as any)[k] ?? [];
@@ -38,6 +39,7 @@ export function normalizeVenueData(d: VenueData): VenueData {
   out.reservations = out.reservations.map(r => (r.allergens ? r : { ...r, allergens: [] }));
   out.stays = out.stays.map(s => (s.allergens ? s : { ...s, allergens: [] }));
   out.tables = out.tables.map(x => (typeof x.chairs === 'boolean' ? x : { ...x, chairs: true }));
+  out.tables = out.tables.map(x => (x.qrToken ? x : { ...x, qrToken: newQrToken() }));
   return out;
 }
 
@@ -47,17 +49,17 @@ export function demoVenueData(venueId: string, name: string): VenueData {
   const pick = <T,>(a: T[]): T => a[Math.floor(rnd() * a.length)];
   const r1 = newId(), r2 = newId(), sA = newId(), sB = newId(), sC = newId();
   const d: VenueData = {
-    venue: { id: venueId, name, modules: ['dienstplan'] },
+    venue: { id: venueId, name, modules: ['dienstplan'], branding: { title: 'Hotel Sonnenhof', welcome: 'Herzlich willkommen! Wählen Sie hier Ihr Menü – unsere Küche bereitet es frisch für Sie zu.', welcomeIt: 'Benvenuti! Scegliete qui il vostro menù – la nostra cucina lo prepara fresco per voi.', welcomeEn: 'Welcome! Choose your menu here – our kitchen prepares it fresh for you.', color: '#0F2347', logoUrl: null, coverUrl: null } },
     rooms: [
       { id: r1, name: 'Restaurant', width: 1000, height: 650, backgroundUrl: null, sort: 0 },
       { id: r2, name: 'Stube', width: 720, height: 500, backgroundUrl: null, sort: 1 }
     ],
     stations: [{ id: sA, name: 'Revier A', color: '#1f6feb' }, { id: sB, name: 'Revier B', color: '#e36209' }, { id: sC, name: 'Revier Stube', color: '#1a7f37' }],
     tables: [], decor: [], combos: [], layouts: [], services: defaultServices(), blocks: [], stays: [], reservations: [], audit: [],
-    ingredients: [], dishes: [], menus: [], departments: [], positions: [], staff: [], shiftTemplates: []
+    ingredients: [], dishes: [], menus: [], menuChoices: [], departments: [], positions: [], staff: [], shiftTemplates: []
   };
   const T = (roomId: string, nm: string, shape: TableShape, x: number, y: number, w: number, h: number, min: number, max: number, stationId: string, features: TableFeature[] = []) =>
-    d.tables.push({ id: newId(), roomId, name: nm, shape, x, y, width: w, height: h, rotation: 0, minPersons: min, maxPersons: max, stationId, features, chairs: true } as DiningTable);
+    d.tables.push({ id: newId(), roomId, name: nm, shape, x, y, width: w, height: h, rotation: 0, minPersons: min, maxPersons: max, stationId, features, chairs: true, qrToken: newQrToken() } as DiningTable);
   for (let i = 0; i < 6; i++) T(r1, 'T' + (i + 1), 'square', 110 + i * 140, 90, 72, 72, 2, 4, sA, ['fenster']);
   for (let i = 0; i < 5; i++) T(r1, 'T' + (i + 7), 'round', 130 + i * 160, 260, 92, 92, 4, 6, i < 3 ? sA : sB);
   for (let i = 0; i < 6; i++) T(r1, 'T' + (i + 12), 'square', 110 + i * 120, 420, 58, 58, 1, 2, sB, i === 0 ? ['rollstuhl'] : []);
@@ -155,6 +157,7 @@ export function demoVenueData(venueId: string, name: string): VenueData {
   const now = new Date().toISOString();
   d.reservations.forEach(r => { r.updatedAt = now; });
   demoKitchen(d);
+  demoGuestChoices(d);
   demoRoster(d);
   return d;
 }
@@ -229,8 +232,8 @@ export function demoKitchen(d: VenueData) {
   dish('salat', 'Bunter Blattsalat mit Senfdressing', 'Insalata mista', 'vorspeise', [['salat', 60], ['senf', 5], ['oel', 10]], ['vegan']);
   dish('speck', 'Speckbrettl mit Bauernbrot', 'Tagliere di speck', 'vorspeise', [['speck', 50], ['knödelbrot', 40]]);
   dish('gersten', 'Selleriecremesuppe', 'Crema di sedano', 'suppe', [['sellerie', 80], ['sahne', 40], ['brühe', 200], ['zwiebel', 20]], ['vegetarisch']);
-  dish('knödel', 'Spinatknödel mit Parmesan', 'Canederli agli spinaci', 'zwischengang', [['knödelbrot', 70], ['spinat', 50], ['ei', 0.5], ['milch', 40], ['parmesan', 15], ['butter', 15]], ['vegetarisch']);
-  dish('risotto', 'Steinpilzrisotto', 'Risotto ai porcini', 'zwischengang', [['reis', 80], ['steinpilz', 40], ['wein', 30], ['parmesan', 15], ['butter', 15], ['brühe', 250]], ['vegetarisch']);
+  dish('knödel', 'Spinatknödel mit Parmesan', 'Canederli agli spinaci', 'vorspeise', [['knödelbrot', 70], ['spinat', 50], ['ei', 0.5], ['milch', 40], ['parmesan', 15], ['butter', 15]], ['vegetarisch']);
+  dish('risotto', 'Steinpilzrisotto', 'Risotto ai porcini', 'vorspeise', [['reis', 80], ['steinpilz', 40], ['wein', 30], ['parmesan', 15], ['butter', 15], ['brühe', 250]], ['vegetarisch']);
   dish('schnitzel', 'Wiener Schnitzel mit Petersilkartoffeln', 'Cotoletta alla viennese', 'hauptgang', [['kalb', 160], ['mehl', 20], ['ei', 0.5], ['brösel', 40], ['butter', 30], ['kartoffel', 200]]);
   dish('saibling', 'Saiblingsfilet auf Gemüse', 'Filetto di salmerino', 'hauptgang', [['saibling', 150], ['karotte', 80], ['sellerie', 40], ['butter', 15], ['kartoffel', 150]]);
   dish('tafelspitz', 'Tafelspitz mit Wurzelgemüse', 'Bollito di manzo', 'hauptgang', [['rind', 180], ['karotte', 80], ['sellerie', 40], ['zwiebel', 30], ['kartoffel', 150]]);
@@ -249,4 +252,22 @@ export function demoKitchen(d: VenueData) {
     menus.push({ id: newId(), date: addDays(t0, dd), serviceId: svc.id, portions: null, bufferPct: 10, notes: '', items: snapshotItems(d, items) });
   }
   d.menus = menus;
+}
+
+/** Gäste-Speisekarte (QR): Menüs von heute und morgen sind für Gäste offen, rund die Hälfte der Zimmer hat heute schon gewählt */
+export function demoGuestChoices(d: VenueData) {
+  const t0 = today();
+  d.menuChoices = [];
+  for (const m of d.menus) if (m.date === t0 || m.date === addDays(t0, 1)) m.ordering = 'offen';
+  for (const m of d.menus.filter(x => x.date === t0)) {
+    menuRooms(d, m).forEach((x, i) => {
+      if (i % 2) return;
+      const counts: Record<string, number> = {};
+      for (const c of menuCourses(m.items)) {
+        const list = m.items.filter(it => it.course === c);
+        for (let p = 0; p < x.persons; p++) { const it = list[(p + i) % list.length]; counts[it.dishId] = (counts[it.dishId] ?? 0) + 1; }
+      }
+      d.menuChoices.push({ id: newId(), menuId: m.id, stayId: x.stay.id, counts });
+    });
+  }
 }

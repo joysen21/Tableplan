@@ -15,7 +15,8 @@ export type Dialog =
   | { type: 'dish'; dish?: Dish }
   | { type: 'ingredient'; ing?: Ingredient; back?: { type: 'dish'; dish: Dish } }
   | { type: 'staff'; staff?: Staff; departmentId?: string }
-  | { type: 'shifttemplate'; tpl?: ShiftTemplate; departmentId?: string };
+  | { type: 'shifttemplate'; tpl?: ShiftTemplate; departmentId?: string }
+  | { type: 'qrprint' };
 
 /** seq zählt jedes Öffnen – damit startet ein neuer Dialog auch nach einem Anzeigefehler sauber */
 interface DialogState { dialog: Dialog | null; seq: number; open: (d: Dialog) => void; close: () => void }
