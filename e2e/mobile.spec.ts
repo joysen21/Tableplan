@@ -1,5 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
-import { goView, loginDemo, VIEWS } from './helpers';
+import type { Page } from '@playwright/test';
+import { expect, test, goView, loginDemo, VIEWS } from './helpers';
 
 /** Handy-Tests (Projekt „mobile“). Tests mit test.fail() dokumentieren bekannte Probleme aus dem
  *  Ist-Zustand – sie werden im Design-Umbau behoben und dann zu normalen Tests. */
@@ -136,6 +136,16 @@ test('Live: Reservierung antippen öffnet sie als Blatt von unten mit sichtbaren
 
 test('Live: freien Tisch antippen und Reservierung ohne Tisch dort platzieren', async ({ page }) => {
   await loginDemo(page);
+  // Reservierungen ohne Tisch heute Abend offen halten – sonst sind sie zu später Testuhrzeit schon „abgeschlossen“
+  await page.evaluate(() => {
+    const db = JSON.parse(localStorage.getItem('tischplan.demo.v2')!);
+    const venue = Object.values(db.data)[0] as any;
+    const dinner = venue.services.find((s: any) => s.name === 'Abendessen');
+    const day = new Date().toLocaleDateString('sv-SE');
+    for (const r of venue.reservations) if (r.date === day && r.serviceId === dinner.id && !r.tableIds.length) r.status = 'bestaetigt';
+    localStorage.setItem('tischplan.demo.v2', JSON.stringify(db));
+  });
+  await page.reload();
   await evening(page, 'Plan');
   await page.getByLabel('Uhrzeit').fill('18:00');
   const id = await freeDinnerTable(page);

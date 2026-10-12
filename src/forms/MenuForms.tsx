@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { ListChecks, Plus, Trash2, X } from '../ui/icons';
 import { useNavigate } from 'react-router-dom';
 import { newId } from '../domain/demo';
-import { COURSES, DIETS, UNITS, canEditMenu } from '../domain/constants';
+import { COURSES, DIETS, DISH_COURSES, UNITS, canEditMenu } from '../domain/constants';
 import { byId, tableNames } from '../domain/logic';
 import {
   allergenWarnings, type AllergenWarning, dishAllergens, dishPlans, dishUsage, findMenu, fmtQty, ingredientUsage, itemAllergens, itemName, itemShares, menuPortions, snapshotItems
@@ -18,6 +18,7 @@ import { useUi } from '../store/ui';
 import { closeDialog, openDialog } from '../store/dialogs';
 import { AllergenNos, AllergenPicker } from '../ui/AllergenPicker';
 import { Modal } from '../ui/Modal';
+import { GuestChoicePanel } from './GuestMenuForms';
 import { confirmDialog, toast } from '../ui/notify';
 
 const pct = (x: number) => Math.round(x * 100);
@@ -32,7 +33,7 @@ export function MenuEditor({ date, serviceId }: { date: string; serviceId: strin
   const existing = findMenu(d, date, serviceId);
   const svc = byId(d.services, serviceId);
   const [m, setM] = useState<Menu>(() => existing ? structuredClone(existing)
-    : { id: newId(), date, serviceId, portions: null, bufferPct: 10, notes: '', items: [] });
+    : { id: newId(), date, serviceId, portions: null, bufferPct: 10, notes: '', items: [], ordering: 'aus' });
   const [busy, setBusy] = useState(false);
   const upd = (p: Partial<Menu>) => setM(prev => ({ ...prev, ...p }));
   /** Anteil setzen; bei genau zwei Gerichten im Gang bekommt das andere den Rest auf 100 % */
@@ -94,7 +95,7 @@ export function MenuEditor({ date, serviceId }: { date: string; serviceId: strin
                     {idx.length > 1 && <label className="share">Anteil %
                       <input type="number" min={0} max={100} placeholder={String(pct(shares[i]))} value={it.share ?? ''}
                         onChange={e => setShare(i, e.target.value === '' ? null : Math.min(100, Math.max(0, +e.target.value)))} /></label>}
-                    <span className="muted portions">{plans[i]?.portions ?? 0} Port.</span>
+                    <span className="muted portions" title={plans[i]?.chosen ? `${plans[i].chosen} von Gästen per QR gewählt` : undefined}>{plans[i]?.portions ?? 0} Port.{plans[i]?.chosen ? <small> ({plans[i].chosen} gewählt)</small> : null}</span>
                     {!ro && <button className="btn small icon ghost" aria-label="Gericht entfernen" title="Entfernen" onClick={() => upd({ items: m.items.filter((_, j) => j !== i) })}><X /></button>}
                   </div>
                 );
@@ -111,6 +112,7 @@ export function MenuEditor({ date, serviceId }: { date: string; serviceId: strin
         {!ro && <p className="muted" style={{ fontSize: 12, margin: '4px 0 0' }}>Fehlt ein Gericht? Im Reiter „Gerichte“ anlegen.</p>}
         <label className="mt8">Notiz für die Küche<textarea value={m.notes} onChange={e => upd({ notes: e.target.value })} /></label>
       </fieldset>
+      <GuestChoicePanel m={m} ro={ro} onOrdering={ordering => upd({ ordering })} />
 
       <h4 style={{ margin: '14px 0 6px' }}>Allergene der Gäste</h4>
       {warnings.length ? <WarningList d={d} warnings={warnings} /> : <p className="muted">Keine Konflikte mit den Allergenen der Gäste.</p>}
@@ -158,7 +160,7 @@ export function DishForm({ dish }: { dish?: Dish }) {
       <fieldset className="plain" disabled={ro}>
         <div className="grid2">
           <label>Name *<input value={x.name} autoFocus={isNew} onChange={e => upd({ name: e.target.value })} /></label>
-          <label>Gang<select value={x.course} onChange={e => upd({ course: e.target.value as Course })}>{COURSES.map(c => <option key={c} value={c}>{t(c)}</option>)}</select></label>
+          <label>Gang<select value={x.course} onChange={e => upd({ course: e.target.value as Course })}>{[...DISH_COURSES, ...(DISH_COURSES.includes(x.course) ? [] : [x.course])].map(c => <option key={c} value={c}>{t(c)}</option>)}</select></label>
           <label>Name italienisch<input value={x.nameIt} onChange={e => upd({ nameIt: e.target.value })} /></label>
           <label>Name englisch<input value={x.nameEn} onChange={e => upd({ nameEn: e.target.value })} /></label>
         </div>

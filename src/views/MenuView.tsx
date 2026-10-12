@@ -5,6 +5,7 @@ import { newId } from '../domain/demo';
 import { COURSES, canEditMenu } from '../domain/constants';
 import { dishAllergens, allergenWarnings, copyPreviousWeek, findMenu, ingredientUsage, itemAllergens, itemName, menuPortions, weekDates } from '../domain/menu';
 import type { Menu, Service } from '../domain/types';
+import { choiceSummary, orderingOf } from '../domain/guestMenu';
 import { t } from '../lib/i18n';
 import { addDays, fmtShort, today } from '../lib/time';
 import { useApp } from '../store/app';
@@ -103,6 +104,7 @@ function MenuCell({ date, svc, menu, edit }: { date: string; svc: Service; menu?
   const warn = allergenWarnings(d, menu);
   const guests = new Set(warn.map(w => w.r.id)).size;
   const problems = warn.some(w => !w.alternatives.length);
+  const qr = choiceSummary(d, menu);
   return (
     <button className="mw-cell" onClick={open} aria-label={`Menü ${svc.name} ${fmtShort(date)}`}>
       <span className="mw-svc">{svc.name}</span>
@@ -113,6 +115,7 @@ function MenuCell({ date, svc, menu, edit }: { date: string; svc: Service; menu?
       ))}
       <span className="mw-foot">
         <span>{por.total} Port.{menu.portions == null ? '' : ' (fest)'}</span>
+        {orderingOf(menu) !== 'aus' && qr.rooms > 0 && <span className={'badge' + (qr.chosenRooms < qr.rooms && orderingOf(menu) === 'offen' ? ' warn' : '')} title={`Gäste-Auswahl per QR ${orderingOf(menu) === 'offen' ? 'offen' : 'geschlossen'}: ${qr.chosenRooms} von ${qr.rooms} Zimmern gewählt`}>QR {qr.chosenRooms}/{qr.rooms}{orderingOf(menu) === 'geschlossen' ? ' ✓' : ''}</span>}
         {guests > 0 && <span className={'badge ' + (problems ? 'warn' : '')} title={`${guests} Gäste mit Allergenen in diesem Menü${problems ? ' – teils ohne Alternative' : ''}`}>⚠ {guests}</span>}
       </span>
     </button>

@@ -4,6 +4,7 @@ import { StayForm, StayImport, StayTablePicker } from './HotelForms';
 import { ReservationForm } from './ReservationForm';
 import { DishForm, IngredientForm, MenuEditor } from './MenuForms';
 import { AbsenceForm, ShiftForm, ShiftTemplateForm, StaffForm } from './RosterForms';
+import { QrPrint } from './GuestMenuForms';
 import { BlockDialog, ResInfo, TablePopup, WalkIn } from './TableDialogs';
 
 /** Rendert den jeweils offenen Dialog */
@@ -31,5 +32,6 @@ function OpenDialog({ dlg }: { dlg: Dialog }) {
     case 'shifttemplate': return <ShiftTemplateForm key={dlg.tpl?.id ?? 'new'} tpl={dlg.tpl} departmentId={dlg.departmentId} />;
     case 'shift': return <ShiftForm key={dlg.shift?.id ?? 'new'} shift={dlg.shift} preset={dlg.preset} />;
     case 'absence': return <AbsenceForm key={dlg.absence?.id ?? 'new'} absence={dlg.absence} preset={dlg.preset} />;
+    case 'qrprint': return <QrPrint />;
   }
 }

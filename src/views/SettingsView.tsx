@@ -13,6 +13,7 @@ import { useApp } from '../store/app';
 import { useData } from '../store/hooks';
 import { confirmDialog, toast } from '../ui/notify';
 import { ModulesPanel } from './RosterSettings';
+import { BrandingPanel } from '../forms/GuestMenuForms';
 import { APP_NAME, EDITION } from '../lib/edition';
 
 function Field({ label, value, type = 'text', onCommit, placeholder }: { label: string; value: string | number; type?: string; placeholder?: string; onCommit: (v: string) => void }) {
@@ -114,6 +115,7 @@ export function SettingsView() {
         </>}
       </div></div>
       <ModulesPanel />
+      {!roster && <BrandingPanel />}
       </div>
       <div>
         <div className="panel"><h3>Benutzer & Rollen</h3><div className="body"><Members /></div></div>

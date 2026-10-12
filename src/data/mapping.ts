@@ -1,7 +1,7 @@
 /** Umwandlung Datenbankzeile (snake_case) ↔ Fachobjekt (camelCase) */
 import type {
-  Absence, AuditEntry, Decor, Department, DiningTable, Dish, Ingredient, Layout, Member, Menu, Position, Publication, Reservation, Room, Service, Shift, ShiftTemplate,
-  Staff, Station, Stay, TableBlock, TableCombo
+  Absence, AuditEntry, Decor, Department, DiningTable, Dish, Ingredient, Layout, Member, Menu, MenuChoice, Position, Publication, Reservation, Room, Service, Shift,
+  ShiftTemplate, Staff, Station, Stay, TableBlock, TableCombo
 } from '../domain/types';
 import type { EntityKey, EntityMap } from './repo';
 import { hhmm } from '../lib/time';
@@ -10,7 +10,7 @@ type Row = Record<string, any>;
 
 export const TABLE_OF: Record<EntityKey | 'stays' | 'reservations' | 'reservation_tables' | 'audit', string> = {
   rooms: 'rooms', stations: 'stations', tables: 'dining_tables', decor: 'decor', combos: 'table_combos', layouts: 'layouts',
-  services: 'services', blocks: 'table_blocks', ingredients: 'ingredients', dishes: 'dishes', menus: 'menus',
+  services: 'services', blocks: 'table_blocks', ingredients: 'ingredients', dishes: 'dishes', menus: 'menus', menuChoices: 'menu_choices',
   departments: 'departments', positions: 'positions', staff: 'staff', shiftTemplates: 'shift_templates',
   shifts: 'shifts', absences: 'absences', publications: 'roster_publications', stays: 'stays', reservations: 'reservations', reservation_tables: 'reservation_tables', audit: 'audit_log'
 };
@@ -22,7 +22,7 @@ export const fromDb = {
   stations: (r: Row): Station => ({ id: r.id, name: r.name, color: r.color }),
   tables: (r: Row): DiningTable => ({
     id: r.id, roomId: r.room_id, name: r.name, shape: r.shape, x: +r.x, y: +r.y, width: +r.width, height: +r.height, rotation: +r.rotation || 0,
-    minPersons: r.min_persons, maxPersons: r.max_persons, stationId: r.station_id ?? null, features: r.features ?? [], chairs: r.show_chairs ?? true
+    minPersons: r.min_persons, maxPersons: r.max_persons, stationId: r.station_id ?? null, features: r.features ?? [], chairs: r.show_chairs ?? true, qrToken: r.qr_token ?? undefined
   }),
   decor: (r: Row): Decor => ({ id: r.id, roomId: r.room_id, kind: r.kind, x: +r.x, y: +r.y, width: +r.width, height: +r.height, rotation: +r.rotation || 0, label: r.label ?? '' }),
   combos: (r: Row): TableCombo => ({ id: r.id, name: r.name, tableIds: r.table_ids ?? [] }),
@@ -51,8 +51,10 @@ export const fromDb = {
   }),
   menus: (r: Row): Menu => ({
     id: r.id, date: r.date, serviceId: r.service_id, portions: r.portions ?? null, bufferPct: r.buffer_pct ?? 0, notes: r.notes ?? '',
-    items: (r.items ?? []).map((i: Row) => ({ course: i.course, dishId: i.dishId, share: i.share ?? null, name: i.name ?? '', allergens: i.allergens ?? [] }))
+    items: (r.items ?? []).map((i: Row) => ({ course: i.course, dishId: i.dishId, share: i.share ?? null, name: i.name ?? '', allergens: i.allergens ?? [] })),
+    ordering: r.ordering ?? 'aus'
   }),
+  menuChoices: (r: Row): MenuChoice => ({ id: r.id, menuId: r.menu_id, stayId: r.stay_id, counts: r.counts ?? {}, updatedAt: r.updated_at }),
   departments: (r: Row): Department => ({
     id: r.id, name: r.name, color: r.color ?? '#4F7BD1', sort: r.sort ?? 0, leadIds: r.lead_ids ?? [], guestsPerStaff: r.guests_per_staff ?? null, minStaff: r.min_staff ?? 0
   }),
@@ -86,7 +88,8 @@ export const toDb = {
   stations: (x: Station, v: string) => ({ id: x.id, venue_id: v, name: x.name, color: x.color }),
   tables: (x: DiningTable, v: string) => ({
     id: x.id, venue_id: v, room_id: x.roomId, name: x.name, shape: x.shape, x: x.x, y: x.y, width: x.width, height: x.height, rotation: x.rotation,
-    min_persons: x.minPersons, max_persons: x.maxPersons, station_id: x.stationId, features: x.features, show_chairs: x.chairs !== false
+    min_persons: x.minPersons, max_persons: x.maxPersons, station_id: x.stationId, features: x.features, show_chairs: x.chairs !== false,
+    ...(x.qrToken ? { qr_token: x.qrToken } : {})
   }),
   decor: (x: Decor, v: string) => ({ id: x.id, venue_id: v, room_id: x.roomId, kind: x.kind, x: x.x, y: x.y, width: x.width, height: x.height, rotation: x.rotation, label: x.label }),
   combos: (x: TableCombo, v: string) => ({ id: x.id, venue_id: v, name: x.name, table_ids: x.tableIds }),
@@ -101,8 +104,9 @@ export const toDb = {
     id: x.id, venue_id: v, name: x.name, name_it: x.nameIt, name_en: x.nameEn, course: x.course, diet: x.diet, notes: x.notes, ingredients: x.ingredients
   }),
   menus: (x: Menu, v: string) => ({
-    id: x.id, venue_id: v, date: x.date, service_id: x.serviceId, portions: x.portions, buffer_pct: x.bufferPct, notes: x.notes, items: x.items
+    id: x.id, venue_id: v, date: x.date, service_id: x.serviceId, portions: x.portions, buffer_pct: x.bufferPct, notes: x.notes, items: x.items, ordering: x.ordering ?? 'aus'
   }),
+  menuChoices: (x: MenuChoice, v: string) => ({ id: x.id, venue_id: v, menu_id: x.menuId, stay_id: x.stayId, counts: x.counts }),
   departments: (x: Department, v: string) => ({
     id: x.id, venue_id: v, name: x.name, color: x.color, sort: x.sort, lead_ids: x.leadIds, guests_per_staff: x.guestsPerStaff || null, min_staff: x.minStaff || 0
   }),

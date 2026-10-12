@@ -3,13 +3,16 @@
  * und der Demo-Implementierung (Daten im Browser) erfüllt wird.
  */
 import type {
-  Absence, AuditEntry, Decor, Department, DiningTable, Dish, Ingredient, Layout, Member, Menu, ModuleKey, OnDuty, Position, Publication, PublicRoster, Reservation,
-  Role, Room, RosterSettings, Service, Shift, ShiftTemplate, Staff, Station, Stay, TableBlock, TableCombo, VenueData
+  Absence, AuditEntry, Branding, Decor, Department, DiningTable, Dish, Ingredient, Layout, Member, Menu, MenuChoice, ModuleKey, OnDuty, Position, Publication,
+  PublicRoster, Reservation, Role, Room, RosterSettings, Service, Shift, ShiftTemplate, Staff, Station, Stay, TableBlock, TableCombo, VenueData
 } from '../domain/types';
+import type { GuestMenuData } from '../domain/guestMenu';
 
 export interface EntityMap {
   rooms: Room; stations: Station; tables: DiningTable; decor: Decor; combos: TableCombo; layouts: Layout; services: Service; blocks: TableBlock;
   ingredients: Ingredient; dishes: Dish; menus: Menu;
+  /** Gäste-Auswahl per QR (nicht in ENTITY_KEYS: wird beim Einspielen einer Sicherung nicht übernommen) */
+  menuChoices: MenuChoice;
   departments: Department; positions: Position; staff: Staff; shiftTemplates: ShiftTemplate;
   shifts: Shift; absences: Absence; publications: Publication;
 }
@@ -31,7 +34,7 @@ export type ChangeEvent =
   | { kind: 'reservations'; type: 'upsert'; row: Omit<Reservation, 'tableIds'> }
   | { kind: 'reservation_tables'; type: 'link' | 'unlink'; reservationId: string; tableId: string }
   | { kind: 'audit'; type: 'insert'; row: AuditEntry }
-  | { kind: 'venue'; type: 'upsert'; name: string; modules?: ModuleKey[]; rosterSettings?: Partial<RosterSettings> };
+  | { kind: 'venue'; type: 'upsert'; name: string; modules?: ModuleKey[]; rosterSettings?: Partial<RosterSettings>; branding?: Branding };
 
 export type LiveState = 'connecting' | 'live' | 'down';
 
@@ -81,6 +84,11 @@ export interface Repo {
   /** Kompletten Datenstand ersetzen (Einrichtung, Demo-Daten, Sicherung einspielen) */
   replaceAll(venueId: string, data: VenueData): Promise<void>;
   uploadBackground(venueId: string, file: File): Promise<string>;
+  /** Erscheinungsbild der Gäste-Speisekarte (nur Admin) */
+  setBranding(venueId: string, branding: Branding): Promise<void>;
+  // Gäste-Speisekarte per QR – ohne Anmeldung, nur mit dem Tisch-Schlüssel
+  guestMenu(token: string): Promise<GuestMenuData | null>;
+  guestSave(token: string, menuId: string, stayId: string, counts: Record<string, number>): Promise<void>;
   // Live-Aktualisierung
   subscribe(venueId: string, onEvent: (e: ChangeEvent) => void, onState: (s: LiveState) => void): () => void;
 }

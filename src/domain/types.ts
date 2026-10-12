@@ -17,7 +17,10 @@ export type TableState = 'frei' | 'reserviert' | 'bald' | 'platziert' | 'rechnun
 
 export type ModuleKey = 'dienstplan';
 /** modules: zugeschaltete Zusatzmodule des Betriebs */
-export interface Venue { id: string; name: string; modules: ModuleKey[]; rosterSettings?: Partial<RosterSettings> }
+/** Erscheinungsbild der Gäste-Speisekarte (QR): Logo, Titelbild, Akzentfarbe, Titel und Begrüßung */
+/** welcomeIt/welcomeEn optional – fehlt die Übersetzung, erscheint der deutsche Text */
+export interface Branding { title: string; welcome: string; welcomeIt?: string; welcomeEn?: string; color: string; logoUrl: string | null; coverUrl: string | null }
+export interface Venue { id: string; name: string; modules: ModuleKey[]; rosterSettings?: Partial<RosterSettings>; branding?: Branding }
 
 export interface Member { userId: string; role: Role; name: string; email: string }
 
@@ -31,6 +34,8 @@ export interface DiningTable {
   minPersons: number; maxPersons: number; stationId: string | null; features: TableFeature[];
   /** Stühle im Raumplan zeichnen (aus = z. B. Stehtisch, Bar, Bank ohne Stühle) */
   chairs: boolean;
+  /** geheimer Schlüssel im QR-Code des Tisches (Gäste-Speisekarte) */
+  qrToken?: string;
 }
 
 export interface Decor { id: string; roomId: string; kind: DecorKind; x: number; y: number; width: number; height: number; rotation: number; label: string }
@@ -75,7 +80,11 @@ export interface Dish {
  *  name/allergens: Momentaufnahme beim Speichern, damit alte Menüs unverändert bleiben. */
 export interface MenuItem { course: Course; dishId: string; share: number | null; name: string; allergens: Allergen[] }
 /** Menü eines Service an einem Tag. portions = null → automatisch aus den Reservierungen */
-export interface Menu { id: string; date: string; serviceId: string; portions: number | null; bufferPct: number; notes: string; items: MenuItem[] }
+/** Gäste-Auswahl per QR: aus = Gäste sehen das Menü nicht, offen = Gäste wählen, geschlossen = nur anzeigen */
+export type MenuOrdering = 'aus' | 'offen' | 'geschlossen';
+export interface Menu { id: string; date: string; serviceId: string; portions: number | null; bufferPct: number; notes: string; items: MenuItem[]; ordering?: MenuOrdering }
+/** Auswahl eines Hotelzimmers für ein Menü: Anzahl je Gericht (dishId → Anzahl) */
+export interface MenuChoice { id: string; menuId: string; stayId: string; counts: Record<string, number>; updatedAt?: string }
 
 /* ---------- Dienstplan ---------- */
 export type ContractType = 'unbefristet' | 'befristet' | 'saison' | 'lehrling' | 'aushilfe';
@@ -129,7 +138,7 @@ export interface VenueData {
   rooms: Room[]; stations: Station[]; tables: DiningTable[]; decor: Decor[];
   combos: TableCombo[]; layouts: Layout[]; services: Service[]; blocks: TableBlock[];
   stays: Stay[]; reservations: Reservation[]; audit: AuditEntry[];
-  ingredients: Ingredient[]; dishes: Dish[]; menus: Menu[];
+  ingredients: Ingredient[]; dishes: Dish[]; menus: Menu[]; menuChoices: MenuChoice[];
   departments: Department[]; positions: Position[]; staff: Staff[]; shiftTemplates: ShiftTemplate[];
   shifts: Shift[]; absences: Absence[]; publications: Publication[];
 }

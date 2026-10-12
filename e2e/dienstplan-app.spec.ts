@@ -1,5 +1,4 @@
-import { expect, test } from '@playwright/test';
-import { loginDemo } from './helpers';
+import { expect, test, loginDemo } from './helpers';
 
 /** Eigenständige Dienstplan-App (Build mit VITE_APP=dienstplan, Port 4174) */
 

@@ -17,7 +17,8 @@ export type Dialog =
   | { type: 'staff'; staff?: Staff; departmentId?: string }
   | { type: 'shifttemplate'; tpl?: ShiftTemplate; departmentId?: string }
   | { type: 'shift'; shift?: Shift; preset?: Partial<Shift> }
-  | { type: 'absence'; absence?: Absence; preset?: Partial<Absence> };
+  | { type: 'absence'; absence?: Absence; preset?: Partial<Absence> }
+  | { type: 'qrprint' };
 
 /** seq zählt jedes Öffnen – damit startet ein neuer Dialog auch nach einem Anzeigefehler sauber */
 interface DialogState { dialog: Dialog | null; seq: number; open: (d: Dialog) => void; close: () => void }

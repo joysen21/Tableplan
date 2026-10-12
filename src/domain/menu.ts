@@ -1,6 +1,7 @@
 /** Menüverwaltung: Allergene ableiten, Portionen, Zutatenliste, Allergen-Abgleich mit Gästen – reine Fachlogik */
 import { ALLERGENS, COURSES } from './constants';
 import { byId, isCancelled, persons, resStart } from './logic';
+import { choiceSummary } from './guestMenu';
 import type { Allergen, Course, Dish, Ingredient, Menu, MenuItem, Reservation, Unit, VenueData } from './types';
 import { t } from '../lib/i18n';
 import { addDays, today } from '../lib/time';
@@ -62,17 +63,24 @@ export function itemShares(items: MenuItem[]): number[] {
   return out;
 }
 
-export interface DishPlan { item: MenuItem; dish: Dish | undefined; portions: number; lines: { ingredient: Ingredient; qty: number }[] }
+/** chosen = von Hotelgästen per QR gewählt (fest), der Rest der Portionen ist nach Anteilen geschätzt */
+export interface DishPlan { item: MenuItem; dish: Dish | undefined; portions: number; chosen: number; lines: { ingredient: Ingredient; qty: number }[] }
 export interface IngredientTotal { ingredient: Ingredient; qty: number; uses: { dish: string; qty: number }[] }
 
-/** Portionen und Zutatenmengen je Gericht eines Menüs (Portionen je Gericht aufgerundet) */
+/**
+ * Portionen und Zutatenmengen je Gericht eines Menüs (Portionen je Gericht aufgerundet).
+ * Haben Hotelzimmer per QR gewählt, zählen deren Gerichte fest; nur die übrigen Gäste (+ Puffer) werden nach Anteilen verteilt.
+ */
 export function dishPlans(d: VenueData, m: Menu, total = menuPortions(d, m).total): DishPlan[] {
   const shares = itemShares(m.items);
+  const ch = choiceSummary(d, m);
+  const rest = Math.max(0, total - ch.chosenPersons);
   return m.items.map((item, i) => {
     const dish = byId(d.dishes, item.dishId);
-    const portions = Math.ceil(total * shares[i] - 1e-9);
+    const chosen = ch.counts[item.dishId] ?? 0;
+    const portions = chosen + Math.ceil(rest * shares[i] - 1e-9);
     const lines = (dish?.ingredients ?? []).flatMap(l => { const ing = byId(d.ingredients, l.ingredientId); return ing ? [{ ingredient: ing, qty: l.qty * portions }] : []; });
-    return { item, dish, portions, lines };
+    return { item, dish, portions, chosen, lines };
   });
 }
 
@@ -165,7 +173,8 @@ export function copyPreviousWeek(d: VenueData, date: string, newId: () => string
   const out: Menu[] = [];
   for (const day of weekDates(date)) for (const src of d.menus.filter(m => m.date === addDays(day, -7))) {
     if (findMenu(d, day, src.serviceId) || !src.items.length) continue;
-    out.push({ ...src, id: newId(), date: day, portions: null, items: snapshotItems(d, src.items) });
+    // Gäste-Auswahl startet aus – die Küche gibt das neue Menü selbst frei
+    out.push({ ...src, id: newId(), date: day, portions: null, ordering: 'aus', items: snapshotItems(d, src.items) });
   }
   return out;
 }

@@ -3,6 +3,7 @@ import { useRef, useState, type PointerEvent as RPE } from 'react';
 import { Plus, Trash2, X } from '../ui/icons';
 import { repo } from '../data';
 import { newId } from '../domain/demo';
+import { newQrToken } from '../domain/guestMenu';
 import { FEATURES } from '../domain/constants';
 import { byId, capacity, occupies, tableNames } from '../domain/logic';
 import type { Decor, DecorKind, DiningTable, Layout, Room, TableShape } from '../domain/types';
@@ -14,6 +15,7 @@ import { useUi } from '../store/ui';
 import { svgPoint } from '../ui/drag';
 import { confirmDialog, toast } from '../ui/notify';
 import { FloorPlan } from '../ui/FloorPlan';
+import { TableQr } from '../forms/GuestMenuForms';
 
 const SHAPES: TableShape[] = ['round', 'square', 'rect', 'bench'];
 const DECOR: DecorKind[] = ['wall', 'door', 'bar', 'buffet', 'column', 'plant', 'label'];
@@ -96,7 +98,7 @@ export function EditorView() {
     if (!room) return;
     const dims = { round: [90, 90, 2, 4], square: [70, 70, 2, 4], rect: [160, 80, 4, 8], bench: [60, 160, 3, 5] }[shape];
     let n = d.tables.length + 1; while (d.tables.some(x => x.name === 'T' + n)) n++;
-    const tb: DiningTable = { id: newId(), roomId: room.id, name: 'T' + n, shape, x: room.width / 2, y: room.height / 2, width: dims[0], height: dims[1], rotation: 0, minPersons: dims[2], maxPersons: dims[3], stationId: null, features: [], chairs: withChairs };
+    const tb: DiningTable = { id: newId(), roomId: room.id, name: 'T' + n, shape, x: room.width / 2, y: room.height / 2, width: dims[0], height: dims[1], rotation: 0, minPersons: dims[2], maxPersons: dims[3], stationId: null, features: [], chairs: withChairs, qrToken: newQrToken() };
     if (await store.upsert('tables', [tb], ['Tisch angelegt', tb.name])) ui.set({ editSel: tb.id });
   }
   async function addDecor(kind: DecorKind) {
@@ -115,7 +117,7 @@ export function EditorView() {
   async function duplicate() {
     if (selT) {
       let n = 2; while (d.tables.some(x => x.name === `${selT.name}-${n}`)) n++;
-      const c = { ...selT, id: newId(), name: `${selT.name}-${n}`, x: selT.x + 30, y: selT.y + 30 };
+      const c = { ...selT, id: newId(), name: `${selT.name}-${n}`, x: selT.x + 30, y: selT.y + 30, qrToken: newQrToken() };
       if (await store.upsert('tables', [c])) ui.set({ editSel: c.id });
     } else if (selD) {
       const c = { ...selD, id: newId(), x: selD.x + 30, y: selD.y + 30 };
@@ -208,6 +210,7 @@ export function EditorView() {
             <div style={{ margin: '8px 0' }}>{FEATURES.map(f => <label key={f} className="chk"><input type="checkbox" checked={selT.features.includes(f)}
               onChange={e => saveTable(selT, { features: e.target.checked ? [...selT.features, f] : selT.features.filter(x => x !== f) })} /> {t(f)}</label>)}</div>
             <div className="row"><button className="btn small" onClick={duplicate}>Duplizieren</button><button className="btn small danger" onClick={deleteSelected}><Trash2 />Löschen</button></div>
+            <TableQr tb={selT} onRenew={qrToken => saveTable(selT, { qrToken })} />
           </> : selD ? <>
             <div className="grid2">
               <label>Typ<select value={selD.kind} onChange={e => saveDecor(selD, { kind: e.target.value as DecorKind })}>{DECOR.map(k => <option key={k} value={k}>{t(k)}</option>)}</select></label>
