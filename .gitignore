@@ -1,6 +1,7 @@
 # Abhängigkeiten & Build
 node_modules/
 dist/
+dist-dienstplan/
 test-results/
 playwright-report/
 # Lokale Zugangsdaten

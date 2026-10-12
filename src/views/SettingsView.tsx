@@ -13,6 +13,7 @@ import { useApp } from '../store/app';
 import { useData } from '../store/hooks';
 import { confirmDialog, toast } from '../ui/notify';
 import { ModulesPanel } from './RosterSettings';
+import { APP_NAME, EDITION } from '../lib/edition';
 
 function Field({ label, value, type = 'text', onCommit, placeholder }: { label: string; value: string | number; type?: string; placeholder?: string; onCommit: (v: string) => void }) {
   const [v, setV] = useState(String(value));
@@ -98,15 +99,19 @@ export function SettingsView() {
     if (await confirmDialog(text + '?', ['Alle aktuellen Daten dieses Betriebs werden ersetzt. Das lässt sich nicht rückgängig machen.'], 'Ersetzen', true))
       if (await store.replaceAll(data, text)) toast('Erledigt');
   };
+  // Dienstplan-App: keine Services; Daten ersetzen hieße auch Tischplan-Daten der gemeinsamen DB überschreiben
+  const roster = EDITION === 'dienstplan';
   return (
     <div className="hotel">
       <div>
-      <div className="panel"><h3>Betrieb & Services</h3><div className="body">
+      <div className="panel"><h3>{roster ? 'Betrieb' : 'Betrieb & Services'}</h3><div className="body">
         <Field label="Name des Betriebs" value={d.venue.name} onCommit={v => v.trim() && store.renameVenue(v.trim())} />
+        {!roster && <>
         <p className="muted" style={{ fontSize: 12 }}>Verweildauer: „bis Personen:Minuten“, z. B. <code>2:105, 4:120, 6:150, 99:180</code>. Pacing = max. ankommende Gäste je 15 Min. (0 = aus). Seatings = feste Zeiten, z. B. 18:30, 20:30.</p>
         {d.services.map(s => <ServiceCard key={s.id} s={s} />)}
         <button className="btn" onClick={() => store.upsert('services', [{ id: newId(), name: 'Neuer Service', kind: 'abend', start: '17:00', end: '20:00', hotelTime: '18:00', freeSeating: false, pacing: 0,
           turnTimes: [{ maxP: 2, min: 90 }, { maxP: 99, min: 120 }], seatings: [], sort: d.services.length }])}><Plus />Service</button>
+        </>}
       </div></div>
       <ModulesPanel />
       </div>
@@ -114,8 +119,8 @@ export function SettingsView() {
         <div className="panel"><h3>Benutzer & Rollen</h3><div className="body"><Members /></div></div>
         <div className="panel mt12"><h3>Daten</h3><div className="body">
           <div className="row">
-            <button className="btn" onClick={() => downloadBlob(`tischplan-sicherung-${today()}.json`, new Blob([JSON.stringify({ format: 'tischplan', version: 2, data: d }, null, 1)], { type: 'application/json' }))}><Download />Sicherung exportieren (JSON)</button>
-            <label className="btn"><Upload />Sicherung importieren<input type="file" accept=".json" className="hidden" onChange={async e => {
+            <button className="btn" onClick={() => downloadBlob(`${APP_NAME.toLowerCase()}-sicherung-${today()}.json`, new Blob([JSON.stringify({ format: 'tischplan', version: 2, data: d }, null, 1)], { type: 'application/json' }))}><Download />Sicherung exportieren (JSON)</button>
+            {!roster && <><label className="btn"><Upload />Sicherung importieren<input type="file" accept=".json" className="hidden" onChange={async e => {
               const f = e.target.files?.[0]; e.target.value = ''; if (!f) return;
               try {
                 const j = JSON.parse(await f.text());
@@ -124,7 +129,7 @@ export function SettingsView() {
               } catch (err: any) { toast(err.message, 'err'); }
             }} /></label>
             <button className="btn" onClick={() => replace(demoVenueData(d.venue.id, d.venue.name), 'Demo-Daten erzeugen')}>Demo-Daten neu erzeugen</button>
-            <button className="btn danger" onClick={() => replace({ ...d, stays: [], reservations: [], audit: [] }, 'Alle Reservierungen & Gäste löschen')}>Reservierungen & Gäste löschen</button>
+            <button className="btn danger" onClick={() => replace({ ...d, stays: [], reservations: [], audit: [] }, 'Alle Reservierungen & Gäste löschen')}>Reservierungen & Gäste löschen</button></>}
           </div>
           <p className="muted" style={{ fontSize: 12 }}>{repo.mode === 'cloud' ? 'Speicherort: Supabase-Datenbank. Geladen werden Reservierungen der letzten 120 Tage und alle künftigen.' : 'Demo-Modus: Daten nur in diesem Browser.'}</p>
         </div></div>

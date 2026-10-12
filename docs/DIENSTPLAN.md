@@ -3,6 +3,11 @@
 Zuschaltbares Modul in Tischplan (Einstellungen → Module) für Gastro- und Hotelbetriebe in Südtirol/Italien.
 Mitarbeitende bekommen keinen Login, sondern nur Lesezugang (Link, Kalender-Abo, PDF). Keine Zeiterfassung, keine Lohndaten.
 
+## Eigenständige App
+Dieselbe Codebasis wird zusätzlich als **„Dienstplan“** gebaut (`VITE_APP=dienstplan`, eigenes Vercel-Projekt, gleiche Supabase-Datenbank und gleicher Login).
+Sie zeigt nur Dienstplan und Einstellungen; Funktionen, die den ganzen Datenstand ersetzen (Demo-Daten, Sicherung einspielen), sind dort ausgeblendet.
+Neue Funktionen landen automatisch in beiden Apps.
+
 ## Rechte
 - **Admin**: alles, legt Bereiche an und weist Bereichsleitungen zu.
 - **Bereichsleitung** (Zuweisung zusätzlich zur Rolle, `departments.lead_ids`): plant die eigenen Bereiche – Mitarbeitende,

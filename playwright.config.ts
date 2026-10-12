@@ -14,8 +14,13 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   use: { baseURL: 'http://localhost:4173', locale: 'de-DE', timezoneId: 'Europe/Berlin', channel },
   projects: [
-    { name: 'desktop', testIgnore: /mobile\.spec\.ts$/, use: { viewport: { width: 1400, height: 900 } } },
+    { name: 'desktop', testIgnore: /(mobile|dienstplan-app)\.spec\.ts$/, use: { viewport: { width: 1400, height: 900 } } },
+    // eigenständige Dienstplan-App (VITE_APP=dienstplan) auf eigenem Port
+    { name: 'dienstplan-app', testMatch: /dienstplan-app\.spec\.ts$/, use: { baseURL: 'http://localhost:4174', viewport: { width: 1400, height: 900 } } },
     { name: 'mobile', testMatch: /(mobile|screens)\.spec\.ts$/, use: { ...devices['Pixel 7'], channel } }
   ],
-  webServer: { command: 'npm run build && npx vite preview --port 4173 --strictPort', url: 'http://localhost:4173', reuseExistingServer: !process.env.CI, timeout: 180000 }
+  webServer: [
+    { command: 'npm run build && npx vite preview --port 4173 --strictPort', url: 'http://localhost:4173', reuseExistingServer: !process.env.CI, timeout: 180000 },
+    { command: 'npx vite build --mode dienstplan --outDir dist-dienstplan && npx vite preview --outDir dist-dienstplan --port 4174 --strictPort', url: 'http://localhost:4174', reuseExistingServer: !process.env.CI, timeout: 180000 }
+  ]
 });

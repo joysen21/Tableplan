@@ -32,9 +32,12 @@ export const ROLE_VIEWS: Record<Role, ViewKey[]> = {
 };
 /** Ansichten eines Benutzers: Rolle + Dienstplan, wenn das Modul an ist und er Admin oder Bereichsleiter ist
  *  (gleiche Regel wie is_planner() in der DB). Vor „Berichte“ – außer die Berichte sind die Startansicht. */
-export function viewsFor(role: Role, venue: Venue, departments: Department[], userId: string): ViewKey[] {
+export function viewsFor(role: Role, venue: Venue, departments: Department[], userId: string, edition: 'tischplan' | 'dienstplan' = 'tischplan'): ViewKey[] {
+  const planner = role === 'admin' || departments.some(x => x.leadIds.includes(userId));
+  // eigenständige Dienstplan-App: nur Dienstplan (Planer) und Einstellungen (Admin), Modul immer an
+  if (edition === 'dienstplan') return [...(planner ? ['dienst' as const] : []), ...(role === 'admin' ? ['settings' as const] : [])];
   const views = [...ROLE_VIEWS[role]];
-  if (venue.modules.includes('dienstplan') && (role === 'admin' || departments.some(x => x.leadIds.includes(userId)))) {
+  if (venue.modules.includes('dienstplan') && planner) {
     const i = views.indexOf('berichte');
     views.splice(i > 0 ? i : views.length, 0, 'dienst');
   }

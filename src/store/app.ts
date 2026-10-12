@@ -9,6 +9,7 @@ import { demoVenueData, emptyVenueData, newId, normalizeVenueData } from '../dom
 import { OPEN_STATES } from '../domain/constants';
 import { planStay } from '../domain/logic';
 import type { ModuleKey, Reservation, ResStatus, SessionUser, Stay, VenueData } from '../domain/types';
+import { EDITION } from '../lib/edition';
 import { nowMin, today } from '../lib/time';
 import { toast } from '../ui/notify';
 
@@ -110,7 +111,13 @@ export const useApp = create<AppState>((set, get) => {
     try { localStorage.setItem('tischplan.venue', m.venueId); } catch { /* egal */ }
     try {
       const data = await repo.loadVenue(m.venueId, m.venueName, HISTORY_DAYS);
-      set({ data, phase: data.services.length ? 'ready' : 'empty' });
+      // Dienstplan-App braucht keine Services/Räume → keine Einrichtungsmaske
+      set({ data, phase: data.services.length || EDITION === 'dienstplan' ? 'ready' : 'empty' });
+      // in der Dienstplan-App angelegte Betriebe zeigen das Modul auch in Tischplan
+      if (EDITION === 'dienstplan' && m.role === 'admin' && !data.venue.modules.includes('dienstplan')) {
+        const modules = [...data.venue.modules, 'dienstplan' as const];
+        repo.setModules(m.venueId, modules).then(() => set(s => (s.data ? { data: { ...s.data, venue: { ...s.data.venue, modules } } } : {}))).catch(() => { /* Migration fehlt – egal */ });
+      }
       unsubscribe?.();
       unsubscribe = repo.subscribe(m.venueId, ev => set(s => (s.data ? { data: applyEvent(s.data, ev) } : {})), live => {
         const was = get().live; set({ live });

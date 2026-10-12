@@ -1,11 +1,12 @@
 import { useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { viewsFor } from './domain/constants';
+import { EDITION } from './lib/edition';
 import { PATHS } from './lib/paths';
 import { useApp } from './store/app';
 import { useTheme } from './ui/theme';
 import { Feedback } from './ui/Feedback';
-import { Gate } from './views/Gate';
+import { Gate, NoAccess } from './views/Gate';
 import { Shell } from './views/Shell';
 import { LiveView } from './views/LiveView';
 import { TimelineView } from './views/TimelineView';
@@ -28,7 +29,8 @@ export function App() {
   useEffect(() => { init(); }, [init]);
 
   if (phase !== 'ready' || !role || !data) return <><Gate /><Feedback /></>;
-  const views = viewsFor(role, data.venue, data.departments, user.id);
+  const views = viewsFor(role, data.venue, data.departments, user.id, EDITION);
+  if (!views.length) return <><NoAccess /><Feedback /></>;
   const el = { live: <LiveView />, zeit: <TimelineView />, res: <ReservationsView />, hotel: <HotelView />, menue: <MenuView />, dienst: <RosterView />, berichte: <ReportsView />, editor: <EditorView />, settings: <SettingsView /> };
   return (
     <>

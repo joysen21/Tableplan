@@ -11,6 +11,7 @@ Oberfläche und Texte auf **Deutsch**. Arbeitssprache mit dem Nutzer: Deutsch.
 - `npm test` – Unit-Tests (vitest, `src/**/*.test.ts`)
 - `npm run e2e` – Playwright-Oberflächentests im Demo-Modus
 - `npm run build` – Produktions-Build
+- `npm run dev:dienstplan` / `npm run build:dienstplan` – eigenständige Dienstplan-App (gleicher Code, `VITE_APP=dienstplan`, siehe `src/lib/edition.ts`)
 
 Nach jeder Änderung: `npm run typecheck` und `npm test`; bei UI-Änderungen zusätzlich `npm run e2e`.
 Dieselben Prüfungen laufen in GitHub Actions (`.github/workflows/ci.yml`) bei jedem Push/PR; Node-Version steht in `.nvmrc`. Lokal ohne Playwright-Browser: `PW_CHANNEL=msedge npm run e2e`.
@@ -32,4 +33,4 @@ Dieselben Prüfungen laufen in GitHub Actions (`.github/workflows/ci.yml`) bei j
 - Design (JoKe): Schrift **Outfit** (`@fontsource-variable/outfit`), Logo-Dateien in `public/` aus dem JoKe-Logo-Paket. Icons im **Duoton-Stil**: immer aus `src/ui/icons.tsx` importieren (nicht direkt aus `lucide-react`); Icons ohne geschlossene Form dort mit `duo(...)` eine Fläche geben.
 
 ## Umgebungsvariablen
-`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (lokal in `.env.local`, live in Vercel → Settings → Environment Variables; nach Änderung in Vercel neu deployen).
+`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, für die Dienstplan-App zusätzlich `VITE_APP=dienstplan` (lokal in `.env.local`, live in Vercel → Settings → Environment Variables; nach Änderung in Vercel neu deployen).

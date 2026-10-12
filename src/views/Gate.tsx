@@ -2,6 +2,7 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { repo } from '../data';
 import { DEMO_USERS } from '../data/demoRepo';
+import { APP_NAME, EDITION } from '../lib/edition';
 import { t } from '../lib/i18n';
 import { useApp } from '../store/app';
 import { toast } from '../ui/notify';
@@ -16,6 +17,22 @@ function Box({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
+/** Angemeldet, aber in dieser Ausgabe keine Ansicht (Dienstplan-App ohne Bereichsleitung) */
+export function NoAccess() {
+  const s = useApp();
+  return (
+    <Box title={APP_NAME}>
+      <p style={{ marginTop: 0 }}>{EDITION === 'dienstplan'
+        ? <>Sie sind im Betrieb <b>{s.data?.venue.name}</b> keiner Bereichsleitung zugeordnet. Bitten Sie den Admin, Sie unter <i>Einstellungen → Bereiche & Leitungen</i> einzutragen.</>
+        : 'Für Ihren Benutzer ist keine Ansicht freigegeben.'}</p>
+      <div className="row mt12">
+        {s.memberships.length > 1 && <button className="btn small" onClick={() => s.switchVenue()}>Betrieb wechseln</button>}
+        <button className="btn small" onClick={() => s.logout()}>Abmelden</button>
+      </div>
+    </Box>
+  );
+}
+
 export function Gate() {
   const s = useApp();
   const [email, setEmail] = useState('');
@@ -25,11 +42,11 @@ export function Gate() {
   const [busy, setBusy] = useState(false);
   const run = async (fn: () => Promise<void>) => { setBusy(true); try { await fn(); } finally { setBusy(false); } };
 
-  if (s.phase === 'init' || s.phase === 'loading') return <Box title="Tischplan"><p className="muted">Daten werden geladen…</p></Box>;
+  if (s.phase === 'init' || s.phase === 'loading') return <Box title={APP_NAME}><p className="muted">Daten werden geladen…</p></Box>;
 
   if (s.phase === 'login') {
     if (repo.mode === 'demo') return (
-      <Box title="Tischplan – Demo-Modus">
+      <Box title={`${APP_NAME} – Demo-Modus`}>
         <p className="muted" style={{ marginTop: 0 }}>Keine Datenbank konfiguriert – die Daten liegen nur in diesem Browser. Rolle wählen:</p>
         <div className="userbtns">{DEMO_USERS.map(u => (
           <button key={u.email} className="btn" disabled={busy} onClick={() => run(() => s.login(u.email, 'demo'))}><b>{u.name}</b><small className="muted">{t(u.role)}</small></button>
@@ -38,7 +55,7 @@ export function Gate() {
     );
     const submit = (e: FormEvent) => { e.preventDefault(); run(() => s.login(email.trim(), pw)); };
     return (
-      <Box title="Tischplan – Anmeldung">
+      <Box title={`${APP_NAME} – Anmeldung`}>
         <form onSubmit={submit}>
           <label>E-Mail<input type="email" autoComplete="username" required value={email} onChange={e => setEmail(e.target.value)} /></label>
           <label className="mt8">Passwort<input type="password" autoComplete="current-password" required value={pw} onChange={e => setPw(e.target.value)} /></label>

@@ -6,7 +6,9 @@
   "description": "Tischplanung für Hotels & Restaurants (React + TypeScript + Supabase)",
   "scripts": {
     "dev": "vite",
+    "dev:dienstplan": "vite --mode dienstplan",
     "build": "tsc --noEmit && vite build",
+    "build:dienstplan": "tsc --noEmit && vite build --mode dienstplan --outDir dist-dienstplan",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

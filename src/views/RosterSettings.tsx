@@ -7,12 +7,15 @@ import { ROSTER_COLORS } from '../domain/constants';
 import { departmentUsage, sortDepartments } from '../domain/roster';
 import type { Department, Member } from '../domain/types';
 import { useApp } from '../store/app';
+import { EDITION } from '../lib/edition';
 import { useData } from '../store/hooks';
 import { confirmDialog, toast } from '../ui/notify';
 import { Dot } from './RosterView';
 
 export function ModulesPanel() {
   const d = useData();
+  // eigenständige Dienstplan-App: Modul ist immer an, nur Bereiche & Leitungen
+  if (EDITION === 'dienstplan') return <div className="panel mt12"><h3>Bereiche & Leitungen</h3><div className="body"><DepartmentsAdmin heading={false} /></div></div>;
   const setModules = useApp(s => s.setModules);
   const on = d.venue.modules.includes('dienstplan');
   return (
@@ -25,7 +28,7 @@ export function ModulesPanel() {
   );
 }
 
-function DepartmentsAdmin() {
+function DepartmentsAdmin({ heading = true }: { heading?: boolean }) {
   const d = useData();
   const store = useApp();
   const [members, setMembers] = useState<Member[]>([]);
@@ -40,7 +43,7 @@ function DepartmentsAdmin() {
   }
   return (
     <>
-      <h4 style={{ margin: '14px 0 6px' }}>Bereiche & Leitungen</h4>
+      {heading && <h4 style={{ margin: '14px 0 6px' }}>Bereiche & Leitungen</h4>}
       <p className="muted" style={{ fontSize: 12, marginTop: 0 }}>Bereichsleitungen planen ihren Bereich (Mitarbeitende, Positionen, Schichtvorlagen) – unabhängig von ihrer Rolle. Ein Bereich kann mehrere Leitungen haben.</p>
       {list.map(dep => <DepartmentRow key={dep.id} dep={dep} members={members} />)}
       <div className="row mt8">

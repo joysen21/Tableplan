@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { viewsFor } from '../domain/constants';
+import { EDITION } from '../lib/edition';
 import { serviceForTime } from '../domain/logic';
 import type { VenueData } from '../domain/types';
 import { useApp } from './app';
@@ -14,7 +15,7 @@ export const useUserId = () => useApp(s => s.user?.id ?? null);
 export function useViews() {
   const data = useData();
   const user = useApp(s => s.user)!;
-  return viewsFor(user.role, data.venue, data.departments, user.id);
+  return viewsFor(user.role, data.venue, data.departments, user.id, EDITION);
 }
 
 /** Aktueller Service: gewählt oder passend zur Uhrzeit */

@@ -47,6 +47,13 @@ describe('Planungsrechte', () => {
     expect(viewsFor('kueche', on, list, 'u-karl')).toEqual(['berichte', 'menue', 'dienst']);
     expect(viewsFor('empfang', on, list, 'u-eva')).not.toContain('dienst');
   });
+
+  it('eigenständige Dienstplan-App: nur Dienstplan und Einstellungen, Modul-Schalter egal', () => {
+    const off = { id: 'v', name: 'V', modules: [] };
+    expect(viewsFor('admin', off, list, 'u-anna', 'dienstplan')).toEqual(['dienst', 'settings']);
+    expect(viewsFor('kueche', off, list, 'u-karl', 'dienstplan')).toEqual(['dienst']);
+    expect(viewsFor('empfang', off, list, 'u-eva', 'dienstplan')).toEqual([]);
+  });
 });
 
 describe('Schichtvorlagen', () => {
