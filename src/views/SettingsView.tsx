@@ -12,6 +12,7 @@ import { today } from '../lib/time';
 import { useApp } from '../store/app';
 import { useData } from '../store/hooks';
 import { confirmDialog, toast } from '../ui/notify';
+import { ModulesPanel } from './RosterSettings';
 
 function Field({ label, value, type = 'text', onCommit, placeholder }: { label: string; value: string | number; type?: string; placeholder?: string; onCommit: (v: string) => void }) {
   const [v, setV] = useState(String(value));
@@ -99,6 +100,7 @@ export function SettingsView() {
   };
   return (
     <div className="hotel">
+      <div>
       <div className="panel"><h3>Betrieb & Services</h3><div className="body">
         <Field label="Name des Betriebs" value={d.venue.name} onCommit={v => v.trim() && store.renameVenue(v.trim())} />
         <p className="muted" style={{ fontSize: 12 }}>Verweildauer: „bis Personen:Minuten“, z. B. <code>2:105, 4:120, 6:150, 99:180</code>. Pacing = max. ankommende Gäste je 15 Min. (0 = aus). Seatings = feste Zeiten, z. B. 18:30, 20:30.</p>
@@ -106,6 +108,8 @@ export function SettingsView() {
         <button className="btn" onClick={() => store.upsert('services', [{ id: newId(), name: 'Neuer Service', kind: 'abend', start: '17:00', end: '20:00', hotelTime: '18:00', freeSeating: false, pacing: 0,
           turnTimes: [{ maxP: 2, min: 90 }, { maxP: 99, min: 120 }], seatings: [], sort: d.services.length }])}><Plus />Service</button>
       </div></div>
+      <ModulesPanel />
+      </div>
       <div>
         <div className="panel"><h3>Benutzer & Rollen</h3><div className="body"><Members /></div></div>
         <div className="panel mt12"><h3>Daten</h3><div className="body">

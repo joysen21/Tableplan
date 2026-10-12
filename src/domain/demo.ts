@@ -2,7 +2,7 @@
 import { OCCASIONS } from './constants';
 import { guessAllergens, snapshotItems } from './menu';
 import { planStay, resEnd, resStart, stayTableConflicts, suggestTables, tableBusy, turnTime } from './logic';
-import type { Allergen, Course, Dish, DiningTable, Ingredient, Menu, MenuItem, Reservation, Service, Stay, TableFeature, TableShape, Unit, VenueData } from './types';
+import type { Allergen, Course, Dish, DiningTable, Ingredient, Menu, MenuItem, Reservation, Service, ShiftTemplate, Staff, Stay, TableFeature, TableShape, Unit, VenueData } from './types';
 import { addDays, fromMin, nowMin, toMin, today } from '../lib/time';
 
 export const newId = () => crypto.randomUUID();
@@ -21,18 +21,20 @@ export function defaultServices(): Service[] {
 /** Leerer Betrieb mit Grundeinstellungen */
 export function emptyVenueData(venueId: string, name: string): VenueData {
   return {
-    venue: { id: venueId, name },
+    venue: { id: venueId, name, modules: [] },
     rooms: [{ id: newId(), name: 'Restaurant', width: 1000, height: 650, backgroundUrl: null, sort: 0 }],
     stations: [], tables: [], decor: [], combos: [], layouts: [], services: defaultServices(), blocks: [], stays: [], reservations: [], audit: [],
-    ingredients: [], dishes: [], menus: []
+    ingredients: [], dishes: [], menus: [], departments: [], positions: [], staff: [], shiftTemplates: []
   };
 }
 
 /** Fehlende Listen/Felder ergänzen (ältere Sicherungen, Demo-Daten aus früheren Versionen) */
 export function normalizeVenueData(d: VenueData): VenueData {
-  const L = ['rooms', 'stations', 'tables', 'decor', 'combos', 'layouts', 'services', 'blocks', 'stays', 'reservations', 'audit', 'ingredients', 'dishes', 'menus'] as const;
+  const L = ['rooms', 'stations', 'tables', 'decor', 'combos', 'layouts', 'services', 'blocks', 'stays', 'reservations', 'audit', 'ingredients', 'dishes', 'menus',
+    'departments', 'positions', 'staff', 'shiftTemplates'] as const;
   const out = { ...d } as VenueData;
   for (const k of L) (out as any)[k] = (d as any)[k] ?? [];
+  out.venue = { ...d.venue, modules: d.venue?.modules ?? [] };
   out.reservations = out.reservations.map(r => (r.allergens ? r : { ...r, allergens: [] }));
   out.stays = out.stays.map(s => (s.allergens ? s : { ...s, allergens: [] }));
   out.tables = out.tables.map(x => (typeof x.chairs === 'boolean' ? x : { ...x, chairs: true }));
@@ -45,14 +47,14 @@ export function demoVenueData(venueId: string, name: string): VenueData {
   const pick = <T,>(a: T[]): T => a[Math.floor(rnd() * a.length)];
   const r1 = newId(), r2 = newId(), sA = newId(), sB = newId(), sC = newId();
   const d: VenueData = {
-    venue: { id: venueId, name },
+    venue: { id: venueId, name, modules: ['dienstplan'] },
     rooms: [
       { id: r1, name: 'Restaurant', width: 1000, height: 650, backgroundUrl: null, sort: 0 },
       { id: r2, name: 'Stube', width: 720, height: 500, backgroundUrl: null, sort: 1 }
     ],
     stations: [{ id: sA, name: 'Revier A', color: '#1f6feb' }, { id: sB, name: 'Revier B', color: '#e36209' }, { id: sC, name: 'Revier Stube', color: '#1a7f37' }],
     tables: [], decor: [], combos: [], layouts: [], services: defaultServices(), blocks: [], stays: [], reservations: [], audit: [],
-    ingredients: [], dishes: [], menus: []
+    ingredients: [], dishes: [], menus: [], departments: [], positions: [], staff: [], shiftTemplates: []
   };
   const T = (roomId: string, nm: string, shape: TableShape, x: number, y: number, w: number, h: number, min: number, max: number, stationId: string, features: TableFeature[] = []) =>
     d.tables.push({ id: newId(), roomId, name: nm, shape, x, y, width: w, height: h, rotation: 0, minPersons: min, maxPersons: max, stationId, features, chairs: true } as DiningTable);
@@ -153,7 +155,56 @@ export function demoVenueData(venueId: string, name: string): VenueData {
   const now = new Date().toISOString();
   d.reservations.forEach(r => { r.updatedAt = now; });
   demoKitchen(d);
+  demoRoster(d);
   return d;
+}
+
+/** Demo-Dienstplan: Bereiche mit Positionen, Mitarbeitende (inkl. Saisonkräfte) und Schichtvorlagen.
+ *  Bereichsleitungen (Benutzer) setzt das Demo-Repo, weil die Benutzer-IDs nur dort bekannt sind. */
+export function demoRoster(d: VenueData) {
+  const dep = (name: string, color: string, sort: number) => ({ id: newId(), name, color, sort, leadIds: [] as string[] });
+  const kueche = dep('Küche', '#e36209', 0), service = dep('Service', '#4F7BD1', 1), bar = dep('Bar', '#a371f7', 2), rez = dep('Rezeption', '#2da44e', 3);
+  d.departments = [kueche, service, bar, rez];
+  const P: Record<string, string> = {};
+  const pos = (departmentId: string, names: string[]) => names.forEach((name, sort) => { const id = newId(); P[name] = id; d.positions.push({ id, departmentId, name, sort }); });
+  pos(kueche.id, ['Küchenchef', 'Koch', 'Beikoch', 'Abwasch']);
+  pos(service.id, ['Oberkellner', 'Chef de Rang', 'Kellner', 'Commis']);
+  pos(bar.id, ['Barkeeper']);
+  pos(rez.id, ['Rezeptionist']);
+  const season = { contractFrom: addDays(today(), -60), contractTo: addDays(today(), 120) };
+  const st = (name: string, short: string, departmentId: string, positions: string[], contract: Staff['contract'], weeklyHours: number, color: string, extra: Partial<Staff> = {}): Staff =>
+    ({ id: newId(), name, short, departmentId, positionIds: positions.map(p => P[p]), contract, weeklyHours, contractFrom: null, contractTo: null,
+      phone: '', email: '', color, notes: '', active: true, ...(contract === 'saison' ? season : {}), ...extra });
+  d.staff = [
+    st('Karl Pichler', 'KP', kueche.id, ['Küchenchef', 'Koch'], 'unbefristet', 40, '#e36209'),
+    st('Lukas Mair', 'LM', kueche.id, ['Koch'], 'unbefristet', 40, '#bf8700'),
+    st('Sara Rossi', 'SR', kueche.id, ['Koch', 'Beikoch'], 'saison', 40, '#d63384'),
+    st('Jonas Egger', 'JE', kueche.id, ['Beikoch'], 'lehrling', 40, '#1b7c83'),
+    st('Mirela Popescu', 'MP', kueche.id, ['Abwasch'], 'befristet', 30, '#4A5B7D', { contractTo: addDays(today(), 200) }),
+    st('Toni Gruber', 'TG', service.id, ['Oberkellner', 'Chef de Rang'], 'unbefristet', 40, '#4F7BD1'),
+    st('Anna Hofer', 'AH', service.id, ['Chef de Rang', 'Kellner'], 'unbefristet', 40, '#2da44e'),
+    st('Marco Bianchi', 'MB', service.id, ['Kellner'], 'saison', 40, '#cf222e'),
+    st('Lena Thaler', 'LT', service.id, ['Kellner', 'Barkeeper'], 'saison', 30, '#a371f7'),
+    st('David Kofler', 'DK', service.id, ['Commis'], 'lehrling', 40, '#0F2347'),
+    st('Eva Moser', 'EM', service.id, ['Kellner', 'Abwasch'], 'aushilfe', 12, '#bf8700', { notes: 'Nur am Wochenende' }),
+    st('Paul Steiner', 'PS', bar.id, ['Barkeeper'], 'unbefristet', 40, '#a371f7'),
+    st('Julia Brunner', 'JB', rez.id, ['Rezeptionist'], 'unbefristet', 40, '#2da44e'),
+    st('Franz Weber', 'FW', rez.id, ['Rezeptionist'], 'unbefristet', 20, '#1b7c83', { active: false, contractTo: addDays(today(), -30), notes: 'Ausgeschieden' })
+  ];
+  const tp = (departmentId: string, name: string, short: string, start: string, end: string, breakMin: number, color: string, extra: Partial<ShiftTemplate> = {}): ShiftTemplate =>
+    ({ id: newId(), departmentId, positionId: null, name, short, start, end, start2: null, end2: null, breakMin, color, sort: 0, ...extra });
+  d.shiftTemplates = [
+    tp(kueche.id, 'Frühdienst', 'F', '06:30', '14:30', 30, '#bf8700'),
+    tp(kueche.id, 'Spätdienst', 'S', '14:00', '22:30', 30, '#0F2347'),
+    tp(kueche.id, 'Teildienst', 'T', '10:00', '14:30', 0, '#1b7c83', { start2: '17:30', end2: '21:30' }),
+    tp(service.id, 'Frühstück', 'FR', '06:45', '11:00', 0, '#bf8700'),
+    tp(service.id, 'Mittag', 'M', '11:00', '15:00', 0, '#2da44e'),
+    tp(service.id, 'Abend', 'A', '17:00', '23:00', 30, '#4F7BD1'),
+    tp(service.id, 'Teildienst', 'T', '11:00', '14:30', 0, '#a371f7', { start2: '18:00', end2: '22:30' }),
+    tp(bar.id, 'Bar Abend', 'B', '18:00', '01:00', 30, '#a371f7'),
+    tp(rez.id, 'Früh', 'F', '07:00', '15:00', 30, '#2da44e'),
+    tp(rez.id, 'Spät', 'S', '15:00', '23:00', 30, '#4F7BD1')
+  ].map((x, i) => ({ ...x, sort: i }));
 }
 
 /** Demo-Küche: Zutaten, Gerichte und Menüs für Mittag- und Abendessen von vorgestern bis in einer Woche */

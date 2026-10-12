@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { viewsFor } from '../domain/constants';
 import { serviceForTime } from '../domain/logic';
 import type { VenueData } from '../domain/types';
 import { useApp } from './app';
@@ -7,6 +8,14 @@ import { useUi } from './ui';
 /** Datenstand des Betriebs (nur innerhalb der angemeldeten Oberfläche verwenden) */
 export const useData = (): VenueData => useApp(s => s.data)!;
 export const useRole = () => useApp(s => s.user?.role ?? null);
+export const useUserId = () => useApp(s => s.user?.id ?? null);
+
+/** Ansichten des angemeldeten Benutzers (Rolle, Module, Bereichsleitung) */
+export function useViews() {
+  const data = useData();
+  const user = useApp(s => s.user)!;
+  return viewsFor(user.role, data.venue, data.departments, user.id);
+}
 
 /** Aktueller Service: gewählt oder passend zur Uhrzeit */
 export function useServiceId(): string {

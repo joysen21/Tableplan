@@ -1,15 +1,15 @@
 /** Rahmen der angemeldeten App: Kopfzeile mit Navigation, Datum/Service, Status; Benutzermenü;
  *  am Handy zusätzlich die Navigationsleiste unten (Hauptansichten + „Mehr“); Dialoge */
 import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react';
-import { BedDouble, CalendarDays, ChartColumn, ChartGantt, ChefHat, ChevronDown, ChevronLeft, ChevronRight, Ellipsis, LogOut, Moon, PencilRuler, Settings, Sun, Utensils, type LucideIcon } from '../ui/icons';
+import { BedDouble, CalendarClock, CalendarDays, ChartColumn, ChartGantt, ChefHat, ChevronDown, ChevronLeft, ChevronRight, Ellipsis, LogOut, Moon, PencilRuler, Settings, Sun, Utensils, type LucideIcon } from '../ui/icons';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { repo } from '../data';
-import { ROLE_VIEWS, type ViewKey } from '../domain/constants';
+import type { ViewKey } from '../domain/constants';
 import { t } from '../lib/i18n';
 import { PATHS } from '../lib/paths';
 import { addDays, nowMin, today, toMin } from '../lib/time';
 import { useApp } from '../store/app';
-import { useData, useServiceId } from '../store/hooks';
+import { useData, useServiceId, useViews } from '../store/hooks';
 import { useUi } from '../store/ui';
 import { useDialogs } from '../store/dialogs';
 import { dragState } from '../ui/drag';
@@ -18,7 +18,7 @@ import { Dialogs } from '../forms/Dialogs';
 import { ErrorBoundary } from '../ui/ErrorBoundary';
 
 const VIEW_ICON: Record<ViewKey, LucideIcon> = {
-  live: Utensils, zeit: ChartGantt, res: CalendarDays, hotel: BedDouble, menue: ChefHat, berichte: ChartColumn, editor: PencilRuler, settings: Settings
+  live: Utensils, zeit: ChartGantt, res: CalendarDays, hotel: BedDouble, menue: ChefHat, dienst: CalendarClock, berichte: ChartColumn, editor: PencilRuler, settings: Settings
 };
 /** So viele Ansichten passen in die Leiste unten (plus „Mehr“) */
 const BOTTOM_MAX = 4;
@@ -73,7 +73,7 @@ export function Shell() {
     setMenu(m => (m === null ? at : null));
   };
   const showCtx = [PATHS.live, PATHS.zeit, PATHS.res, PATHS.berichte].includes(loc.pathname);
-  const views = ROLE_VIEWS[user.role];
+  const views = useViews();
   const current = views.find(v => PATHS[v] === loc.pathname);
   // Leiste unten nur bei mehreren Ansichten; was nicht hineinpasst, steht im „Mehr“-Menü
   const bottom = views.length > 1 ? views.slice(0, BOTTOM_MAX) : [];

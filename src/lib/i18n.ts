@@ -1,10 +1,12 @@
 /** Oberflächentexte – zentral abgelegt, vorbereitet für IT/EN */
 const DE: Record<string, string> = {
   live: 'Live-Plan', zeit: 'Zeitleiste', res: 'Reservierungen', hotel: 'Hotelgäste', berichte: 'Berichte',
-  editor: 'Raumplan-Editor', settings: 'Einstellungen', menue: 'Menü',
+  editor: 'Raumplan-Editor', settings: 'Einstellungen', menue: 'Menü', dienst: 'Dienstplan',
   // Kurzformen für die Navigationsleiste am Handy
   'kurz.live': 'Live', 'kurz.zeit': 'Zeitleiste', 'kurz.res': 'Reserv.', 'kurz.hotel': 'Hotel', 'kurz.berichte': 'Berichte',
-  'kurz.editor': 'Editor', 'kurz.settings': 'Einstellungen', 'kurz.menue': 'Menü',
+  'kurz.editor': 'Editor', 'kurz.settings': 'Einstellungen', 'kurz.menue': 'Menü', 'kurz.dienst': 'Dienste',
+  // Dienstplan: Vertragsarten
+  unbefristet: 'Unbefristet', befristet: 'Befristet', saison: 'Saisonvertrag', lehrling: 'Lehrling', aushilfe: 'Aushilfe (Extra)',
   // Allergene (LMIV Anhang II)
   gluten: 'Gluten', krebstiere: 'Krebstiere', eier: 'Eier', fisch: 'Fisch', erdnuesse: 'Erdnüsse', soja: 'Soja', milch: 'Milch/Laktose',
   schalenfruechte: 'Schalenfrüchte (Nüsse)', sellerie: 'Sellerie', senf: 'Senf', sesam: 'Sesam', sulfite: 'Sulfite', lupinen: 'Lupinen', weichtiere: 'Weichtiere',

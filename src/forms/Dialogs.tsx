@@ -3,6 +3,7 @@ import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { StayForm, StayImport, StayTablePicker } from './HotelForms';
 import { ReservationForm } from './ReservationForm';
 import { DishForm, IngredientForm, MenuEditor } from './MenuForms';
+import { ShiftTemplateForm, StaffForm } from './RosterForms';
 import { BlockDialog, ResInfo, TablePopup, WalkIn } from './TableDialogs';
 
 /** Rendert den jeweils offenen Dialog */
@@ -26,5 +27,7 @@ function OpenDialog({ dlg }: { dlg: Dialog }) {
     case 'menu': return <MenuEditor key={dlg.date + dlg.serviceId} date={dlg.date} serviceId={dlg.serviceId} />;
     case 'dish': return <DishForm key={(dlg.dish?.id ?? 'new') + (dlg.dish?.ingredients.length ?? 0)} dish={dlg.dish} />;
     case 'ingredient': return <IngredientForm key={dlg.ing?.id ?? 'new'} ing={dlg.ing} back={dlg.back} />;
+    case 'staff': return <StaffForm key={dlg.staff?.id ?? 'new'} staff={dlg.staff} departmentId={dlg.departmentId} />;
+    case 'shifttemplate': return <ShiftTemplateForm key={dlg.tpl?.id ?? 'new'} tpl={dlg.tpl} departmentId={dlg.departmentId} />;
   }
 }

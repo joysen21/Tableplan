@@ -1,6 +1,7 @@
 /** Umwandlung Datenbankzeile (snake_case) ↔ Fachobjekt (camelCase) */
 import type {
-  AuditEntry, Decor, DiningTable, Dish, Ingredient, Layout, Member, Menu, Reservation, Room, Service, Station, Stay, TableBlock, TableCombo
+  AuditEntry, Decor, Department, DiningTable, Dish, Ingredient, Layout, Member, Menu, Position, Reservation, Room, Service, ShiftTemplate, Staff, Station, Stay,
+  TableBlock, TableCombo
 } from '../domain/types';
 import type { EntityKey, EntityMap } from './repo';
 import { hhmm } from '../lib/time';
@@ -9,7 +10,8 @@ type Row = Record<string, any>;
 
 export const TABLE_OF: Record<EntityKey | 'stays' | 'reservations' | 'reservation_tables' | 'audit', string> = {
   rooms: 'rooms', stations: 'stations', tables: 'dining_tables', decor: 'decor', combos: 'table_combos', layouts: 'layouts',
-  services: 'services', blocks: 'table_blocks', ingredients: 'ingredients', dishes: 'dishes', menus: 'menus', stays: 'stays', reservations: 'reservations', reservation_tables: 'reservation_tables', audit: 'audit_log'
+  services: 'services', blocks: 'table_blocks', ingredients: 'ingredients', dishes: 'dishes', menus: 'menus',
+  departments: 'departments', positions: 'positions', staff: 'staff', shiftTemplates: 'shift_templates', stays: 'stays', reservations: 'reservations', reservation_tables: 'reservation_tables', audit: 'audit_log'
 };
 export const KIND_OF: Record<string, keyof typeof TABLE_OF> =
   Object.fromEntries(Object.entries(TABLE_OF).map(([k, v]) => [v, k as keyof typeof TABLE_OF]));
@@ -50,6 +52,17 @@ export const fromDb = {
     id: r.id, date: r.date, serviceId: r.service_id, portions: r.portions ?? null, bufferPct: r.buffer_pct ?? 0, notes: r.notes ?? '',
     items: (r.items ?? []).map((i: Row) => ({ course: i.course, dishId: i.dishId, share: i.share ?? null, name: i.name ?? '', allergens: i.allergens ?? [] }))
   }),
+  departments: (r: Row): Department => ({ id: r.id, name: r.name, color: r.color ?? '#4F7BD1', sort: r.sort ?? 0, leadIds: r.lead_ids ?? [] }),
+  positions: (r: Row): Position => ({ id: r.id, departmentId: r.department_id, name: r.name, sort: r.sort ?? 0 }),
+  staff: (r: Row): Staff => ({
+    id: r.id, name: r.name, short: r.short ?? '', departmentId: r.department_id ?? null, positionIds: r.position_ids ?? [], contract: r.contract,
+    weeklyHours: +r.weekly_hours || 0, contractFrom: r.contract_from ?? null, contractTo: r.contract_to ?? null, phone: r.phone ?? '', email: r.email ?? '',
+    color: r.color ?? '#4F7BD1', notes: r.notes ?? '', active: r.active !== false
+  }),
+  shiftTemplates: (r: Row): ShiftTemplate => ({
+    id: r.id, departmentId: r.department_id, positionId: r.position_id ?? null, name: r.name, short: r.short ?? '', start: hhmm(r.start_time), end: hhmm(r.end_time),
+    start2: r.start2 ? hhmm(r.start2) : null, end2: r.end2 ? hhmm(r.end2) : null, breakMin: r.break_min ?? 0, color: r.color ?? '#4F7BD1', sort: r.sort ?? 0
+  }),
   audit: (r: Row): AuditEntry => ({ id: String(r.id), ts: r.ts, userName: r.user_name ?? '', action: r.action, details: r.details ?? '' }),
   member: (r: Row): Member => ({ userId: r.user_id, role: r.role, name: r.name ?? '', email: r.email ?? '' })
 };
@@ -79,6 +92,17 @@ export const toDb = {
   }),
   menus: (x: Menu, v: string) => ({
     id: x.id, venue_id: v, date: x.date, service_id: x.serviceId, portions: x.portions, buffer_pct: x.bufferPct, notes: x.notes, items: x.items
+  }),
+  departments: (x: Department, v: string) => ({ id: x.id, venue_id: v, name: x.name, color: x.color, sort: x.sort, lead_ids: x.leadIds }),
+  positions: (x: Position, v: string) => ({ id: x.id, venue_id: v, department_id: x.departmentId, name: x.name, sort: x.sort }),
+  staff: (x: Staff, v: string) => ({
+    id: x.id, venue_id: v, name: x.name, short: x.short, department_id: x.departmentId, position_ids: x.positionIds, contract: x.contract,
+    weekly_hours: x.weeklyHours, contract_from: x.contractFrom || null, contract_to: x.contractTo || null, phone: x.phone, email: x.email,
+    color: x.color, notes: x.notes, active: x.active
+  }),
+  shiftTemplates: (x: ShiftTemplate, v: string) => ({
+    id: x.id, venue_id: v, department_id: x.departmentId, position_id: x.positionId, name: x.name, short: x.short, start_time: x.start, end_time: x.end,
+    start2: x.start2 || null, end2: x.end2 || null, break_min: x.breakMin, color: x.color, sort: x.sort
   }),
   stays: (x: Stay, v: string) => ({
     id: x.id, venue_id: v, room_no: x.roomNo, name: x.name, adults: x.adults, children: x.children, arrival: x.arrival, departure: x.departure,

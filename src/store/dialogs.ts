@@ -1,6 +1,6 @@
 /** Globale Dialoge (Formulare, Popups) – damit jede Ansicht sie öffnen kann */
 import { create } from 'zustand';
-import type { Dish, Ingredient, Reservation, Stay } from '../domain/types';
+import type { Dish, Ingredient, Reservation, ShiftTemplate, Staff, Stay } from '../domain/types';
 
 export type Dialog =
   | { type: 'reservation'; r?: Reservation; preset?: Partial<Reservation> }
@@ -13,7 +13,9 @@ export type Dialog =
   | { type: 'staytable'; tableId: string }
   | { type: 'menu'; date: string; serviceId: string }
   | { type: 'dish'; dish?: Dish }
-  | { type: 'ingredient'; ing?: Ingredient; back?: { type: 'dish'; dish: Dish } };
+  | { type: 'ingredient'; ing?: Ingredient; back?: { type: 'dish'; dish: Dish } }
+  | { type: 'staff'; staff?: Staff; departmentId?: string }
+  | { type: 'shifttemplate'; tpl?: ShiftTemplate; departmentId?: string };
 
 /** seq zählt jedes Öffnen – damit startet ein neuer Dialog auch nach einem Anzeigefehler sauber */
 interface DialogState { dialog: Dialog | null; seq: number; open: (d: Dialog) => void; close: () => void }

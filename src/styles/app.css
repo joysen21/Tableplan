@@ -428,3 +428,47 @@ table.allergen-matrix td.trace{color:var(--muted)}
 .error-page details{margin-top:12px;font-size:12px;color:var(--muted)}
 .error-page pre{white-space:pre-wrap;overflow-wrap:anywhere;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px;margin:6px 0 0}
 .modal .error-page{margin:0;border:0;box-shadow:none}
+
+/* ---------- Dienstplan ---------- */
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;vertical-align:0;flex:none}
+.roster-view h3 .dot,.roster-view h4 .dot{vertical-align:1px}
+.roster-view .searchbox{margin:0}
+table.list tr.inactive td{color:var(--muted)}
+table.list td .badge{margin-left:6px}
+.tpl-chip{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:20px;padding:0 5px;margin-right:8px;border-radius:5px;color:#fff;font-size:11px;font-weight:700;vertical-align:1px}
+.roster-depts{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;align-items:start}
+.roster-dept{box-shadow:none}
+.roster-dept h3{display:flex;align-items:center}
+.position-row{margin-bottom:6px;flex-wrap:nowrap}
+.position-row input{margin:0}
+.roster-tpl-group+.roster-tpl-group{margin-top:16px}
+.roster-tpl-group h4{margin:0;display:flex;align-items:center}
+.pos-group{margin-bottom:8px}
+.pos-group small{display:block;margin-bottom:4px}
+.color-pick{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.swatch{width:26px;height:26px;border-radius:50%;border:2px solid var(--panel);box-shadow:0 0 0 1px var(--line);cursor:pointer;padding:0}
+.swatch[aria-pressed="true"]{box-shadow:0 0 0 2px var(--hl)}
+.color-pick input[type=color],.color-input{width:36px;height:30px;padding:2px;margin:0;flex:none;cursor:pointer}
+.dept-card{box-shadow:none;padding:10px;margin-bottom:10px}
+.dept-card .row{flex-wrap:nowrap}
+.dept-card input:not([type=color]){margin:0}
+@media (max-width:760px){
+  .roster-view .seg{flex:1 1 100%}
+  .roster-view .seg .btn{padding:8px 4px;min-width:0;gap:4px}
+  .roster-view select[aria-label="Bereichsfilter"]{flex:1}
+}
+/* gleiche Spaltenbreiten in allen Bereichen */
+.roster-tpl-group table.list{table-layout:fixed;min-width:560px}
+.roster-tpl-group th:nth-child(1){width:30%}.roster-tpl-group th:nth-child(2){width:30%}.roster-tpl-group th:nth-child(3){width:12%}.roster-tpl-group th:nth-child(4){width:13%}
+/* mit Dienstplan hat der Admin 9 Ansichten – Kopfzeile auf mittleren Bildschirmen enger setzen, damit sie einzeilig bleibt */
+@media (min-width:761px) and (max-width:1500px){
+  header{gap:8px}
+  header .brand .venue{max-width:150px}
+  .topnav{gap:2px}
+  .topnav a{padding:9px 7px}
+}
+/* Handy: Mitarbeiterliste ohne Positionen-Spalte (stehen im Dialog) */
+@media (max-width:760px){
+  .staff-table th:nth-child(3),.staff-table td:nth-child(3){display:none}
+  .staff-table td:first-child .badge{display:none}
+}

@@ -20,6 +20,11 @@ export function remapIds(d: VenueData, newId: () => string): VenueData {
     audit: [],
     ingredients: (d.ingredients ?? []).map(x => ({ ...x, id: m(x.id)! })),
     dishes: (d.dishes ?? []).map(x => ({ ...x, id: m(x.id)!, ingredients: x.ingredients.map(l => ({ ...l, ingredientId: m(l.ingredientId)! })) })),
-    menus: (d.menus ?? []).map(x => ({ ...x, id: m(x.id)!, serviceId: m(x.serviceId)!, items: x.items.map(i => ({ ...i, dishId: m(i.dishId)! })) }))
+    menus: (d.menus ?? []).map(x => ({ ...x, id: m(x.id)!, serviceId: m(x.serviceId)!, items: x.items.map(i => ({ ...i, dishId: m(i.dishId)! })) })),
+    // Bereichsleitungen sind Benutzer des alten Betriebs → im neuen Betrieb neu zuweisen
+    departments: (d.departments ?? []).map(x => ({ ...x, id: m(x.id)!, leadIds: [] })),
+    positions: (d.positions ?? []).map(x => ({ ...x, id: m(x.id)!, departmentId: m(x.departmentId)! })),
+    staff: (d.staff ?? []).map(x => ({ ...x, id: m(x.id)!, departmentId: m(x.departmentId), positionIds: mm(x.positionIds) })),
+    shiftTemplates: (d.shiftTemplates ?? []).map(x => ({ ...x, id: m(x.id)!, departmentId: m(x.departmentId)!, positionId: m(x.positionId) }))
   };
 }

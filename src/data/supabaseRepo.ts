@@ -1,10 +1,10 @@
 /** Datenzugriff über Supabase (Postgres + Auth + Realtime + Storage) */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { MAX_ROOMS_PER_TABLE } from '../domain/constants';
-import type { Reservation, Role, Stay, VenueData } from '../domain/types';
+import type { ModuleKey, Reservation, Role, Stay, VenueData } from '../domain/types';
 import { addDays, today } from '../lib/time';
 import { entityFromDb, entityToDb, fromDb, KIND_OF, TABLE_OF, toDb } from './mapping';
-import { ENTITY_KEYS, RepoError, type AuthUser, type ChangeEvent, type EntityKey, type EntityMap, type LiveState, type Membership, type Repo } from './repo';
+import { ENTITY_KEYS, ROSTER_KEYS, RepoError, type AuthUser, type ChangeEvent, type EntityKey, type EntityMap, type LiveState, type Membership, type Repo } from './repo';
 
 const INITIAL_URL = typeof location !== 'undefined' ? location.href : '';
 
@@ -36,6 +36,8 @@ export class SupabaseRepo implements Repo {
   readonly mode = 'cloud' as const;
   private sb: SupabaseClient;
   private signedOutCbs: (() => void)[] = [];
+  /** false, solange die Dienstplan-Migration in der Datenbank noch fehlt */
+  private rosterReady = true;
 
   constructor(url: string, key: string, headers?: Record<string, string>) {
     this.sb = createClient(url, key, {
@@ -69,6 +71,10 @@ export class SupabaseRepo implements Repo {
   }
   async createVenue(name: string) { return (await run(this.sb.rpc('create_venue', { p_name: name }))) as string; }
   async renameVenue(venueId: string, name: string) { await run(this.sb.from('venues').update({ name }).eq('id', venueId)); }
+  async setModules(venueId: string, modules: ModuleKey[]) {
+    if (!this.rosterReady) throw new RepoError('other', 'Das Dienstplan-Modul ist in der Datenbank noch nicht eingerichtet (Migration 20261012000000_dienstplan.sql im Supabase SQL Editor ausführen).');
+    await run(this.sb.from('venues').update({ modules }).eq('id', venueId));
+  }
   async members(venueId: string) {
     const rows = await run(this.sb.from('members').select('user_id, role, name, email').eq('venue_id', venueId).order('name'));
     return (rows as any[]).map(fromDb.member);
@@ -93,18 +99,19 @@ export class SupabaseRepo implements Repo {
   async loadVenue(venueId: string, venueName: string, historyDays: number): Promise<VenueData> {
     const cutoff = addDays(today(), -historyDays);
     const byVenue = (q: any) => q.eq('venue_id', venueId).order('id');
-    const [rooms, stations, tables, decor, combos, layouts, services, blocks, stays, reservations, audit, venue, ingredients, dishes, menus] = await Promise.all([
+    const [rooms, stations, tables, decor, combos, layouts, services, blocks, stays, reservations, audit, venue, ingredients, dishes, menus, roster] = await Promise.all([
       this.all('rooms', byVenue), this.all('stations', byVenue), this.all('dining_tables', byVenue), this.all('decor', byVenue),
       this.all('table_combos', byVenue), this.all('layouts', byVenue), this.all('services', byVenue),
       this.all('table_blocks', q => byVenue(q).gte('date', cutoff)),
       this.all('stays', q => byVenue(q).gte('departure', cutoff)),
       this.all('reservations', q => byVenue(q).gte('date', cutoff), '*, reservation_tables(table_id)'),
       run<any[]>(this.sb.from('audit_log').select('*').eq('venue_id', venueId).order('ts', { ascending: false }).limit(300)),
-      run<any>(this.sb.from('venues').select('id, name').eq('id', venueId).maybeSingle()),
-      this.all('ingredients', byVenue), this.all('dishes', byVenue), this.all('menus', q => byVenue(q).gte('date', cutoff))
+      run<any>(this.sb.from('venues').select('*').eq('id', venueId).maybeSingle()),
+      this.all('ingredients', byVenue), this.all('dishes', byVenue), this.all('menus', q => byVenue(q).gte('date', cutoff)),
+      this.loadRoster(venueId)
     ]);
     return {
-      venue: { id: venueId, name: venue?.name ?? venueName },
+      venue: { id: venueId, name: venue?.name ?? venueName, modules: this.rosterReady ? venue?.modules ?? [] : [] },
       rooms: rooms.map(fromDb.rooms).sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name)),
       stations: stations.map(fromDb.stations), tables: tables.map(fromDb.tables), decor: decor.map(fromDb.decor),
       combos: combos.map(fromDb.combos), layouts: layouts.map(fromDb.layouts),
@@ -112,8 +119,26 @@ export class SupabaseRepo implements Repo {
       blocks: blocks.map(fromDb.blocks), stays: stays.map(fromDb.stays), reservations: reservations.map(fromDb.reservation),
       audit: audit.map(fromDb.audit),
       ingredients: ingredients.map(fromDb.ingredients).sort((a, b) => a.name.localeCompare(b.name, 'de')),
-      dishes: dishes.map(fromDb.dishes).sort((a, b) => a.name.localeCompare(b.name, 'de')), menus: menus.map(fromDb.menus)
+      dishes: dishes.map(fromDb.dishes).sort((a, b) => a.name.localeCompare(b.name, 'de')), menus: menus.map(fromDb.menus),
+      ...roster
     };
+  }
+  /** Dienstplan-Stammdaten; fehlt die Migration noch, bleibt das Modul einfach aus */
+  private async loadRoster(venueId: string) {
+    const byVenue = (q: any) => q.eq('venue_id', venueId).order('id');
+    try {
+      const [departments, positions, staff, shiftTemplates] = await Promise.all(ROSTER_KEYS.map(k => this.all(TABLE_OF[k], byVenue)));
+      this.rosterReady = true;
+      return {
+        departments: departments.map(fromDb.departments), positions: positions.map(fromDb.positions),
+        staff: staff.map(fromDb.staff), shiftTemplates: shiftTemplates.map(fromDb.shiftTemplates)
+      };
+    } catch (e: any) {
+      // 42P01 / PGRST205: Tabelle unbekannt
+      if (!/42P01|PGRST205|does not exist|Could not find the table/.test(String(e?.message) + (e?.code ?? ''))) throw e;
+      this.rosterReady = false;
+      return { departments: [], positions: [], staff: [], shiftTemplates: [] };
+    }
   }
 
   /* ---------- Schreiben ---------- */
@@ -152,9 +177,10 @@ export class SupabaseRepo implements Repo {
   }
   async replaceAll(venueId: string, d: VenueData) {
     // Bestehendes löschen (Reservierungen zuerst, Tischbelegung kaskadiert)
-    for (const t of ['menus', 'dishes', 'ingredients', 'reservations', 'stays', 'table_blocks', 'table_combos', 'layouts', 'decor', 'dining_tables', 'stations', 'rooms', 'services'])
+    const roster = this.rosterReady ? ['shift_templates', 'staff', 'positions', 'departments'] : [];
+    for (const t of [...roster, 'menus', 'dishes', 'ingredients', 'reservations', 'stays', 'table_blocks', 'table_combos', 'layouts', 'decor', 'dining_tables', 'stations', 'rooms', 'services'])
       await run(this.sb.from(t).delete().eq('venue_id', venueId));
-    for (const k of ENTITY_KEYS) await this.upsert(venueId, k, d[k] as any);
+    for (const k of ENTITY_KEYS) if (this.rosterReady || !ROSTER_KEYS.includes(k)) await this.upsert(venueId, k, d[k] as any);
     await this.upsertStaysRaw(venueId, d.stays);
     await this.saveReservations(venueId, d.reservations);
   }
@@ -173,10 +199,11 @@ export class SupabaseRepo implements Repo {
   subscribe(venueId: string, onEvent: (e: ChangeEvent) => void, onState: (s: LiveState) => void) {
     onState('connecting');
     const ch = this.sb.channel(`venue-${venueId}-${crypto.randomUUID()}`);
-    const tables = Object.values(TABLE_OF).concat('venues');
+    const skip = this.rosterReady ? [] : ROSTER_KEYS.map(k => TABLE_OF[k]);
+    const tables = Object.values(TABLE_OF).filter(t => !skip.includes(t)).concat('venues');
     const handle = (p: any) => {
       const table: string = p.table;
-      if (table === 'venues') { if (p.new?.id === venueId) onEvent({ kind: 'venue', type: 'upsert', name: p.new.name }); return; }
+      if (table === 'venues') { if (p.new?.id === venueId) onEvent({ kind: 'venue', type: 'upsert', name: p.new.name, modules: this.rosterReady ? p.new.modules : undefined }); return; }
       const kind = KIND_OF[table];
       if (!kind) return;
       if (p.eventType === 'DELETE') {

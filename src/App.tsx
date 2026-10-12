@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { ROLE_VIEWS } from './domain/constants';
+import { viewsFor } from './domain/constants';
 import { PATHS } from './lib/paths';
 import { useApp } from './store/app';
 import { useTheme } from './ui/theme';
@@ -15,18 +15,21 @@ import { ReportsView } from './views/ReportsView';
 import { EditorView } from './views/EditorView';
 import { SettingsView } from './views/SettingsView';
 import { MenuView } from './views/MenuView';
+import { RosterView } from './views/RosterView';
 
 
 export function App() {
   const phase = useApp(s => s.phase);
-  const role = useApp(s => s.user?.role);
+  const user = useApp(s => s.user);
+  const data = useApp(s => s.data);
+  const role = user?.role;
   const init = useApp(s => s.init);
   useTheme();
   useEffect(() => { init(); }, [init]);
 
-  if (phase !== 'ready' || !role) return <><Gate /><Feedback /></>;
-  const views = ROLE_VIEWS[role];
-  const el = { live: <LiveView />, zeit: <TimelineView />, res: <ReservationsView />, hotel: <HotelView />, menue: <MenuView />, berichte: <ReportsView />, editor: <EditorView />, settings: <SettingsView /> };
+  if (phase !== 'ready' || !role || !data) return <><Gate /><Feedback /></>;
+  const views = viewsFor(role, data.venue, data.departments, user.id);
+  const el = { live: <LiveView />, zeit: <TimelineView />, res: <ReservationsView />, hotel: <HotelView />, menue: <MenuView />, dienst: <RosterView />, berichte: <ReportsView />, editor: <EditorView />, settings: <SettingsView /> };
   return (
     <>
       <Routes>

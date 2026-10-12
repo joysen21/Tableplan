@@ -3,15 +3,20 @@
  * und der Demo-Implementierung (Daten im Browser) erfüllt wird.
  */
 import type {
-  AuditEntry, Decor, DiningTable, Dish, Ingredient, Layout, Member, Menu, Reservation, Role, Room, Service, Station, Stay, TableBlock, TableCombo, VenueData
+  AuditEntry, Decor, Department, DiningTable, Dish, Ingredient, Layout, Member, Menu, ModuleKey, Position, Reservation, Role, Room, Service, ShiftTemplate, Staff,
+  Station, Stay, TableBlock, TableCombo, VenueData
 } from '../domain/types';
 
 export interface EntityMap {
   rooms: Room; stations: Station; tables: DiningTable; decor: Decor; combos: TableCombo; layouts: Layout; services: Service; blocks: TableBlock;
   ingredients: Ingredient; dishes: Dish; menus: Menu;
+  departments: Department; positions: Position; staff: Staff; shiftTemplates: ShiftTemplate;
 }
 export type EntityKey = keyof EntityMap;
-export const ENTITY_KEYS: EntityKey[] = ['services', 'rooms', 'stations', 'tables', 'decor', 'combos', 'layouts', 'blocks', 'ingredients', 'dishes', 'menus'];
+export const ENTITY_KEYS: EntityKey[] = ['services', 'rooms', 'stations', 'tables', 'decor', 'combos', 'layouts', 'blocks', 'ingredients', 'dishes', 'menus',
+  'departments', 'positions', 'staff', 'shiftTemplates'];
+/** Tabellen des Dienstplan-Moduls (eigene Migration – fehlen sie, läuft der Rest der App trotzdem) */
+export const ROSTER_KEYS: EntityKey[] = ['departments', 'positions', 'staff', 'shiftTemplates'];
 
 export interface AuthUser { id: string; email: string }
 export interface Membership { venueId: string; venueName: string; role: Role; name: string }
@@ -23,7 +28,7 @@ export type ChangeEvent =
   | { kind: 'reservations'; type: 'upsert'; row: Omit<Reservation, 'tableIds'> }
   | { kind: 'reservation_tables'; type: 'link' | 'unlink'; reservationId: string; tableId: string }
   | { kind: 'audit'; type: 'insert'; row: AuditEntry }
-  | { kind: 'venue'; type: 'upsert'; name: string };
+  | { kind: 'venue'; type: 'upsert'; name: string; modules?: ModuleKey[] };
 
 export type LiveState = 'connecting' | 'live' | 'down';
 
@@ -47,6 +52,8 @@ export interface Repo {
   memberships(): Promise<Membership[]>;
   createVenue(name: string): Promise<string>;
   renameVenue(venueId: string, name: string): Promise<void>;
+  /** Zusatzmodule ein-/ausschalten (nur Admin) */
+  setModules(venueId: string, modules: ModuleKey[]): Promise<void>;
   members(venueId: string): Promise<Member[]>;
   addMember(venueId: string, email: string, role: Role, name: string): Promise<void>;
   updateMember(venueId: string, userId: string, patch: Partial<Pick<Member, 'role' | 'name'>>): Promise<void>;

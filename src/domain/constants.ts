@@ -1,4 +1,4 @@
-import type { Allergen, Board, Course, Diet, ResStatus, Role, ServiceKind, TableFeature, TableState, Unit } from './types';
+import type { Allergen, Board, ContractType, Course, Department, Diet, ResStatus, Role, ServiceKind, TableFeature, TableState, Unit, Venue } from './types';
 
 export const RES_STATUS_COLOR: Record<ResStatus, string> = {
   angefragt: '#8A97B0', bestaetigt: '#4F7BD1', eingetroffen: '#a371f7', platziert: '#2da44e',
@@ -23,13 +23,26 @@ export const COURSES: Course[] = ['vorspeise', 'suppe', 'zwischengang', 'hauptga
 export const UNITS: Unit[] = ['g', 'ml', 'stk'];
 export const DIETS: Diet[] = ['vegetarisch', 'vegan'];
 export const ROLES: Role[] = ['admin', 'empfang', 'service', 'kueche'];
-export type ViewKey = 'live' | 'zeit' | 'res' | 'hotel' | 'menue' | 'berichte' | 'editor' | 'settings';
+export type ViewKey = 'live' | 'zeit' | 'res' | 'hotel' | 'menue' | 'dienst' | 'berichte' | 'editor' | 'settings';
 export const ROLE_VIEWS: Record<Role, ViewKey[]> = {
   admin: ['live', 'zeit', 'res', 'hotel', 'menue', 'berichte', 'editor', 'settings'],
   empfang: ['live', 'zeit', 'res', 'hotel', 'menue', 'berichte'],
   service: ['live', 'zeit', 'menue', 'berichte'],
   kueche: ['berichte', 'menue']
 };
+/** Ansichten eines Benutzers: Rolle + Dienstplan, wenn das Modul an ist und er Admin oder Bereichsleiter ist
+ *  (gleiche Regel wie is_planner() in der DB). Vor „Berichte“ – außer die Berichte sind die Startansicht. */
+export function viewsFor(role: Role, venue: Venue, departments: Department[], userId: string): ViewKey[] {
+  const views = [...ROLE_VIEWS[role]];
+  if (venue.modules.includes('dienstplan') && (role === 'admin' || departments.some(x => x.leadIds.includes(userId)))) {
+    const i = views.indexOf('berichte');
+    views.splice(i > 0 ? i : views.length, 0, 'dienst');
+  }
+  return views;
+}
+export const CONTRACTS: ContractType[] = ['unbefristet', 'befristet', 'saison', 'lehrling', 'aushilfe'];
+/** Farbvorschläge für Bereiche, Mitarbeitende und Schichtvorlagen */
+export const ROSTER_COLORS = ['#4F7BD1', '#2da44e', '#e36209', '#a371f7', '#cf222e', '#0F2347', '#bf8700', '#1b7c83', '#d63384', '#4A5B7D'];
 export const canEdit = (r?: Role | null) => r === 'admin' || r === 'empfang';
 /** Zutaten, Gerichte und Menüs pflegen */
 export const canEditMenu = (r?: Role | null) => r === 'admin' || r === 'kueche';

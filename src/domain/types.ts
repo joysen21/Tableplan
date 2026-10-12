@@ -15,7 +15,9 @@ export type Course = 'vorspeise' | 'suppe' | 'zwischengang' | 'hauptgang' | 'bei
 export type Diet = 'vegetarisch' | 'vegan';
 export type TableState = 'frei' | 'reserviert' | 'bald' | 'platziert' | 'rechnung' | 'ueberfaellig' | 'ueberzogen' | 'gesperrt';
 
-export interface Venue { id: string; name: string }
+export type ModuleKey = 'dienstplan';
+/** modules: zugeschaltete Zusatzmodule des Betriebs */
+export interface Venue { id: string; name: string; modules: ModuleKey[] }
 
 export interface Member { userId: string; role: Role; name: string; email: string }
 
@@ -75,6 +77,24 @@ export interface MenuItem { course: Course; dishId: string; share: number | null
 /** Menü eines Service an einem Tag. portions = null → automatisch aus den Reservierungen */
 export interface Menu { id: string; date: string; serviceId: string; portions: number | null; bufferPct: number; notes: string; items: MenuItem[] }
 
+/* ---------- Dienstplan ---------- */
+export type ContractType = 'unbefristet' | 'befristet' | 'saison' | 'lehrling' | 'aushilfe';
+/** Bereich/Abteilung (Küche, Service …). leadIds = Benutzer (user_id), die den Bereich planen dürfen */
+export interface Department { id: string; name: string; color: string; sort: number; leadIds: string[] }
+/** Tätigkeit innerhalb eines Bereichs (Koch, Commis …) */
+export interface Position { id: string; departmentId: string; name: string; sort: number }
+/** Mitarbeiter/in. departmentId = Stammbereich; positionIds = Qualifikationen (auch aus anderen Bereichen) */
+export interface Staff {
+  id: string; name: string; short: string; departmentId: string | null; positionIds: string[];
+  contract: ContractType; weeklyHours: number; contractFrom: string | null; contractTo: string | null;
+  phone: string; email: string; color: string; notes: string; active: boolean;
+}
+/** Schichtvorlage, optional als Teildienst mit zweitem Block (start2/end2). Ende vor Beginn = über Mitternacht */
+export interface ShiftTemplate {
+  id: string; departmentId: string; positionId: string | null; name: string; short: string;
+  start: string; end: string; start2: string | null; end2: string | null; breakMin: number; color: string; sort: number;
+}
+
 export interface AuditEntry { id: string; ts: string; userName: string; action: string; details: string }
 
 /** Kompletter, im Speicher gehaltener Datenstand eines Betriebs */
@@ -84,6 +104,7 @@ export interface VenueData {
   combos: TableCombo[]; layouts: Layout[]; services: Service[]; blocks: TableBlock[];
   stays: Stay[]; reservations: Reservation[]; audit: AuditEntry[];
   ingredients: Ingredient[]; dishes: Dish[]; menus: Menu[];
+  departments: Department[]; positions: Position[]; staff: Staff[]; shiftTemplates: ShiftTemplate[];
 }
 
 export interface SessionUser { id: string; name: string; email: string; role: Role }

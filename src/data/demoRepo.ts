@@ -6,8 +6,9 @@
 import { demoVenueData, newId, normalizeVenueData } from '../domain/demo';
 import { MAX_ROOMS_PER_TABLE } from '../domain/constants';
 import { occupies, tableConflicts, resEnd, resStart } from '../domain/logic';
-import type { Member, Reservation, Role, Stay, VenueData } from '../domain/types';
-import { RepoError, type AuthUser, type ChangeEvent, type EntityKey, type EntityMap, type LiveState, type Membership, type Repo } from './repo';
+import { canPlanDept } from '../domain/roster';
+import type { Member, ModuleKey, Reservation, Role, Stay, VenueData } from '../domain/types';
+import { ROSTER_KEYS, RepoError, type AuthUser, type ChangeEvent, type EntityKey, type EntityMap, type LiveState, type Membership, type Repo } from './repo';
 
 const KEY = 'tischplan.demo.v2';
 const SESSION = 'tischplan.demo.user';
@@ -40,6 +41,9 @@ export class DemoRepo implements Repo {
     const db: DemoDb = { venues: [{ id, name: 'Hotel Sonnenhof – Restaurant' }], members: [], data: {} };
     db.members = DEMO_USERS.map((u, i) => ({ venueId: id, userId: 'demo-' + i, role: u.role, name: u.name, email: u.email }));
     db.data[id] = demoVenueData(id, db.venues[0].name);
+    // Bereichsleitungen der Demo: Karl (Küche) leitet die Küche, Toni (Service) den Service
+    const lead = (dep: string, email: string) => { const dd = db.data[id].departments.find(x => x.name === dep); const m = db.members.find(x => x.email === email); if (dd && m) dd.leadIds = [m.userId]; };
+    lead('Küche', 'kueche@demo.local'); lead('Service', 'service@demo.local');
     this.write(db);
     return db;
   }
@@ -56,6 +60,21 @@ export class DemoRepo implements Repo {
     if (!m) throw new RepoError('forbidden', 'Keine Berechtigung');
     const w = WRITE[m.role];
     if (!w.includes('*') && !w.includes(what)) throw new RepoError('forbidden', 'Keine Berechtigung für diese Änderung.');
+  }
+  /** Dienstplan wie in der DB (can_plan): Admin alles, Bereichsleitung nur Daten ihrer Bereiche (alter und neuer Stand) */
+  private rosterGuard(venueId: string, kind: EntityKey, rows: { id: string; departmentId?: string | null }[]) {
+    const u = this.user(); const db = this.read(); const d = db.data[venueId];
+    const m = u && db.members.find(x => x.venueId === venueId && x.email === u.email);
+    if (!m || !d) throw new RepoError('forbidden', 'Keine Berechtigung');
+    if (m.role === 'admin') return;
+    const deny = () => { throw new RepoError('forbidden', 'Keine Berechtigung: Diese Daten gehören zu einem Bereich, den Sie nicht leiten.'); };
+    if (kind === 'departments') deny();
+    const list = (d as any)[kind] as { id: string; departmentId: string | null }[];
+    for (const r of rows) {
+      const old = list.find(x => x.id === r.id);
+      if (old && !canPlanDept(m.role, d.departments, m.userId, old.departmentId)) deny();
+      if (r.departmentId !== undefined && !canPlanDept(m.role, d.departments, m.userId, r.departmentId ?? null)) deny();
+    }
   }
   private mutate<T>(venueId: string, fn: (d: VenueData, db: DemoDb) => T): T {
     const db = this.read(); const d = db.data[venueId];
@@ -95,6 +114,12 @@ export class DemoRepo implements Repo {
     this.guard(venueId, 'venue');
     this.mutate(venueId, (d, db) => { d.venue.name = name; const v = db.venues.find(x => x.id === venueId); if (v) v.name = name; });
     this.emit([{ kind: 'venue', type: 'upsert', name }]);
+  }
+  async setModules(venueId: string, modules: ModuleKey[]) {
+    this.guard(venueId, 'venue');
+    let name = '';
+    this.mutate(venueId, d => { d.venue.modules = [...modules]; name = d.venue.name; });
+    this.emit([{ kind: 'venue', type: 'upsert', name, modules }]);
   }
   async members(venueId: string) { return this.read().members.filter(m => m.venueId === venueId).map(({ venueId: _v, ...m }) => m); }
   async addMember(venueId: string, email: string, role: Role, name: string) {
@@ -196,7 +221,7 @@ export class DemoRepo implements Repo {
     this.emit(events);
   }
   async upsert<K extends EntityKey>(venueId: string, kind: K, rows: EntityMap[K][]) {
-    this.guard(venueId, kind);
+    if (ROSTER_KEYS.includes(kind)) this.rosterGuard(venueId, kind, rows as any); else this.guard(venueId, kind);
     this.mutate(venueId, d => {
       const list = ((d as any)[kind] ??= []) as { id: string }[];
       for (const r of rows) { const i = list.findIndex(x => x.id === r.id); if (i >= 0) list[i] = { ...r }; else list.push({ ...r }); }
@@ -204,7 +229,7 @@ export class DemoRepo implements Repo {
     this.emit(rows.map(row => ({ kind, type: 'upsert', row }) as ChangeEvent));
   }
   async remove(venueId: string, kind: EntityKey, ids: string[]) {
-    this.guard(venueId, kind);
+    if (ROSTER_KEYS.includes(kind)) this.rosterGuard(venueId, kind, ids.map(id => ({ id }))); else this.guard(venueId, kind);
     this.mutate(venueId, d => {
       (d as any)[kind] = ((d[kind] ?? []) as unknown as { id: string }[]).filter(x => !ids.includes(x.id));
       if (kind === 'tables') {
@@ -214,6 +239,17 @@ export class DemoRepo implements Repo {
         d.blocks = d.blocks.filter(b => !ids.includes(b.tableId));
       }
       if (kind === 'rooms') { const tids = d.tables.filter(t => ids.includes(t.roomId)).map(t => t.id); d.tables = d.tables.filter(t => !tids.includes(t.id)); d.decor = d.decor.filter(x => !ids.includes(x.roomId)); d.reservations.forEach(r => { r.tableIds = r.tableIds.filter(t => !tids.includes(t)); }); }
+      // Kaskaden wie in der DB
+      if (kind === 'departments') {
+        const pids = d.positions.filter(x => ids.includes(x.departmentId)).map(x => x.id);
+        d.positions = d.positions.filter(x => !pids.includes(x.id));
+        d.shiftTemplates = d.shiftTemplates.filter(x => !ids.includes(x.departmentId));
+        d.staff.forEach(s => { if (s.departmentId && ids.includes(s.departmentId)) s.departmentId = null; s.positionIds = s.positionIds.filter(p => !pids.includes(p)); });
+      }
+      if (kind === 'positions') {
+        d.staff.forEach(s => { s.positionIds = s.positionIds.filter(p => !ids.includes(p)); });
+        d.shiftTemplates.forEach(x => { if (x.positionId && ids.includes(x.positionId)) x.positionId = null; });
+      }
       if (kind === 'services') { d.reservations = d.reservations.filter(r => !ids.includes(r.serviceId)); d.menus = (d.menus ?? []).filter(m => !ids.includes(m.serviceId)); }
     });
     this.emit(ids.map(id => ({ kind, type: 'delete', id }) as ChangeEvent));
@@ -225,7 +261,8 @@ export class DemoRepo implements Repo {
   }
   async replaceAll(venueId: string, data: VenueData) {
     this.guard(venueId, '*');
-    this.mutate(venueId, (_d, db) => { db.data[venueId] = normalizeVenueData({ ...structuredClone(data), venue: { id: venueId, name: data.venue.name } }); });
+    // Module gehören zum Betrieb, nicht zum Datenstand (wie in der DB)
+    this.mutate(venueId, (cur, db) => { db.data[venueId] = normalizeVenueData({ ...structuredClone(data), venue: { id: venueId, name: data.venue.name, modules: cur.venue.modules ?? [] } }); });
   }
   async uploadBackground(_venueId: string, file: File): Promise<string> {
     if (file.size > 1_500_000) throw new RepoError('other', 'Bild zu groß (max. 1,5 MB im Demo-Modus)');
