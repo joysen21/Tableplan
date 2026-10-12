@@ -1,5 +1,4 @@
-import { expect, test } from '@playwright/test';
-import { goView, loginDemo } from './helpers';
+import { expect, test, goView, loginDemo } from './helpers';
 
 /** Menüverwaltung (Desktop): Stammdaten, Tagesmenü, Zutatenliste, Allergen-Warnungen, Rechte */
 

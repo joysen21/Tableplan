@@ -1,5 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
-import { loginDemo } from './helpers';
+import type { Page } from '@playwright/test';
+import { expect, test, loginDemo } from './helpers';
 
 /** Robustheit: Bearbeitungskonflikte und Auffangnetz bei Anzeigefehlern (Desktop) */
 

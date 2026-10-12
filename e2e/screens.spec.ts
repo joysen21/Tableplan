@@ -1,5 +1,4 @@
-import { expect, test } from '@playwright/test';
-import { goView, VIEWS } from './helpers';
+import { expect, test, goView, VIEWS } from './helpers';
 
 /** Screenshots aller Ansichten für Vorher/Nachher-Vergleiche (Desktop + Handy).
  *  Läuft nur mit SHOT_DIR, z. B.: SHOT_DIR=docs/screens/vorher npx playwright test screens
