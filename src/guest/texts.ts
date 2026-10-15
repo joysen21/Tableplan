@@ -15,7 +15,9 @@ const T: Record<Lang, Dict> = {
     noRoom: 'Für diesen Tisch ist bei diesem Menü kein Hotelzimmer eingetragen. Bitte wenden Sie sich an unser Team.',
     invalid: 'Dieser QR-Code ist nicht mehr gültig. Bitte wenden Sie sich an unser Team.', error: 'Senden fehlgeschlagen', retry: 'Erneut laden',
     allergens: 'Allergene', allergenInfo: 'Allergene nach EU-Verordnung 1169/2011', veg: 'vegetarisch', vegan: 'vegan', partial: 'Noch nicht alle Personen haben gewählt – Sie können trotzdem senden.',
-    loading: 'Speisekarte wird geladen…'
+    loading: 'Speisekarte wird geladen…',
+    freeSeating: 'Freie Platzwahl – bitte wählen Sie Ihr Zimmer.', pickRoom: 'Zimmer auswählen',
+    noRoomFree: 'Für dieses Menü ist kein Hotelzimmer eingetragen. Bitte wenden Sie sich an unser Team.'
   },
   it: {
     today: 'Oggi', tomorrow: 'Domani', table: 'Tavolo', whichRoom: 'Per quale camera sceglie?', room: 'Camera', persons: 'pers.',
@@ -26,7 +28,9 @@ const T: Record<Lang, Dict> = {
     noRoom: 'Per questo tavolo non risulta nessuna camera per questo menù. Si rivolga al nostro personale.',
     invalid: 'Questo codice QR non è più valido. Si rivolga al nostro personale.', error: 'Invio non riuscito', retry: 'Ricarica',
     allergens: 'Allergeni', allergenInfo: 'Allergeni secondo il Regolamento UE 1169/2011', veg: 'vegetariano', vegan: 'vegano', partial: 'Non tutte le persone hanno scelto – può comunque inviare.',
-    loading: 'Caricamento del menù…'
+    loading: 'Caricamento del menù…',
+    freeSeating: 'Posto libero – selezioni la Sua camera.', pickRoom: 'Selezionare la camera',
+    noRoomFree: 'Per questo menù non risulta nessuna camera. Si rivolga al nostro personale.'
   },
   en: {
     today: 'Today', tomorrow: 'Tomorrow', table: 'Table', whichRoom: 'Which room are you choosing for?', room: 'Room', persons: 'guests',
@@ -37,7 +41,9 @@ const T: Record<Lang, Dict> = {
     noRoom: 'No hotel room is assigned to this table for this menu. Please ask our team.',
     invalid: 'This QR code is no longer valid. Please ask our team.', error: 'Sending failed', retry: 'Reload',
     allergens: 'Allergens', allergenInfo: 'Allergens according to EU Regulation 1169/2011', veg: 'vegetarian', vegan: 'vegan', partial: 'Not everyone has chosen yet – you can still send.',
-    loading: 'Loading menu…'
+    loading: 'Loading menu…',
+    freeSeating: 'Free seating – please select your room.', pickRoom: 'Select room',
+    noRoomFree: 'No hotel room is registered for this menu. Please ask our team.'
   }
 };
 

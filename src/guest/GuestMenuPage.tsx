@@ -79,9 +79,18 @@ export function GuestMenuPage({ token }: { token: string }) {
   );
 }
 
+/** Zuletzt gewähltes Zimmer auf diesem Handy merken (Frühstück mit freier Platzwahl: sonst jedes Mal neu aus der Liste wählen) */
+const STAY_KEY = 'tischplan.guest.stay';
+const rememberedStay = () => { try { return localStorage.getItem(STAY_KEY); } catch { return null; } };
+
 function MenuChooser({ token, menu, lang, title, onSaved }: { token: string; menu: GuestMenu; lang: Lang; title: string; onSaved: () => void }) {
   const rooms = menu.rooms;
-  const [stayId, setStayId] = useState<string | null>(rooms.length === 1 ? rooms[0].stayId : null);
+  const [stayId, setStayIdRaw] = useState<string | null>(() =>
+    rooms.length === 1 ? rooms[0].stayId : rooms.find(r => r.stayId === rememberedStay())?.stayId ?? null);
+  const setStayId = (id: string | null) => {
+    setStayIdRaw(id);
+    if (id) try { localStorage.setItem(STAY_KEY, id); } catch { /* egal */ }
+  };
   const room = rooms.find(r => r.stayId === stayId);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [busy, setBusy] = useState(false);
@@ -122,7 +131,16 @@ function MenuChooser({ token, menu, lang, title, onSaved }: { token: string; men
     <section className="gm-menu">
       <h2 className="gm-menu-title">{title}</h2>
       {!open && <p className="gm-banner">{tr(lang, 'closed')}</p>}
-      {!rooms.length ? <p className="gm-note">{tr(lang, 'noRoom')}</p> : rooms.length > 1 && (
+      {!rooms.length ? <p className="gm-note">{tr(lang, menu.pick ? 'noRoomFree' : 'noRoom')}</p> : menu.pick && rooms.length > 1 ? (
+        // Freie Platzwahl: Zimmer aus allen Zimmern mit dieser Mahlzeit auswählen
+        <div className="gm-rooms">
+          <p>{tr(lang, 'freeSeating')}</p>
+          <select className="gm-roompick" aria-label={tr(lang, 'pickRoom')} value={stayId ?? ''} onChange={e => setStayId(e.target.value || null)}>
+            <option value="">{tr(lang, 'pickRoom')}</option>
+            {rooms.map(r => <option key={r.stayId} value={r.stayId}>{tr(lang, 'room')} {r.roomNo} · {r.persons} {tr(lang, 'persons')}{Object.keys(r.counts).length ? ' ✓' : ''}</option>)}
+          </select>
+        </div>
+      ) : rooms.length > 1 && (
         <div className="gm-rooms">
           <p>{tr(lang, 'whichRoom')}</p>
           <div>{rooms.map(r => (

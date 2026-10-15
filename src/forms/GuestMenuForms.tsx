@@ -4,6 +4,7 @@ import QRCode from 'qrcode';
 import { Printer, Upload, X } from '../ui/icons';
 import { repo } from '../data';
 import { brandingOf, choiceSummary, guestUrl, newQrToken, orderingOf } from '../domain/guestMenu';
+import { byId } from '../domain/logic';
 import type { Branding, DiningTable, Menu, MenuOrdering } from '../domain/types';
 import { useApp } from '../store/app';
 import { useData } from '../store/hooks';
@@ -122,6 +123,7 @@ export function GuestChoicePanel({ m, ro, onOrdering }: { m: Menu; ro: boolean; 
   const d = useData();
   const s = choiceSummary(d, m);
   const ord = orderingOf(m);
+  const free = !!byId(d.services, m.serviceId)?.freeSeating;
   return (
     <div className="guest-choice mt12">
       <h4 style={{ margin: '0 0 6px' }}>Gäste-Auswahl (QR)</h4>
@@ -130,7 +132,8 @@ export function GuestChoicePanel({ m, ro, onOrdering }: { m: Menu; ro: boolean; 
           {ORDERING.map(o => <option key={o.v} value={o.v}>{o.label}</option>)}</select>
         {s.rooms > 0 && <span className={'badge' + (s.chosenRooms < s.rooms ? ' warn' : '')}>{s.chosenRooms} von {s.rooms} Zimmern gewählt · {s.chosenPersons}/{s.persons} Pers.</span>}
       </div>
-      {s.open.length > 0 && ord !== 'aus' && <p className="muted" style={{ fontSize: 12, margin: '6px 0 0' }}>Noch ohne Auswahl: {s.open.map(o => `Zi. ${o.roomNo} (${o.persons}P, ${o.tables.join('+') || 'ohne Tisch'})`).join(' · ')}</p>}
+      {s.open.length > 0 && ord !== 'aus' && <p className="muted" style={{ fontSize: 12, margin: '6px 0 0' }}>Noch ohne Auswahl: {s.open.map(o => `Zi. ${o.roomNo} (${o.persons}P, ${o.tables.join('+') || (free ? 'freie Platzwahl' : 'ohne Tisch')})`).join(' · ')}</p>}
+      {free && <p className="muted" style={{ fontSize: 12, margin: '6px 0 0' }}>Freie Platzwahl: Gäste wählen beim QR-Code (jeder Tisch) ihr Zimmer aus allen Zimmern mit dieser Mahlzeit.</p>}
       {ord === 'aus' && <p className="muted" style={{ fontSize: 12, margin: '6px 0 0' }}>Gewählte Gerichte zählen fest, nur der Rest wird nach den Anteilen geschätzt. Nur Menüs von heute und morgen erscheinen bei den Gästen.</p>}
     </div>
   );

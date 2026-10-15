@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { demoVenueData, emptyVenueData, newId } from './demo';
-import { brandingOf, buildGuestMenu, choiceSummary, cleanCounts, newQrToken } from './guestMenu';
+import { brandingOf, buildGuestMenu, choiceSummary, cleanCounts, newQrToken, stayEats } from './guestMenu';
 import { dishPlans, snapshotItems } from './menu';
 import type { Dish, Menu, MenuItem, Reservation, Stay, VenueData } from './types';
 import { addDays } from '../lib/time';
@@ -47,6 +47,36 @@ describe('Gäste-Speisekarte (QR)', () => {
     expect(buildGuestMenu(d, t1.qrToken, DAY)!.menus).toEqual([]);
     menu.ordering = 'offen';
     expect(buildGuestMenu(d, t1.qrToken, addDays(DAY, 2))!.menus).toEqual([]); // nur heute und morgen
+  });
+
+  it('Frühstück mit freier Platzwahl: jeder QR-Code zeigt alle Zimmer mit Frühstück zur Auswahl', () => {
+    const { d, t2, rind, s101, s102 } = setup();
+    const svc = d.services.find(s => s.kind === 'fruehstueck')!;
+    expect(svc.freeSeating).toBe(true);
+    const breakfast: Menu = { id: newId(), date: addDays(DAY, 1), serviceId: svc.id, portions: null, bufferPct: 0, notes: '',
+      items: snapshotItems(d, [{ course: 'hauptgang', dishId: rind.id, share: null, name: '', allergens: [] }]), ordering: 'offen' };
+    d.menus.push(breakfast);
+    // Zimmer 103 mit Frühstück (UF), aber ohne Tisch und ohne Reservierung
+    d.stays.push({ ...s101, id: newId(), roomNo: '103', board: 'UF', adults: 1, tableIds: [] });
+    const v = buildGuestMenu(d, t2.qrToken, addDays(DAY, 1))!;
+    const m = v.menus.find(x => x.id === breakfast.id)!;
+    expect(m.pick).toBe(true);
+    expect(m.rooms.map(r => [r.roomNo, r.persons])).toEqual([['101', 2], ['102', 3], ['103', 1]]);
+    expect(buildGuestMenu(d, t2.qrToken, DAY)!.menus.find(x => x.id !== breakfast.id)!.pick).toBe(false); // Abendessen: feste Tische
+    // am Anreisetag gibt es noch kein Frühstück
+    breakfast.date = DAY;
+    expect(buildGuestMenu(d, t2.qrToken, DAY)!.menus.find(x => x.id === breakfast.id)!.rooms).toEqual([]);
+    expect(choiceSummary(d, { ...breakfast, date: addDays(DAY, 1) }).open.map(o => [o.roomNo, o.tables])).toEqual([['101', []], ['102', []], ['103', []]]);
+    expect(s102.board).toBe('HP');
+  });
+
+  it('Mahlzeiten je Verpflegung: Frühstück morgens nach jeder Nacht, Abendessen bis vor der Abreise', () => {
+    const s = { arrival: '2026-10-10', departure: '2026-10-12' };
+    expect(['2026-10-10', '2026-10-11', '2026-10-12'].map(x => stayEats({ ...s, board: 'UF' }, 'fruehstueck', x))).toEqual([false, true, true]);
+    expect(['2026-10-10', '2026-10-11', '2026-10-12'].map(x => stayEats({ ...s, board: 'HP' }, 'abend', x))).toEqual([true, true, false]);
+    expect(stayEats({ ...s, board: 'UF' }, 'abend', '2026-10-10')).toBe(false);
+    expect(stayEats({ ...s, board: 'HP' }, 'mittag', '2026-10-10')).toBe(false);
+    expect(stayEats({ ...s, board: 'VP' }, 'mittag', '2026-10-10')).toBe(true);
   });
 
   it('prüft die Auswahl: nur Gerichte des Menüs, je Gang höchstens so viele wie Personen', () => {

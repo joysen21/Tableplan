@@ -35,6 +35,8 @@ body.guest-body{background:#f7f4ee;color:#1f2329}
 .gm-rooms>div{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
 .gm-rooms button{border:1.5px solid var(--line);background:#fff;color:var(--ink);font:inherit;font-weight:600;border-radius:14px;padding:10px 16px;min-height:48px;display:flex;flex-direction:column;align-items:center;cursor:pointer}
 .gm-rooms button small{font-weight:400;color:var(--muted);font-size:12px}
+.gm-roompick{display:block;width:100%;max-width:320px;margin:0 auto;border:1.5px solid var(--line);background:#fff;color:var(--ink);font:inherit;font-size:17px;font-weight:600;border-radius:14px;padding:12px 14px;min-height:50px}
+.gm-roompick:focus{outline:2px solid var(--brand);outline-offset:1px}
 .gm-rooms button[aria-pressed=true]{border-color:var(--brand);background:var(--soft);box-shadow:0 0 0 2px var(--brand) inset}
 .gm-hint{margin:8px 0 0;text-align:center;color:var(--muted);font-size:13px}
 
