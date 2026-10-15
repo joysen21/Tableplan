@@ -58,6 +58,8 @@ export interface Stay {
   id: string; roomNo: string; name: string; adults: number; children: number;
   arrival: string; departure: string; board: Board; phone: string; allergies: string; allergens: Allergen[]; notes: string;
   vip: boolean; times: Partial<Record<ServiceKind, string>>; tableIds: string[];
+  /** Kennung im Hotelprogramm (CSV-Import, z. B. „ASA:3613/2026/1“) – fehlt bei von Hand angelegten Aufenthalten */
+  externalId?: string | null;
 }
 
 export interface Reservation {

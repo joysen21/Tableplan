@@ -34,7 +34,8 @@ export const fromDb = {
   blocks: (r: Row): TableBlock => ({ id: r.id, tableId: r.table_id, date: r.date, serviceId: r.service_id ?? null, reason: r.reason ?? '' }),
   stays: (r: Row): Stay => ({
     id: r.id, roomNo: r.room_no, name: r.name, adults: r.adults, children: r.children, arrival: r.arrival, departure: r.departure,
-    board: r.board, phone: r.phone ?? '', allergies: r.allergies ?? '', allergens: r.allergens ?? [], notes: r.notes ?? '', vip: !!r.vip, times: r.times ?? {}, tableIds: r.table_ids ?? []
+    board: r.board, phone: r.phone ?? '', allergies: r.allergies ?? '', allergens: r.allergens ?? [], notes: r.notes ?? '', vip: !!r.vip, times: r.times ?? {}, tableIds: r.table_ids ?? [],
+    externalId: r.external_id ?? null
   }),
   reservation: (r: Row): Reservation => ({
     id: r.id, date: r.date, serviceId: r.service_id, time: hhmm(r.time), duration: r.duration, adults: r.adults, children: r.children,
@@ -129,7 +130,9 @@ export const toDb = {
   }),
   stays: (x: Stay, v: string) => ({
     id: x.id, venue_id: v, room_no: x.roomNo, name: x.name, adults: x.adults, children: x.children, arrival: x.arrival, departure: x.departure,
-    board: x.board, phone: x.phone, allergies: x.allergies, allergens: x.allergens, notes: x.notes, vip: x.vip, times: x.times, table_ids: x.tableIds
+    board: x.board, phone: x.phone, allergies: x.allergies, allergens: x.allergens, notes: x.notes, vip: x.vip, times: x.times, table_ids: x.tableIds,
+    // nur mitschicken, wenn gesetzt – so klappt das Speichern auch, solange die Migration 20261016000000 fehlt
+    ...(x.externalId ? { external_id: x.externalId } : {})
   }),
   reservation: (x: Reservation) => ({
     id: x.id, date: x.date, service_id: x.serviceId, time: x.time, duration: x.duration, adults: x.adults, children: x.children, name: x.name,

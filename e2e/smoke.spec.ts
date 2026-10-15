@@ -96,6 +96,31 @@ test('Hotel: festen Tisch per Ziehen zuweisen', async ({ page }) => {
   await page.screenshot({ path: 'test-results/hotel.png' });
 });
 
+test('Hotel: ASA-Zimmerliste importieren (Vorschau, Übernehmen, erneut unverändert)', async ({ page }) => {
+  await loginDemo(page);
+  await page.getByRole('link', { name: 'Hotelgäste' }).click();
+  const de = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }); };
+  const line = (nr: number, pos: number, room: string, name: string) => `Nein;${nr};2026;${pos};${room};${name};${name};01.01.1960;66;D;Ja;700;Nein;Ja;${de(-1)};4;${de(3)};Anwesend;;;`;
+  const csv = ['Ausgewählt;Nr.;Jahr;Position;Zimmerreservierung;Gast;Name;Geburtsdatum;Alter (Aufenthalt);Land;Eigene Meldung;Meldung;Einwilligungserklärung vorhanden;Web Check-in;Anreise;Tage;Abreise;Status;Ehrung (Jahre);Ehrung (Aufenthalte);Konto',
+    line(9001, 1, '801', 'Import Anna'), line(9001, 2, '801', 'Import Bert'), line(9002, 1, '802', 'Import Clara')].join('\r\n');
+  const upload = async () => {
+    await page.getByRole('button', { name: 'CSV-Import' }).click();
+    await page.getByLabel('CSV-Datei').setInputFiles({ name: 'Zimmerliste.csv', mimeType: 'text/csv', buffer: Buffer.from(csv, 'latin1') });
+  };
+  await upload();
+  await expect(page.getByText(/2 Aufenthalte gelesen/)).toBeVisible();
+  await expect(page.getByText(/Zi\. 801 · Import Anna · 2P/)).toBeVisible();
+  await page.screenshot({ path: 'test-results/hotel-import.png' });
+  await page.getByRole('button', { name: '2 Änderungen übernehmen' }).click();
+  await expect(page.getByText(/2 neu, 0 geändert/)).toBeVisible();
+  await page.getByText('Schließen', { exact: true }).click();
+  await expect(page.locator('.hotel').getByText('Import Clara').first()).toBeVisible();
+  // zweiter Import derselben Datei: nichts zu tun
+  await upload();
+  await expect(page.getByText(/2 unverändert/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Übernehmen', exact: true })).toBeDisabled();
+});
+
 test('Editor: Tisch verschieben wird gespeichert', async ({ page }) => {
   await loginDemo(page);
   await page.getByRole('link', { name: 'Raumplan-Editor' }).click();

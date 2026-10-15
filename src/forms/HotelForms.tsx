@@ -1,14 +1,14 @@
 /** Hotelaufenthalt bearbeiten, CSV-Import und Zuweisung eines festen Tisches */
-import { useState } from 'react';
-import { guessAllergens } from '../domain/menu';
+import { useMemo, useState } from 'react';
 import { AllergenPicker } from '../ui/AllergenPicker';
 import { Trash2 } from '../ui/icons';
 import { newId } from '../domain/demo';
 import { BOARDS, MAX_ROOMS_PER_TABLE } from '../domain/constants';
+import { parseImport, planImport } from '../domain/hotelImport';
 import { byId, capacity, isInHouse, needsTable, stayNights, stayTableConflicts, tableNames } from '../domain/logic';
 import type { Board, ServiceKind, Stay, VenueData } from '../domain/types';
 import { t } from '../lib/i18n';
-import { addDays, fmtShort, parseDate } from '../lib/time';
+import { addDays, fmtShort, today } from '../lib/time';
 import { readTextFile } from '../lib/text';
 import { useApp } from '../store/app';
 import { useData } from '../store/hooks';
@@ -138,42 +138,83 @@ export function StayForm({ stay }: { stay?: Stay }) {
   );
 }
 
+/** CSV-Import: Datei lesen → Vorschau (neu / geändert / abgereist) → übernehmen */
 export function StayImport() {
   const store = useApp();
   const d = useData();
   const [text, setText] = useState('');
+  const [defaultBoard, setDefaultBoard] = useState<Board>('HP');
+  const [withRemovals, setWithRemovals] = useState(true);
   const [result, setResult] = useState('');
   const [busy, setBusy] = useState(false);
+  const parsed = useMemo(() => (text.trim() ? parseImport(text) : null), [text]);
+  const plan = useMemo(() => parsed && planImport(d.stays, parsed, { today: today(), newId, defaultBoard }), [parsed, d.stays, defaultBoard]);
+  const boardInFile = !!parsed?.stays.some(s => s.board);
+  // Sicherung gegen eine unvollständige Datei: mehr als die Hälfte der Gäste aus dem Hotelprogramm würde wegfallen
+  const activeExternal = d.stays.filter(s => s.externalId?.startsWith('ASA:') && s.departure > today()).length;
+  const manyRemovals = !!plan && plan.remove.length > 2 && plan.remove.length > activeExternal / 2;
+
   async function run() {
-    const lines = text.split(/\r?\n/).filter(l => l.trim());
-    if (lines.length < 2) return toast('Keine Daten', 'err');
-    const sep = lines[0].includes(';') ? ';' : lines[0].includes('\t') ? '\t' : ',';
-    let created = 0, updated = 0, failed = 0; const errs: string[] = [];
+    if (!plan) return;
+    const removals = withRemovals ? plan.remove : [];
+    if (manyRemovals && removals.length && !(await confirmDialog('Viele Gäste fehlen in der Datei', [
+      `${removals.length} von ${activeExternal} Aufenthalten aus dem Hotelprogramm stehen nicht in der Datei und würden entfernt.`,
+      'Ist die Datei vollständig?'], 'Trotzdem übernehmen', true))) return;
     setBusy(true);
-    for (const [i, l] of lines.slice(1).entries()) {
-      const c = l.split(sep).map(x => x.trim().replace(/^"|"$/g, ''));
-      const arrival = parseDate(c[4]), departure = parseDate(c[5]), board = (c[6] || 'HP').toUpperCase() as Board;
-      if (!c[0] || !c[1] || !arrival || !departure || departure <= arrival || !BOARDS.includes(board)) { errs.push(`Zeile ${i + 2}: ungültig`); continue; }
-      const ex = useApp.getState().data!.stays.find(x => x.roomNo === c[0] && x.arrival === arrival);
-      const stay: Stay = { ...(ex ?? { id: newId(), tableIds: [], vip: false, phone: '', times: {} }), roomNo: c[0], name: c[1], adults: +c[2] || 1, children: +c[3] || 0,
-        arrival, departure, board, allergies: c[7] || '', allergens: guessAllergens(c[7] || ''), notes: c[8] || '' } as Stay;
+    let ok = 0, failed = 0; const skipped: string[] = [];
+    const save = async (stay: Stay) => {
       const res = await store.saveStay(stay);
-      if (!res.ok) failed++; else if (ex) updated++; else created++;
+      if (!res.ok) return void failed++;
+      ok++;
+      if (res.skipped.length) skipped.push(`Zi. ${stay.roomNo}: ${res.skipped.join(', ')}`);
+    };
+    for (const s of plan.create) await save(s);
+    for (const u of plan.update) await save(u.stay);
+    for (const r of removals) {
+      if (r.action === 'depart') await save({ ...r.stay, departure: today() });
+      else if (await store.deleteStay(r.stay)) ok++; else failed++;
     }
     setBusy(false);
-    store.log('CSV-Import Hotelgäste', `${created} neu, ${updated} aktualisiert`);
-    setResult(`${created} neu, ${updated} aktualisiert${failed ? `, ${failed} fehlgeschlagen` : ''}${errs.length ? ' · ' + errs.join(' · ') : ''}`);
+    const summary = `${plan.create.length} neu, ${plan.update.length} geändert, ${removals.length} entfernt/abgereist`;
+    store.log('CSV-Import Hotelgäste', summary + (failed ? `, ${failed} fehlgeschlagen` : ''));
+    setResult(`${summary}${failed ? ` · ${failed} fehlgeschlagen` : ''}${skipped.length ? ' · ohne Tisch (belegt): ' + skipped.join(' · ') : ''}`);
+    setText('');
+    toast(failed ? 'Import mit Fehlern abgeschlossen' : 'Import abgeschlossen', failed ? 'err' : 'ok');
   }
+
+  const Section = ({ title, lines }: { title: string; lines: string[] }) => lines.length ? <>
+    <h4 style={{ margin: '10px 0 4px' }}>{title} ({lines.length})</h4>
+    <div style={{ fontSize: 13, maxHeight: 150, overflow: 'auto' }}>{lines.map((l, i) => <div key={i}>{l}</div>)}</div>
+  </> : null;
+  const label = (s: Stay) => `Zi. ${s.roomNo} · ${s.name} · ${s.adults + s.children}P · ${fmtShort(s.arrival)} – ${fmtShort(s.departure)}`;
+  const changes = plan ? plan.create.length + plan.update.length + (withRemovals ? plan.remove.length : 0) : 0;
+
   return (
-    <Modal title="Hotelgäste importieren (CSV)" onClose={closeDialog} footer={<><button className="btn" onClick={closeDialog}>Schließen</button><button className="btn primary" disabled={busy} onClick={run}>Importieren</button></>}>
-      <p className="muted" style={{ marginTop: 0 }}>Spalten (Trennzeichen ; oder ,), erste Zeile = Überschrift:<br />
-        <code>Zimmer;Name;Erwachsene;Kinder;Anreise;Abreise;Verpflegung;Allergien;Notiz</code><br />
-        Umlaute und ß werden erkannt (UTF-8 oder Excel-CSV/ANSI).<br />
-        Datum als TT.MM.JJJJ oder JJJJ-MM-TT · Verpflegung UF / HP / VP / AI. Bestehende Aufenthalte (gleiches Zimmer + Anreise) werden aktualisiert.</p>
-      <input type="file" accept=".csv,.txt,text/csv,text/plain" onChange={e => { const f = e.target.files?.[0]; if (f) readTextFile(f).then(setText); }} />
-      <textarea style={{ minHeight: 160, marginTop: 8 }} value={text} placeholder="…oder hier einfügen" onChange={e => setText(e.target.value)} />
+    <Modal title="Hotelgäste importieren (CSV)" onClose={closeDialog} width={640} footer={<><button className="btn" onClick={closeDialog}>Schließen</button>
+      <button className="btn primary" disabled={busy || !changes} onClick={run}>{changes ? `${changes} Änderungen übernehmen` : 'Übernehmen'}</button></>}>
+      <p className="muted" style={{ marginTop: 0 }}>
+        <b>ASA-Zimmerliste</b>: wird erkannt und je Reservierung + Zimmer zu einem Aufenthalt zusammengefasst. Die Datei gilt als kompletter Gästestand –
+        wer fehlt, gilt als abgereist bzw. storniert. Geburtsdatum, Land und Meldedaten werden nicht gespeichert.<br />
+        <b>Einfaches Format</b>: <code>Zimmer;Name;Erwachsene;Kinder;Anreise;Abreise;Verpflegung;Allergien;Notiz</code><br />
+        Feste Tische, Essenszeiten, Allergien und Notizen aus dem Tischplan bleiben erhalten.</p>
+      <input type="file" accept=".csv,.txt,text/csv,text/plain" aria-label="CSV-Datei" onChange={e => { const f = e.target.files?.[0]; if (f) { setResult(''); readTextFile(f).then(setText); } }} />
+      <textarea style={{ minHeight: 80, marginTop: 8 }} value={text} placeholder="…oder hier einfügen" onChange={e => { setResult(''); setText(e.target.value); }} />
+      {parsed && plan && <>
+        <p style={{ margin: '8px 0 0' }}><b>{parsed.format === 'asa' ? 'ASA-Zimmerliste' : 'Einfaches Format'}</b>: {parsed.stays.length} Aufenthalte gelesen
+          {parsed.cancelled ? `, ${parsed.cancelled} stornierte Zeilen übersprungen` : ''} · {plan.unchanged} unverändert</p>
+        {!boardInFile && plan.create.length > 0 && <label className="mt8">Verpflegung für neue Gäste (nicht in der Datei)
+          <select value={defaultBoard} onChange={e => setDefaultBoard(e.target.value as Board)}>{BOARDS.map(b => <option key={b} value={b}>{t(b)}</option>)}</select></label>}
+        <Section title="Neu" lines={plan.create.map(label)} />
+        <Section title="Geändert" lines={plan.update.map(u => `Zi. ${u.before.roomNo} · ${u.before.name}: ${u.changes.join(', ')}`)} />
+        {plan.remove.length > 0 && <>
+          <Section title="Nicht mehr in der Datei" lines={plan.remove.map(r => `${label(r.stay)} → ${r.action === 'delete' ? 'löschen (noch nicht angereist)' : 'Abreise heute'}`)} />
+          <label className="chk mt8"><input type="checkbox" checked={withRemovals} onChange={e => setWithRemovals(e.target.checked)} /> Fehlende Gäste entfernen bzw. abreisen lassen</label>
+          {manyRemovals && withRemovals && <div className="infobox mt8" style={{ color: 'var(--danger)' }}>Achtung: mehr als die Hälfte der Gäste aus dem Hotelprogramm fehlt – ist die Datei vollständig?</div>}
+        </>}
+        <Section title="Fehler" lines={parsed.errors} />
+      </>}
       {busy && <p className="muted">Import läuft…</p>}
-      {result && <div className="infobox">{result}</div>}
+      {result && <div className="infobox mt8">{result}</div>}
       <p className="muted" style={{ fontSize: 12 }}>{d.stays.length} Aufenthalte vorhanden.</p>
     </Modal>
   );
