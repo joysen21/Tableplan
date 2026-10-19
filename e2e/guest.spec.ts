@@ -22,7 +22,7 @@ test('Gast wählt per QR-Code sein Abendmenü, die Küche sieht die Auswahl', as
   await page.getByRole('tab', { name: /Heute.*Abendessen/ }).click();
   const roomBtn = page.getByRole('button', { name: new RegExp(`Zimmer ${target.roomNo}\\b`) });
   if (await roomBtn.isVisible().catch(() => false)) await roomBtn.click();
-  await page.getByRole('button', { name: '+' }).first().click();
+  await page.locator('.gm-step button[aria-label="+"]:not([disabled])').first().click();
   await page.getByRole('button', { name: 'Auswahl senden' }).click();
   await expect(page.getByText('Danke! Ihre Auswahl ist bei der Küche angekommen.')).toBeVisible();
 
@@ -88,4 +88,48 @@ test('Frühstück mit freier Platzwahl: Gast wählt sein Zimmer aus der Liste, d
   await page.reload();
   await page.getByRole('tab', { name: /Heute.*Frühstück/ }).click();
   await expect(pick).toHaveValue(target.stayId);
+});
+
+test('Alle Gänge mit Menge wählbar – auch ein Gang mit nur einem Gericht (z. B. ohne Dessert)', async ({ page }) => {
+  await loginDemo(page);
+  // heutiges Abendmenü: Zimmer mit 2+ Personen an einem Tisch, noch ohne Auswahl
+  const target = await page.evaluate(() => {
+    const v = Object.values(JSON.parse(localStorage.getItem('tischplan.demo.v2')!).data)[0] as any;
+    const day = new Date().toLocaleDateString('sv-SE');
+    const svc = v.services.find((s: any) => s.kind === 'abend');
+    const menu = v.menus.find((m: any) => m.date === day && m.serviceId === svc.id);
+    const single = menu.items.find((it: any) => menu.items.filter((x: any) => x.course === it.course).length === 1);
+    const r = v.reservations.find((x: any) => x.date === day && x.serviceId === svc.id && x.stayId && x.tableIds.length && x.adults + x.children >= 2
+      && !['storniert', 'noshow'].includes(x.status) && !v.menuChoices.some((c: any) => c.menuId === menu.id && c.stayId === x.stayId));
+    const table = v.tables.find((t: any) => t.id === r.tableIds[0]);
+    return { token: table.qrToken, roomNo: v.stays.find((s: any) => s.id === r.stayId).roomNo, stayId: r.stayId, menuId: menu.id,
+      dishId: single.dishId, persons: r.adults + r.children };
+  });
+
+  await page.goto(`/m/${target.token}?demo`);
+  await page.getByRole('tab', { name: /Heute.*Abendessen/ }).click();
+  const roomBtn = page.getByRole('button', { name: new RegExp(`Zimmer ${target.roomNo}\b`) });
+  if (await roomBtn.isVisible().catch(() => false)) await roomBtn.click();
+  // Gang mit einem Gericht: vorbelegt für alle Personen, mit − und + wie die anderen Gänge
+  const singleCourse = page.locator('.gm-course').filter({ has: page.locator('.gm-dish') }).filter({ hasNot: page.locator('.gm-dish + .gm-dish') }).first();
+  await expect(singleCourse.locator('.gm-step b')).toHaveText(String(target.persons));
+  await expect(page.getByText('wird serviert')).toHaveCount(0);
+  await singleCourse.getByRole('button', { name: '−' }).click();
+  await expect(singleCourse.locator('.gm-step b')).toHaveText(String(target.persons - 1));
+  await page.getByRole('button', { name: 'Auswahl senden' }).click();
+  await expect(page.getByText('Danke! Ihre Auswahl ist bei der Küche angekommen.')).toBeVisible();
+  await page.screenshot({ path: 'test-results/guest-all-courses.png', fullPage: true });
+
+  const saved = await page.evaluate(t => {
+    const v = Object.values(JSON.parse(localStorage.getItem('tischplan.demo.v2')!).data)[0] as any;
+    return v.menuChoices.find((c: any) => c.menuId === t.menuId && c.stayId === t.stayId)?.counts ?? {};
+  }, target);
+  // genau ein Gang mit einem Gericht wurde reduziert – das gespeicherte Gericht mit weniger als allen Personen
+  expect(Object.values(saved)).toContain(target.persons - 1);
+
+  // nach dem Neuladen bleibt die reduzierte Menge stehen (keine erneute Vorbelegung)
+  await page.reload();
+  await page.getByRole('tab', { name: /Heute.*Abendessen/ }).click();
+  if (await roomBtn.isVisible().catch(() => false)) await roomBtn.click();
+  await expect(singleCourse.locator('.gm-step b')).toHaveText(String(target.persons - 1));
 });

@@ -97,12 +97,13 @@ function MenuChooser({ token, menu, lang, title, onSaved }: { token: string; men
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const courses = menuCourses(menu.items);
   const open = menu.state === 'offen';
-  // Gänge mit nur einem Gericht: automatisch für alle Personen
+  // Gänge mit nur einem Gericht: vorbelegt für alle Personen, die Menge lässt sich wie bei den anderen Gängen ändern (z. B. ohne Dessert)
   const single = useMemo(() => courses.filter(c => menu.items.filter(i => i.course === c).length === 1), [menu]);
   useEffect(() => {
     if (!room) return;
     const base = { ...room.counts };
-    for (const c of single) { const it = menu.items.find(i => i.course === c)!; if (!base[it.dishId]) base[it.dishId] = room.persons; }
+    // nur ohne gespeicherte Auswahl vorbelegen – sonst würde ein bewusst abgewählter Gang wieder auftauchen
+    if (!Object.keys(room.counts).length) for (const c of single) { const it = menu.items.find(i => i.course === c)!; base[it.dishId] = room.persons; }
     setCounts(base); setMsg(null);
     // nur beim Zimmerwechsel neu setzen – nicht nach dem Senden (sonst verschwindet die Bestätigung)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -115,7 +116,8 @@ function MenuChooser({ token, menu, lang, title, onSaved }: { token: string; men
     if (next < 0 || (delta > 0 && sumOf(it.course) >= room.persons)) return;
     setCounts({ ...counts, [it.dishId]: next }); setMsg(null);
   };
-  const complete = room ? courses.every(c => sumOf(c) === room.persons) : false;
+  // vollständig = jeder Gang mit Auswahl ist für alle Personen gewählt; einen einzelnen Gang wegzulassen ist eine bewusste Wahl
+  const complete = room ? courses.filter(c => !single.includes(c)).every(c => sumOf(c) === room.persons) : false;
   async function send() {
     if (!room) return;
     setBusy(true); setMsg(null);
@@ -155,13 +157,13 @@ function MenuChooser({ token, menu, lang, title, onSaved }: { token: string; men
 
       {courses.map(c => {
         const list = menu.items.filter(i => i.course === c);
-        const sum = sumOf(c), isSingle = list.length === 1;
+        const sum = sumOf(c);
         return (
           <div key={c} className="gm-course">
             <h3><span>{courseName(lang, c)}</span></h3>
-            {room && !isSingle && <p className={'gm-count' + (sum === room.persons ? ' done' : '')}>{sum} / {room.persons} {sum === room.persons ? tr(lang, 'chosen') : tr(lang, 'missing')}</p>}
+            {room && <p className={'gm-count' + (sum === room.persons ? ' done' : '')}>{sum} / {room.persons} {sum === room.persons ? tr(lang, 'chosen') : tr(lang, 'missing')}</p>}
             {list.map(it => (
-              <div key={it.dishId} className={'gm-dish' + ((counts[it.dishId] ?? 0) > 0 && room && !isSingle ? ' picked' : '')}>
+              <div key={it.dishId} className={'gm-dish' + ((counts[it.dishId] ?? 0) > 0 && room ? ' picked' : '')}>
                 <div className="gm-dish-text">
                   <span className="gm-dish-name">{dishName(lang, it)}</span>
                   <span className="gm-dish-meta">
@@ -169,13 +171,13 @@ function MenuChooser({ token, menu, lang, title, onSaved }: { token: string; men
                     {it.allergens.length > 0 && <span className="gm-all" title={it.allergens.map(a => allergenName(lang, a)).join(', ')}>{tr(lang, 'allergens')}: {it.allergens.map(allergenNo).join(', ')}</span>}
                   </span>
                 </div>
-                {room && (isSingle ? <span className="gm-served">{tr(lang, 'served')}</span> : (
+                {room && (
                   <div className="gm-step" aria-label={dishName(lang, it)}>
                     <button aria-label="−" disabled={!open || !(counts[it.dishId] ?? 0)} onClick={() => step(it, -1)}>−</button>
                     <b>{counts[it.dishId] ?? 0}</b>
                     <button aria-label="+" disabled={!open || sum >= room.persons} onClick={() => step(it, 1)}>+</button>
                   </div>
-                ))}
+                )}
               </div>
             ))}
           </div>
