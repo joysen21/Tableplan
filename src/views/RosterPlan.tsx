@@ -202,7 +202,9 @@ function WeekGrid({ days, rows, open, scope, dept, warnings, canPlan, onCell, dr
               onClick={e => { e.stopPropagation(); openDialog({ type: 'shift', shift: s }); }}
               title={`${d.departments.find(x => x.id === s.departmentId)?.name}: ${templateTimes(s)}${s.breakMin ? `, ${s.breakMin} Min. Pause` : ''}${s.note ? ' · ' + s.note : ''}`}>
               {warnIds.has(s.id) && <TriangleAlert className="w" aria-label="Hinweis" />}
-              <b>{shiftLabel(d, s)}</b>{d.shiftTemplates.some(x => x.id === s.templateId) && <small>{s.start}–{s.end}{s.start2 ? ' +' : ''}</small>}{!d.shiftTemplates.some(x => x.id === s.templateId) && s.start2 && <small>+</small>}{s.note && <i className="note" aria-label="Notiz">•</i>}
+              <b>{shiftLabel(d, s)}</b>{d.shiftTemplates.some(x => x.id === s.templateId) && <small>{s.start}–{s.end}</small>}
+              {/* Teildienst: zweite Zeitspanne immer sichtbar (eigene Zeile im Chip) */}
+              {s.start2 && s.end2 && <small className="split">{s.start2}–{s.end2}</small>}{s.note && <i className="note" aria-label="Notiz">•</i>}
             </button>
           );
         })}

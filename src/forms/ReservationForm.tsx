@@ -2,18 +2,18 @@
 import { useState } from 'react';
 import { Trash2, X } from '../ui/icons';
 import { newId } from '../domain/demo';
+import { guessAllergens } from '../domain/menu';
 import { ALL_STATUS, FEATURES, OCCASIONS, SOURCES } from '../domain/constants';
-import { byId, capacity, checkReservation, isInHouse, mergeEdits, persons, resEnd, resStart, suggestTables, tableBusy, tableConflicts, tableNames, turnTime } from '../domain/logic';
+import { byId, capacity, checkReservation, isInHouse, mergeEdits, persons, resEnd, resStart, serviceTime, suggestTables, tableBusy, tableConflicts, tableNames, untilEnd } from '../domain/logic';
 import type { Reservation } from '../domain/types';
 import { t } from '../lib/i18n';
-import { addDays, fmtDate } from '../lib/time';
+import { addDays, fmtDate, fromMin } from '../lib/time';
 import { useApp } from '../store/app';
 import { useData, useRoomId, useServiceId } from '../store/hooks';
 import { useUi } from '../store/ui';
 import { closeDialog } from '../store/dialogs';
 import { confirmDialog, toast } from '../ui/notify';
 import { Modal } from '../ui/Modal';
-import { AllergenPicker } from '../ui/AllergenPicker';
 
 /** Feldnamen für die Rückfrage bei Bearbeitungskonflikten */
 const FIELD_LABEL: Partial<Record<keyof Reservation, string>> = {
@@ -38,17 +38,21 @@ export function ReservationForm({ r, preset }: { r?: Reservation; preset?: Parti
       name: '', phone: '', email: '', occasion: '', allergies: '', allergens: [], notes: '', highchair: false, vip: false, source: 'Telefon',
       status: 'bestaetigt', wishes: [], stayId: null, manualTable: false, seriesId: null, seatedAt: null, finishedAt: null, tableIds: [], ...preset
     };
-    base.duration = base.duration || turnTime(d, base.serviceId, persons(base));
-    return base;
+    return withServiceTime(base);
   });
-  const [durAuto, setDurAuto] = useState(isNew || draft.duration === turnTime(d, draft.serviceId, persons(draft)));
   const [repeat, setRepeat] = useState(0);
   const [busy, setBusy] = useState(false);
 
+  // Uhrzeit und Dauer werden nicht eingegeben: Beginn des Service (Hotelgäste: Hotel-Standardzeit) bis zum festen Service-Ende
+  function withServiceTime(x: Reservation): Reservation {
+    const time = serviceTime(d, x.serviceId, !!x.stayId);
+    return { ...x, time, duration: untilEnd(d, x.serviceId, time) };
+  }
   const upd = (p: Partial<Reservation>) => setDraft(prev => {
     const next = { ...prev, ...p };
-    if (durAuto && ('adults' in p || 'children' in p || 'serviceId' in p)) next.duration = turnTime(d, next.serviceId, persons(next));
-    return next;
+    // Allergene werden nicht mehr angeklickt, sondern aus der Notiz erkannt (plus die des Hotelgasts) – für die Warnungen in der Küche
+    if ('allergies' in p) next.allergens = [...new Set([...(byId(d.stays, next.stayId)?.allergens ?? []), ...guessAllergens(next.allergies)])];
+    return 'serviceId' in p || 'stayId' in p ? withServiceTime(next) : next;
   });
   const svc = byId(d.services, draft.serviceId);
   const issues = checkReservation(d, draft);
@@ -113,21 +117,17 @@ export function ReservationForm({ r, preset }: { r?: Reservation; preset?: Parti
       {changedMeanwhile && <div className="infobox" role="status">{live ? 'Diese Reservierung wurde gerade von jemand anderem geändert. Beim Speichern werden deine Eingaben mit dem aktuellen Stand zusammengeführt.' : 'Diese Reservierung wurde inzwischen gelöscht.'}</div>}
       <div className="grid3">
         <label>Datum<input type="date" value={draft.date} onChange={e => e.target.value && upd({ date: e.target.value })} /></label>
-        <label>Service<select value={draft.serviceId} onChange={e => { const s = byId(d.services, e.target.value)!; upd({ serviceId: s.id, time: s.hotelTime || s.start }); }}>
+        <label>Service<select value={draft.serviceId} onChange={e => upd({ serviceId: e.target.value })}>
           {d.services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
-        <label>Uhrzeit<input type="time" step={900} value={draft.time} onChange={e => e.target.value && upd({ time: e.target.value })} /></label>
-      </div>
-      {!!svc?.seatings.length && <div className="sugg">{svc.seatings.map(x => <button key={x} className="btn small" onClick={() => upd({ time: x })}>{x} Seating</button>)}</div>}
-      <div className="grid3 mt8">
         <label>Erwachsene<input type="number" min={0} max={99} value={draft.adults} onChange={e => upd({ adults: +e.target.value || 0 })} /></label>
+      </div>
+      <div className="grid3 mt8">
         <label>Kinder<input type="number" min={0} max={99} value={draft.children} onChange={e => upd({ children: +e.target.value || 0 })} /></label>
-        <label>Dauer (Min.) {durAuto ? <span className="badge">auto</span> : <button className="link" style={{ fontSize: 11 }} onClick={() => { setDurAuto(true); upd({ duration: turnTime(d, draft.serviceId, persons(draft)) }); }}>auto</button>}
-          <input type="number" min={15} step={15} value={draft.duration} onChange={e => { setDurAuto(false); upd({ duration: Math.max(15, +e.target.value || 15) }); }} /></label>
+        <div className="muted" style={{ alignSelf: 'end', fontSize: 13, paddingBottom: 8 }} data-testid="res-time">Zeit {draft.time}–{fromMin(resEnd(draft))} (laut {svc?.name ?? 'Service'})</div>
       </div>
       <div className="grid2 mt8">
         <label>Name *<input value={draft.name} autoFocus={isNew} autoComplete="off" onChange={e => upd({ name: e.target.value })} /></label>
         <label>Telefon<input type="tel" value={draft.phone} onChange={e => upd({ phone: e.target.value })} /></label>
-        <label>E-Mail<input type="email" value={draft.email} onChange={e => upd({ email: e.target.value })} /></label>
         <label>Quelle<select value={draft.source} onChange={e => upd({ source: e.target.value })}>{SOURCES.map(s => <option key={s}>{s}</option>)}</select></label>
         <label>Anlass<select value={draft.occasion} onChange={e => upd({ occasion: e.target.value })}>{OCCASIONS.map(s => <option key={s} value={s}>{s || '–'}</option>)}</select></label>
         <label>Status<select value={draft.status} onChange={e => upd({ status: e.target.value as Reservation['status'] })}>{ALL_STATUS.map(s => <option key={s} value={s}>{t(s)}</option>)}</select></label>
@@ -141,7 +141,6 @@ export function ReservationForm({ r, preset }: { r?: Reservation; preset?: Parti
           <option value="">– kein Hotelgast –</option>
           {inHouse.map(s => <option key={s.id} value={s.id}>Zi. {s.roomNo} · {s.name} ({s.adults + s.children}P, {s.board})</option>)}
         </select></label>
-      <div className="mt8"><AllergenPicker value={draft.allergens} text={draft.allergies} onChange={allergens => upd({ allergens })} label="Allergene (laut Gast)" /></div>
       <label className="mt8">Weitere Unverträglichkeiten / Notiz<input value={draft.allergies} placeholder="z. B. vegetarisch, keine Zwiebeln" onChange={e => upd({ allergies: e.target.value })} /></label>
       <label className="mt8">Notizen<textarea value={draft.notes} onChange={e => upd({ notes: e.target.value })} /></label>
       <div className="row mt8">

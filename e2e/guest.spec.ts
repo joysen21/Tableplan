@@ -133,3 +133,22 @@ test('Alle Gänge mit Menge wählbar – auch ein Gang mit nur einem Gericht (z.
   if (await roomBtn.isVisible().catch(() => false)) await roomBtn.click();
   await expect(singleCourse.locator('.gm-step b')).toHaveText(String(target.persons - 1));
 });
+
+test('Live-Plan zeigt das per QR gewählte Menü des Zimmers', async ({ page }) => {
+  await loginDemo(page);
+  // Demo: rund die Hälfte der Zimmer hat das heutige Abendmenü schon gewählt
+  const expected = await page.evaluate(() => {
+    const v = Object.values(JSON.parse(localStorage.getItem('tischplan.demo.v2')!).data)[0] as any;
+    const day = new Date().toLocaleDateString('sv-SE');
+    const svc = v.services.find((s: any) => s.kind === 'abend');
+    const menu = v.menus.find((m: any) => m.date === day && m.serviceId === svc.id);
+    const c = v.menuChoices.find((x: any) => x.menuId === menu.id);
+    const r = v.reservations.find((x: any) => x.date === day && x.serviceId === svc.id && x.stayId === c.stayId);
+    const first = menu.items.find((it: any) => c.counts[it.dishId] > 0);
+    return { name: r.name, dish: `${c.counts[first.dishId]}× ${v.dishes.find((x: any) => x.id === first.dishId)?.name ?? first.name}` };
+  });
+  await page.getByLabel('Service').first().selectOption({ label: 'Abendessen' });
+  const item = page.locator('.ritem', { hasText: expected.name });
+  await expect(item.locator('.menu-choice')).toContainText(expected.dish);
+  await page.screenshot({ path: 'test-results/live-menu.png' });
+});

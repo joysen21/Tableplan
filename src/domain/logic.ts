@@ -16,11 +16,17 @@ export const isCancelled = (r: Pick<Reservation, 'status'>) => r.status === 'sto
 export const byId = <T extends { id: string }>(list: T[], id: string | null | undefined) => (id ? list.find(x => x.id === id) : undefined);
 export const tableNames = (d: VenueData, ids: string[] | undefined) => (ids || []).map(id => byId(d.tables, id)?.name ?? '?').join('+');
 
-export function turnTime(d: VenueData, serviceId: string, p: number): number {
+/** Feste Uhrzeit einer Reservierung: Beginn des Service (Hotelgäste: Hotel-Standardzeit) – die Uhrzeit wird nicht mehr einzeln eingegeben */
+export function serviceTime(d: VenueData, serviceId: string, hotel = false): string {
   const s = byId(d.services, serviceId);
-  if (!s || !s.turnTimes.length) return 120;
-  const rows = [...s.turnTimes].sort((a, b) => a.maxP - b.maxP);
-  return (rows.find(x => p <= x.maxP) ?? rows[rows.length - 1]).min;
+  return (hotel && s?.hotelTime) || s?.start || '18:00';
+}
+
+/** Dauer bis zum festen Ende des Service (für die Zeitleiste), mindestens 30 Min.; ohne Service 120 Min. */
+export function untilEnd(d: VenueData, serviceId: string, time: string): number {
+  const s = byId(d.services, serviceId);
+  if (!s) return 120;
+  return Math.min(720, Math.max(30, toMin(s.end) - toMin(time)));
 }
 
 export function serviceForTime(services: Service[], min: number): string | null {
@@ -93,12 +99,6 @@ export function checkReservation(d: VenueData, r: Reservation): Issue[] {
     if (shared.length && all > c.max) add('warn', `Tisch zu klein: ${all} Pers. zusammen mit ${shared.map(roomOf).join(', ')}, max. ${c.max}`);
     else if (p > c.max) add('warn', `Tisch zu klein: ${p} Pers., max. ${c.max}`);
     else if (p < c.min) add('warn', `Tisch größer als nötig: ${p} Pers., min. ${c.min}`);
-  }
-  if (s && s.pacing > 0) {
-    const slot = Math.floor(st / 15) * 15;
-    const covers = d.reservations.filter(o => o.id !== r.id && o.date === r.date && o.serviceId === r.serviceId &&
-      !isCancelled(o) && Math.floor(resStart(o) / 15) * 15 === slot).reduce((a, o) => a + persons(o), 0) + p;
-    if (covers > s.pacing) add('warn', `Pacing: ${covers} Gäste im Slot ${fromMin(slot)} (Limit ${s.pacing})`);
   }
   if (s && (st < toMin(s.start) || st > toMin(s.end))) add('warn', `Uhrzeit außerhalb ${s.name} (${s.start}–${s.end})`);
   const digits = (x: string) => x.replace(/\D/g, '');
@@ -181,7 +181,6 @@ export interface StayPlan { upserts: Reservation[]; deleteIds: string[]; skipped
  * Ein manuell geänderter Tisch (manualTable) bleibt erhalten.
  */
 export function planStay(d: VenueData, stay: Stay, newId: () => string, resetManual = false): StayPlan {
-  const p = (+stay.adults || 0) + (+stay.children || 0);
   const existing = d.reservations.filter(r => r.stayId === stay.id);
   const need: { date: string; svc: Service }[] = [];
   for (const date of stayNights(stay)) for (const svc of stayServices(d, stay)) need.push({ date, svc });
@@ -190,9 +189,10 @@ export function planStay(d: VenueData, stay: Stay, newId: () => string, resetMan
   const skipped: string[] = [];
   for (const n of need) {
     const ex = existing.find(r => r.date === n.date && r.serviceId === n.svc.id);
+    const time = serviceTime(d, n.svc.id, true);
     const base: Reservation = ex ? { ...ex } : {
-      id: newId(), date: n.date, serviceId: n.svc.id, time: stay.times[n.svc.kind] || n.svc.hotelTime || n.svc.start,
-      duration: turnTime(d, n.svc.id, p), adults: 0, children: 0, name: '', phone: '', email: '', occasion: '', allergies: '', allergens: [], notes: '',
+      id: newId(), date: n.date, serviceId: n.svc.id, time,
+      duration: untilEnd(d, n.svc.id, time), adults: 0, children: 0, name: '', phone: '', email: '', occasion: '', allergies: '', allergens: [], notes: '',
       highchair: false, vip: false, source: 'Hotel', status: 'bestaetigt', wishes: [], stayId: stay.id, manualTable: false,
       seriesId: null, seatedAt: null, finishedAt: null, tableIds: []
     };
@@ -202,7 +202,6 @@ export function planStay(d: VenueData, stay: Stay, newId: () => string, resetMan
       allergies: stay.allergies, allergens: [...(stay.allergens ?? [])], notes: stay.notes, vip: stay.vip, phone: stay.phone
     };
     if (open) {
-      if (stay.times[n.svc.kind]) next.time = stay.times[n.svc.kind]!;
       if (resetManual) next.manualTable = false;
       if (!next.manualTable) next.tableIds = [...stay.tableIds];
     }
@@ -219,11 +218,11 @@ export function planStay(d: VenueData, stay: Stay, newId: () => string, resetMan
 /** An welchen Tagen kollidiert ein fester Tisch für den Aufenthalt? */
 export function stayTableConflicts(d: VenueData, stay: Stay, tableIds: string[]): string[] {
   const days: string[] = [];
-  const p = stay.adults + stay.children;
   for (const date of stayNights(stay)) for (const s of stayServices(d, stay)) {
     const own = d.reservations.find(r => r.stayId === stay.id && r.date === date && r.serviceId === s.id);
-    const st = own ? resStart(own) : toMin(stay.times[s.kind] || s.hotelTime || s.start);
-    const en = own ? resEnd(own) : st + turnTime(d, s.id, p);
+    const time = serviceTime(d, s.id, true);
+    const st = own ? resStart(own) : toMin(time);
+    const en = own ? resEnd(own) : st + untilEnd(d, s.id, time);
     for (const tid of tableIds) {
       const busy = tableConflicts(d, tid, date, st, en, { id: own?.id, stayId: stay.id });
       if (busy.length) days.push(`${fmtShort(date)} ${s.name}: ${byId(d.tables, tid)?.name} ` +

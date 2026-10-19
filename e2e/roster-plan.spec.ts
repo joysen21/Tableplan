@@ -129,3 +129,24 @@ test('Live-Plan zeigt „Heute im Dienst“, Prüfregeln sind einstellbar', asyn
   await page.getByLabel('Bereichsfilter').selectOption({ label: 'Service' });
   await expect(page.locator('.rg-head .staffing').first()).toBeVisible();
 });
+
+test('Teildienst zeigt beide Zeiten; Druckansicht ist auch im Dunkelmodus lesbar', async ({ page }) => {
+  await loginDemo(page, 'Karl (Küche)', 'dark');
+  await goView(page, 'Dienstplan');
+  await page.getByLabel('Bereichsfilter').selectOption({ label: 'Küche' });
+  await page.getByRole('button', { name: 'Weiter' }).click();
+  const openMon = cell(page, 'Offene Schichten', 0);
+  await page.getByRole('group', { name: 'Vorlagen' }).getByRole('button', { name: /Teildienst/ }).click();
+  await openMon.getByRole('button', { name: /eintragen/ }).click();
+  await page.getByRole('button', { name: 'Pinsel aus' }).click();
+  const chip = openMon.locator('.shift-chip').filter({ hasText: '17:30–21:30' });
+  await expect(chip).toContainText('10:00–14:30');
+  await expect(chip.locator('small.split')).toBeVisible();
+
+  // Druck: Uhrzeiten schwarz und nicht abgeschnitten, obwohl der Bildschirm dunkel ist
+  await page.emulateMedia({ media: 'print' });
+  const style = await chip.locator('small').first().evaluate(e => { const s = getComputedStyle(e); return { color: s.color, ws: s.whiteSpace }; });
+  expect(style).toEqual({ color: 'rgb(0, 0, 0)', ws: 'normal' });
+  expect(await grid(page).locator('.rg-name').nth(1).evaluate(e => getComputedStyle(e).color)).toBe('rgb(0, 0, 0)');
+  await page.screenshot({ path: 'test-results/dienstplan-druck.png', fullPage: true });
+});

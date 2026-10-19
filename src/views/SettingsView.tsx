@@ -34,16 +34,11 @@ function ServiceCard({ s }: { s: Service }) {
         <label>Typ<select value={s.kind} onChange={e => save({ kind: e.target.value as ServiceKind })}>{(['fruehstueck', 'mittag', 'abend'] as ServiceKind[]).map(k => <option key={k} value={k}>{t(k)}</option>)}</select></label>
         <Field label="Hotel-Standardzeit" type="time" value={s.hotelTime ?? ''} onCommit={v => save({ hotelTime: v || null })} />
         <Field label="Beginn" type="time" value={s.start} onCommit={v => v && save({ start: v })} />
-        <Field label="Letzte Reservierung" type="time" value={s.end} onCommit={v => v && save({ end: v })} />
-        <Field label="Pacing" type="number" value={s.pacing} onCommit={v => save({ pacing: Math.max(0, +v || 0) })} />
-      </div>
-      <div className="grid2 mt8">
-        <Field label="Verweildauer" value={s.turnTimes.map(x => `${x.maxP}:${x.min}`).join(', ')} onCommit={v => {
-          const rows = v.split(',').map(x => x.split(':').map(Number)).filter(x => x.length === 2 && x[0] > 0 && x[1] > 0).map(([maxP, min]) => ({ maxP, min }));
-          if (!rows.length) return toast('Format: 2:90, 4:120, 99:150', 'err');
-          save({ turnTimes: rows.sort((a, b) => a.maxP - b.maxP) });
+        <Field label="Ende" type="time" value={s.end} onCommit={v => {
+          if (!v) return;
+          if (v <= s.start) return toast('Ende muss nach dem Beginn liegen', 'err');
+          save({ end: v });
         }} />
-        <Field label="Seatings" value={s.seatings.join(', ')} onCommit={v => save({ seatings: v.split(/[,; ]+/).filter(x => /^\d{1,2}:\d{2}$/.test(x)) })} />
       </div>
       <label className="chk mt8"><input type="checkbox" checked={s.freeSeating} onChange={e => save({ freeSeating: e.target.checked })} /> Freie Platzwahl (keine Tischzuweisung für Hotelgäste)</label>
       <button className="btn small danger mt8" onClick={async () => {
@@ -108,7 +103,7 @@ export function SettingsView() {
       <div className="panel"><h3>{roster ? 'Betrieb' : 'Betrieb & Services'}</h3><div className="body">
         <Field label="Name des Betriebs" value={d.venue.name} onCommit={v => v.trim() && store.renameVenue(v.trim())} />
         {!roster && <>
-        <p className="muted" style={{ fontSize: 12 }}>Verweildauer: „bis Personen:Minuten“, z. B. <code>2:105, 4:120, 6:150, 99:180</code>. Pacing = max. ankommende Gäste je 15 Min. (0 = aus). Seatings = feste Zeiten, z. B. 18:30, 20:30.</p>
+        <p className="muted" style={{ fontSize: 12 }}>Reservierungen beginnen zum Beginn des Service (Hotelgäste zur Hotel-Standardzeit) und enden fest zum Ende – so erscheinen sie in der Zeitleiste, z. B. 18:00–20:00.</p>
         {d.services.map(s => <ServiceCard key={s.id} s={s} />)}
         <button className="btn" onClick={() => store.upsert('services', [{ id: newId(), name: 'Neuer Service', kind: 'abend', start: '17:00', end: '20:00', hotelTime: '18:00', freeSeating: false, pacing: 0,
           turnTimes: [{ maxP: 2, min: 90 }, { maxP: 99, min: 120 }], seatings: [], sort: d.services.length }])}><Plus />Service</button>

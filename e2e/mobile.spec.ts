@@ -225,7 +225,9 @@ test('Zeitleiste: lange drücken und ziehen verschiebt einen Eintrag auf einen a
   const bar = page.locator(`.g-bar[data-res="${res}"]`).first();
   await page.locator(`.g-row[data-table-id="${free}"]`).evaluate(e => e.scrollIntoView({ block: 'nearest' }));
   const b = (await bar.boundingBox())!, t = (await page.locator(`.g-row[data-table-id="${free}"] .g-track`).boundingBox())!;
-  const x = b.x + Math.min(b.width / 2, 30), y = b.y + b.height / 2, ty = t.y + t.height / 2;
+  // Balken laufen bis zum Service-Ende und sind breiter als der Bildschirm: rechts neben der fixierten Tischspalte drücken
+  const lab = (await page.locator('.g-row .g-label').first().boundingBox())!;
+  const x = Math.max(b.x, lab.x + lab.width) + 20, y = b.y + b.height / 2, ty = t.y + t.height / 2;
   const top0 = await page.locator('.gantt').evaluate(e => e.scrollTop);
   const cdp = await page.context().newCDPSession(page);
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });

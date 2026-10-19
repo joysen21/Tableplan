@@ -55,7 +55,7 @@ export function TimelineView() {
   if (!svc) return <div className="panel body">Kein Service angelegt.</div>;
   const edit = canEdit(role);
   const from = toMin(svc.start) - 30;
-  const to = Math.min(24 * 60, toMin(svc.end) + Math.max(...svc.turnTimes.map(x => x.min), 60) - 30);
+  const to = Math.min(24 * 60, toMin(svc.end) + 60);
   const W = (to - from) * PX, x = (m: number) => (m - from) * PX;
   const dayRes = d.reservations.filter(r => r.date === ui.date && ((occupies(r) && overlapsRange(resStart(r), resEnd(r), from, to)) || (r.status === 'abgeschlossen' && r.serviceId === serviceId)));
   const ticks: number[] = []; for (let m = Math.ceil(from / 30) * 30; m < to; m += 30) ticks.push(m);

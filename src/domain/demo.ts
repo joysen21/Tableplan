@@ -3,9 +3,9 @@ import { OCCASIONS } from './constants';
 import { guessAllergens, snapshotItems } from './menu';
 import { shiftFromTemplate, weekStart } from './rosterPlan';
 import { menuCourses, menuRooms, newQrToken } from './guestMenu';
-import { planStay, resEnd, resStart, stayTableConflicts, suggestTables, tableBusy, turnTime } from './logic';
+import { planStay, resEnd, resStart, serviceTime, stayTableConflicts, suggestTables, tableBusy, untilEnd } from './logic';
 import type { Allergen, Course, Dish, DiningTable, Ingredient, Menu, MenuItem, Reservation, Service, ShiftTemplate, Staff, Stay, TableFeature, TableShape, Unit, VenueData } from './types';
-import { addDays, fromMin, nowMin, toMin, today } from '../lib/time';
+import { addDays, nowMin, today } from '../lib/time';
 
 export const newId = () => crypto.randomUUID();
 
@@ -13,9 +13,9 @@ export function defaultServices(): Service[] {
   return [
     { id: newId(), name: 'Frühstück', kind: 'fruehstueck', start: '07:00', end: '10:30', hotelTime: '08:00', freeSeating: true, pacing: 0,
       turnTimes: [{ maxP: 2, min: 45 }, { maxP: 4, min: 60 }, { maxP: 99, min: 75 }], seatings: [], sort: 0 },
-    { id: newId(), name: 'Mittagessen', kind: 'mittag', start: '12:00', end: '14:30', hotelTime: '12:30', freeSeating: false, pacing: 14,
+    { id: newId(), name: 'Mittagessen', kind: 'mittag', start: '12:00', end: '14:00', hotelTime: '12:30', freeSeating: false, pacing: 14,
       turnTimes: [{ maxP: 2, min: 75 }, { maxP: 4, min: 90 }, { maxP: 99, min: 120 }], seatings: [], sort: 1 },
-    { id: newId(), name: 'Abendessen', kind: 'abend', start: '18:00', end: '21:30', hotelTime: '19:00', freeSeating: false, pacing: 18,
+    { id: newId(), name: 'Abendessen', kind: 'abend', start: '18:00', end: '20:30', hotelTime: '19:00', freeSeating: false, pacing: 18,
       turnTimes: [{ maxP: 2, min: 105 }, { maxP: 4, min: 120 }, { maxP: 6, min: 150 }, { maxP: 99, min: 180 }], seatings: ['18:30', '20:30'], sort: 2 }
   ];
 }
@@ -134,12 +134,13 @@ export function demoVenueData(venueId: string, name: string): VenueData {
   for (let dd = -2; dd < 7; dd++) {
     const date = addDays(t0, dd);
     for (const svc of d.services.filter(s => !s.freeSeating)) {
-      const n = svc.kind === 'abend' ? 9 + Math.floor(rnd() * 5) : 4 + Math.floor(rnd() * 4);
+      const n = svc.kind === 'abend' ? 4 + Math.floor(rnd() * 3) : 3 + Math.floor(rnd() * 3);
       for (let k = 0; k < n; k++) {
-        const startM = toMin(svc.start) + Math.floor(rnd() * ((toMin(svc.end) - toMin(svc.start) - 30) / 15)) * 15;
+        // Uhrzeit fest: Beginn des Service, Ende = Service-Ende
+        const time = serviceTime(d, svc.id);
         const adults = rnd() < 0.55 ? 2 : rnd() < 0.6 ? 4 : rnd() < 0.5 ? 3 : 6, children = rnd() < 0.2 ? 1 : 0;
         const r: Reservation = {
-          id: newId(), date, serviceId: svc.id, time: fromMin(startM), adults, children, duration: turnTime(d, svc.id, adults + children),
+          id: newId(), date, serviceId: svc.id, time, adults, children, duration: untilEnd(d, svc.id, time),
           name: pick(NAMES) + (rnd() < 0.5 ? ' ' + pick(['A.', 'M.', 'S.', 'L.', 'K.']) : ''), phone: phone(), email: '',
           notes: rnd() < 0.15 ? pick(['Kinderwagen', 'Ruhiger Tisch gewünscht', 'Kommt evtl. später', 'Stammgast – bevorzugt Fenster']) : '',
           occasion: rnd() < 0.12 ? pick(OCCASIONS.slice(1)) : '', ...allerg(), highchair: children > 0 && rnd() < 0.5,

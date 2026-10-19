@@ -66,8 +66,8 @@ export function ReportsView() {
         <div className="kpi"><b>{rs.filter(hasAllergy).length}</b><small>mit Allergien</small></div>
       </div>
       <MenuBrief d={d} menu={findMenu(d, D, svc.id)} />
-      <h4>Ankünfte pro 15 Minuten{svc.pacing ? ` (Pacing-Limit ${svc.pacing})` : ''}</h4>
-      <div className="slotbar">{slots.map(s => <div key={s.m} style={{ height: `${(s.c / max) * 100}%`, background: svc.pacing && s.c > svc.pacing ? 'var(--danger)' : undefined }}><span>{s.c || ''}</span></div>)}</div>
+      <h4>Ankünfte pro 15 Minuten</h4>
+      <div className="slotbar">{slots.map(s => <div key={s.m} style={{ height: `${(s.c / max) * 100}%` }}><span>{s.c || ''}</span></div>)}</div>
       <div className="slotlbl">{slots.map(s => <span key={s.m}>{s.m % 60 ? '' : fromMin(s.m)}</span>)}</div>
       <h4>Allergien & Unverträglichkeiten</h4><AllergyTable d={d} rs={rs} />
       <h4>Anlässe & VIPs</h4>{rs.filter(r => r.occasion || r.vip).map(r => <div key={r.id}>{r.time} · {r.name} · Tisch {tableNames(d, r.tableIds) || '–'} · {r.vip ? '★ VIP ' : ''}{r.occasion}</div>)}

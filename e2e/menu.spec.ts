@@ -56,8 +56,9 @@ test('Gast-Allergen erscheint als Warnung in der Küchenvorschau', async ({ page
   const dlg = page.locator('.modal');
   await dlg.getByLabel('Service').selectOption({ label: 'Abendessen' });
   await dlg.getByLabel('Name *').fill('E2E Allergie');
-  await dlg.getByRole('button', { name: /Schalenfrüchte/ }).click();
-  await expect(dlg.getByRole('button', { name: /Schalenfrüchte/ })).toHaveAttribute('aria-pressed', 'true');
+  // keine Allergen-Knöpfe mehr: die Notiz reicht, Allergene werden daraus erkannt
+  await expect(dlg.getByRole('button', { name: /Schalenfrüchte/ })).toHaveCount(0);
+  await dlg.getByLabel('Weitere Unverträglichkeiten / Notiz').fill('Allergie gegen Haselnüsse');
   await page.getByRole('button', { name: 'Speichern' }).click();
   const confirm = page.getByRole('button', { name: 'Trotzdem speichern' });
   if (await confirm.isVisible({ timeout: 1000 }).catch(() => false)) await confirm.click();

@@ -37,7 +37,8 @@ test('Reservierung anlegen, Konflikt wird verhindert', async ({ page }) => {
   expect(mine.tableIds.length).toBeGreaterThan(0);
   await page.getByRole('button', { name: 'Reservierung', exact: true }).click();
   await page.getByLabel('Name *').fill('Doppelt');
-  await page.locator('.modal input[type=time]').fill(mine.time);
+  // Uhrzeit ist fest (Beginn des Service) – gleicher Service = gleiche Zeit
+  await expect(page.locator('.modal input[type=time]')).toHaveCount(0);
   const tname = venue.tables.find((t: any) => t.id === mine.tableIds[0]).name;
   const sel = page.locator('.modal select').filter({ hasText: 'Tisch manuell hinzufügen' });
   const label = await sel.locator('option').filter({ hasText: new RegExp(`^${tname} \\(.*belegt`) }).first().textContent();

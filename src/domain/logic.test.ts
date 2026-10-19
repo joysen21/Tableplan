@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { demoVenueData, emptyVenueData, newId } from './demo';
 import {
-  checkReservation, freeMinutes, hasErrors, mergeEdits, occupies, planStay, resEnd, resStart, stayTableConflicts, suggestTables, tableBusy, tableConflicts, tableStatusAt, turnTime
+  checkReservation, freeMinutes, hasErrors, mergeEdits, occupies, planStay, resEnd, resStart, stayTableConflicts, suggestTables, tableBusy, tableConflicts, tableStatusAt, serviceTime, untilEnd
 } from './logic';
 import type { Reservation, VenueData } from './types';
 import { addDays, today } from '../lib/time';
@@ -22,12 +22,17 @@ const res = (p: Partial<Reservation> & { serviceId: string }): Reservation => ({
   seriesId: null, seatedAt: null, finishedAt: null, tableIds: [], ...p
 });
 
-describe('Verweildauer', () => {
-  it('nimmt die passende Stufe je Personenzahl', () => {
+describe('Feste Zeiten je Service', () => {
+  it('Beginn des Service (Hotelgäste: Hotel-Standardzeit), Dauer bis zum festen Ende', () => {
     const { d, svc } = base();
-    expect(turnTime(d, svc, 2)).toBe(105);
-    expect(turnTime(d, svc, 3)).toBe(120);
-    expect(turnTime(d, svc, 12)).toBe(180);
+    const s = d.services.find(x => x.id === svc)!;
+    s.start = '18:00'; s.end = '20:00'; s.hotelTime = '19:00';
+    expect(serviceTime(d, svc)).toBe('18:00');
+    expect(serviceTime(d, svc, true)).toBe('19:00');
+    expect(untilEnd(d, svc, '18:00')).toBe(120);
+    expect(untilEnd(d, svc, '19:00')).toBe(60);
+    expect(untilEnd(d, svc, '19:50')).toBe(30); // mindestens 30 Min. (z. B. später Walk-in)
+    expect(untilEnd(d, 'unbekannt', '19:00')).toBe(120);
   });
 });
 
@@ -43,12 +48,12 @@ describe('Konfliktprüfung', () => {
     d.reservations.push(res({ serviceId: svc, tableIds: [t1], status: 'storniert' }), res({ serviceId: svc, tableIds: [t1], status: 'abgeschlossen' }));
     expect(checkReservation(d, res({ serviceId: svc, tableIds: [t1] }))).toEqual([]);
   });
-  it('warnt bei zu kleinem Tisch und Pacing', () => {
+  it('warnt bei zu kleinem Tisch – ohne Pacing-Warnung, alle kommen zum Beginn', () => {
     const { d, t1, svc } = base();
     const issues = checkReservation(d, res({ serviceId: svc, adults: 6, tableIds: [t1] }));
     expect(issues.some(i => i.level === 'warn' && i.text.includes('zu klein'))).toBe(true);
     for (let i = 0; i < 9; i++) d.reservations.push(res({ serviceId: svc, adults: 2 }));
-    expect(checkReservation(d, res({ serviceId: svc })).some(i => i.text.startsWith('Pacing'))).toBe(true);
+    expect(checkReservation(d, res({ serviceId: svc })).some(i => i.text.startsWith('Pacing'))).toBe(false);
   });
 });
 

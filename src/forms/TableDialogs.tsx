@@ -1,10 +1,11 @@
 /** Tisch-Popup, Reservierungs-Info (Service), Walk-in, Tischsperre */
 import { useState } from 'react';
 import { allergyText, hasAllergy } from '../domain/menu';
+import { chosenDishes, chosenText } from '../domain/guestMenu';
 import { Minus, Plus, PersonStanding } from '../ui/icons';
 import { newId } from '../domain/demo';
 import { canEdit, canStatus, RES_STATUS_COLOR, SEATED_STATES } from '../domain/constants';
-import { byId, capacity, freeMinutes, isBlocked, occupies, persons, resEnd, resStart, suggestTables, tableConflicts, tableNames, tableStatusAt, turnTime } from '../domain/logic';
+import { byId, capacity, freeMinutes, isBlocked, occupies, persons, resEnd, resStart, suggestTables, tableConflicts, tableNames, tableStatusAt, untilEnd } from '../domain/logic';
 import type { Reservation, ResStatus } from '../domain/types';
 import { t } from '../lib/i18n';
 import { fmtDate, fmtShort, fromMin, nowMin, today, toMin } from '../lib/time';
@@ -31,11 +32,14 @@ function StatusButtons({ r }: { r: Reservation }) {
 function ResDetails({ r }: { r: Reservation }) {
   const d = useData();
   const stay = byId(d.stays, r.stayId);
+  const menu = chosenDishes(d, r);
   return (
     <div className="infobox">
       <b>{r.vip ? '★ ' : ''}{r.name}</b> · {persons(r)} P{r.children ? ` (${r.children} Kinder)` : ''} · {r.time}–{fromMin(resEnd(r))}
       {stay && <><br />Hotelgast Zi. {stay.roomNo} · {t(stay.board)} · bis {fmtShort(stay.departure)}</>}
       {hasAllergy(r) && <><br />⚠ <b>{allergyText(r)}</b></>}
+      {menu.length > 0 && <><br />🍽 Menü: <b>{chosenText(menu)}</b></>}
+      {r.stayId && !menu.length && d.menus.some(m => m.date === r.date && m.serviceId === r.serviceId && m.ordering && m.ordering !== 'aus') && <><br /><span className="muted">🍽 Noch kein Menü gewählt</span></>}
       {r.occasion && <><br />🎉 {r.occasion}</>}
       {r.highchair && <><br />Kinderstuhl</>}
       {r.notes && <><br />📝 {r.notes}</>}
@@ -139,7 +143,7 @@ export function WalkIn({ tableId }: { tableId?: string }) {
   const fixed = byId(d.tables, tableId);
   const start = Math.round((ui.date === today() ? nowMin() : ui.time) / 5) * 5;
   const draft: Reservation = {
-    id: newId(), date: ui.date, serviceId, time: fromMin(start), duration: turnTime(d, serviceId, p), adults: p, children: 0, name: '',
+    id: newId(), date: ui.date, serviceId, time: fromMin(start), duration: untilEnd(d, serviceId, fromMin(start)), adults: p, children: 0, name: '',
     phone: '', email: '', occasion: '', allergies: '', allergens: [], notes: '', highchair: false, vip: false, source: 'Walk-in', status: 'platziert', wishes: [],
     stayId: null, manualTable: false, seriesId: null, seatedAt: nowMin(), finishedAt: null, tableIds: []
   };
@@ -165,7 +169,7 @@ export function WalkIn({ tableId }: { tableId?: string }) {
       <h4 style={{ margin: '14px 0 6px' }}>{fixed ? 'Tisch' : 'Freie Tische (beste Passung zuerst)'}</h4>
       <div className="sugg">{options.length ? options.map((o, i) => (
         <button key={o.ids.join()} className={'btn' + (i === 0 ? ' primary' : '')} onClick={() => place(o)} disabled={store.saving > 0}>
-          {tableNames(d, o.ids)} ({capacity(d, o.ids).max}P){o.free < Infinity && o.free < turnTime(d, serviceId, p) ? ` · frei bis ${fromMin(start + o.free)}` : ''}
+          {tableNames(d, o.ids)} ({capacity(d, o.ids).max}P){o.free < Infinity && o.free < draft.duration ? ` · frei bis ${fromMin(start + o.free)}` : ''}
         </button>)) : <span className="warnbox">Aktuell kein passender Tisch frei.</span>}</div>
     </Modal>
   );

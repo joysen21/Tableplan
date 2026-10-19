@@ -94,6 +94,18 @@ export function cleanCounts(items: Pick<MenuItem, 'course' | 'dishId'>[], person
 /** Gänge eines Menüs in Reihenfolge */
 export const menuCourses = (items: Pick<MenuItem, 'course'>[]) => COURSES.filter(c => items.some(i => i.course === c));
 
+/** Gewähltes Menü eines Hotelzimmers zu einer Reservierung (gleiches Datum + Service), in Gang-Reihenfolge – für Live-Plan und Service */
+export function chosenDishes(d: VenueData, r: Pick<Reservation, 'date' | 'serviceId' | 'stayId'>): { course: Course; name: string; n: number }[] {
+  if (!r.stayId) return [];
+  const m = d.menus.find(x => x.date === r.date && x.serviceId === r.serviceId);
+  const c = m && (d.menuChoices ?? []).find(x => x.menuId === m.id && x.stayId === r.stayId);
+  if (!m || !c) return [];
+  return COURSES.flatMap(course => m.items.filter(it => it.course === course && (c.counts[it.dishId] ?? 0) > 0)
+    .map(it => ({ course, name: byId(d.dishes, it.dishId)?.name ?? it.name, n: c.counts[it.dishId] })));
+}
+/** „2× Schnitzel, 1× Strudel“ */
+export const chosenText = (list: { name: string; n: number }[]) => list.map(x => `${x.n}× ${x.name}`).join(', ');
+
 /* ---------- Für die Küche ---------- */
 export interface ChoiceSummary {
   rooms: number; chosenRooms: number; persons: number; chosenPersons: number;

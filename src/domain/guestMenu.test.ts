@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { demoVenueData, emptyVenueData, newId } from './demo';
-import { brandingOf, buildGuestMenu, choiceSummary, cleanCounts, newQrToken, stayEats } from './guestMenu';
+import { brandingOf, buildGuestMenu, choiceSummary, chosenDishes, chosenText, cleanCounts, newQrToken, stayEats } from './guestMenu';
 import { dishPlans, snapshotItems } from './menu';
 import type { Dish, Menu, MenuItem, Reservation, Stay, VenueData } from './types';
 import { addDays } from '../lib/time';
@@ -77,6 +77,15 @@ describe('Gäste-Speisekarte (QR)', () => {
     expect(stayEats({ ...s, board: 'UF' }, 'abend', '2026-10-10')).toBe(false);
     expect(stayEats({ ...s, board: 'HP' }, 'mittag', '2026-10-10')).toBe(false);
     expect(stayEats({ ...s, board: 'VP' }, 'mittag', '2026-10-10')).toBe(true);
+  });
+
+  it('Live-Plan: gewähltes Menü eines Zimmers in Gang-Reihenfolge', () => {
+    const { d, menu, rind, fisch, strudel, s102 } = setup();
+    const r = d.reservations.find(x => x.stayId === s102.id)!;
+    expect(chosenDishes(d, r)).toEqual([]);
+    d.menuChoices.push({ id: newId(), menuId: menu.id, stayId: s102.id, counts: { [strudel.id]: 3, [fisch.id]: 2, [rind.id]: 1 } });
+    expect(chosenText(chosenDishes(d, r))).toBe('1× Rind, 2× Fisch, 3× Strudel');
+    expect(chosenDishes(d, { ...r, stayId: null })).toEqual([]); // externe Gäste wählen nicht
   });
 
   it('prüft die Auswahl: nur Gerichte des Menüs, je Gang höchstens so viele wie Personen', () => {

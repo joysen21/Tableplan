@@ -6,7 +6,7 @@ import { newId } from '../domain/demo';
 import { BOARDS, MAX_ROOMS_PER_TABLE } from '../domain/constants';
 import { parseImport, planImport } from '../domain/hotelImport';
 import { byId, capacity, isInHouse, needsTable, stayNights, stayTableConflicts, tableNames } from '../domain/logic';
-import type { Board, ServiceKind, Stay, VenueData } from '../domain/types';
+import type { Board, Stay, VenueData } from '../domain/types';
 import { t } from '../lib/i18n';
 import { addDays, fmtShort, today } from '../lib/time';
 import { readTextFile } from '../lib/text';
@@ -81,12 +81,6 @@ export function StayForm({ stay }: { stay?: Stay }) {
   });
   const [busy, setBusy] = useState(false);
   const upd = (p: Partial<Stay>) => setS(prev => ({ ...prev, ...p }));
-  const timeSel = (kind: ServiceKind) => {
-    const svc = d.services.find(x => x.kind === kind);
-    if (!svc || svc.freeSeating) return null;
-    const opts = [...new Set([svc.hotelTime || svc.start, ...svc.seatings])];
-    return <label>Uhrzeit {svc.name}<select value={s.times[kind] || opts[0]} onChange={e => upd({ times: { ...s.times, [kind]: e.target.value } })}>{opts.map(o => <option key={o}>{o}</option>)}</select></label>;
-  };
   const own = d.reservations.filter(r => r.stayId === s.id).sort((a, b) => a.date.localeCompare(b.date));
 
   async function save() {
@@ -124,7 +118,6 @@ export function StayForm({ stay }: { stay?: Stay }) {
           <option value="">– keiner –</option>
           {d.tables.map(x => <option key={x.id} value={x.id}>{x.name} ({x.minPersons}–{x.maxPersons}P, {byId(d.rooms, x.roomId)?.name})</option>)}</select></label>
       </div>
-      <div className="grid2 mt8">{timeSel('mittag')}{timeSel('abend')}</div>
       <div className="mt8"><AllergenPicker value={s.allergens} text={s.allergies} onChange={allergens => upd({ allergens })} label="Allergene (laut Gast)" /></div>
       <label className="mt8">Weitere Unverträglichkeiten / Notiz<input value={s.allergies} onChange={e => upd({ allergies: e.target.value })} /></label>
       <label className="mt8">Notizen<textarea value={s.notes} onChange={e => upd({ notes: e.target.value })} /></label>

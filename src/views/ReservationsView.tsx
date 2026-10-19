@@ -29,9 +29,9 @@ export function ReservationsView() {
     (!q || [r.name, r.phone, r.email, r.notes, allergyText(r)].join(' ').toLowerCase().includes(q)))
     .sort((a, b) => a.date.localeCompare(b.date) || resStart(a) - resStart(b));
   const exportCsv = () => downloadCSV('reservierungen.csv', [
-    ['Datum', 'Zeit', 'Ende', 'Service', 'Name', 'Erw', 'Kinder', 'Tisch', 'Status', 'Quelle', 'Telefon', 'E-Mail', 'Allergien', 'Anlass', 'Notizen', 'Zimmer'],
+    ['Datum', 'Zeit', 'Ende', 'Service', 'Name', 'Erw', 'Kinder', 'Tisch', 'Status', 'Quelle', 'Telefon', 'Allergien', 'Anlass', 'Notizen', 'Zimmer'],
     ...rows.map(r => [r.date, r.time, fromMin(resEnd(r)), byId(d.services, r.serviceId)?.name ?? '', r.name, r.adults, r.children, tableNames(d, r.tableIds),
-      t(r.status), r.source, r.phone, r.email, allergyText(r), r.occasion, r.notes, byId(d.stays, r.stayId)?.roomNo ?? ''])
+      t(r.status), r.source, r.phone, allergyText(r), r.occasion, r.notes, byId(d.stays, r.stayId)?.roomNo ?? ''])
   ]);
   const open = (r: Reservation) => openDialog(canEdit(role) ? { type: 'reservation', r } : { type: 'resinfo', id: r.id });
   const activeFilters = [F.serviceId, F.status !== 'aktiv', F.hotel, F.unassigned].filter(Boolean).length;
