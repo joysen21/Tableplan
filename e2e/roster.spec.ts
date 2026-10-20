@@ -14,7 +14,7 @@ async function switchUser(page: Page, who: string) {
   await page.getByRole('button', { name: new RegExp(who.replace(/[()]/g, '.')) }).click();
   await expect(page.locator('header')).toBeVisible();
 }
-const nav = (page: Page) => page.locator('header nav.topnav');
+const nav = (page: Page) => page.locator('nav.topnav');
 
 test('Admin: Bereich anlegen, Leitung zuweisen – die neue Leitung plant ihren Bereich', async ({ page }) => {
   await loginDemo(page);

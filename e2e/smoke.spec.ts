@@ -143,3 +143,27 @@ test('Rollen: Küche sieht Berichte und Menü (+ Dienstplan als Küchenleitung),
   await expect(page.locator('.topnav a')).toHaveCount(5); // inkl. Dienstplan (Serviceleitung)
   await expect(page.getByRole('button', { name: 'Reservierung', exact: true })).toHaveCount(0);
 });
+
+test('Seitenmenü am PC ein- und ausklappen (wird gemerkt), Einstellungen in Gruppen', async ({ page }) => {
+  await loginDemo(page);
+  const side = page.locator('aside.sidenav');
+  await expect(side).toBeVisible();
+  const wide = (await side.boundingBox())!.width;
+  await page.screenshot({ path: 'test-results/seitenmenue-offen.png' });
+  await page.getByRole('button', { name: 'Menü einklappen' }).click();
+  await expect.poll(async () => (await side.boundingBox())!.width).toBeLessThan(80);
+  // eingeklappt: nur Icons, Ansichten weiter erreichbar
+  await page.getByRole('link', { name: 'Hotelgäste' }).click();
+  await expect(page).toHaveURL(/hotel/);
+  await page.reload();
+  await expect.poll(async () => (await side.boundingBox())!.width).toBeLessThan(80);
+  await page.screenshot({ path: 'test-results/seitenmenue-zu.png' });
+  await page.getByRole('button', { name: 'Menü ausklappen' }).click();
+  await expect.poll(async () => (await side.boundingBox())!.width).toBe(wide);
+
+  await page.getByRole('link', { name: 'Einstellungen' }).click();
+  const groups = page.locator('details.settings-group');
+  await expect(groups.locator('summary')).toContainText(['Betrieb & Services', 'Reservierungen', 'Gäste-Speisekarte (QR)', 'Module & Dienstplan', 'Benutzer & Rollen', 'Daten & Sicherung', 'Protokoll']);
+  await expect(groups.first()).toHaveAttribute('open', '');
+  await page.screenshot({ path: 'test-results/einstellungen-pc.png' });
+});

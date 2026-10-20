@@ -1,7 +1,7 @@
-/** Rahmen der angemeldeten App: Kopfzeile mit Navigation, Datum/Service, Status; Benutzermenü;
- *  am Handy zusätzlich die Navigationsleiste unten (Hauptansichten + „Mehr“); Dialoge */
+/** Rahmen der angemeldeten App: am PC Seitenmenü links (ein-/ausklappbar), Kopfzeile mit Datum/Service, Status; Benutzermenü;
+ *  am Handy statt Seitenmenü die Navigationsleiste unten (Hauptansichten + „Mehr“); Dialoge */
 import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react';
-import { BedDouble, CalendarClock, CalendarDays, ChartColumn, ChartGantt, ChefHat, ChevronDown, ChevronLeft, ChevronRight, Ellipsis, LogOut, Moon, PencilRuler, Settings, Sun, Utensils, type LucideIcon } from '../ui/icons';
+import { BedDouble, CalendarClock, CalendarDays, ChartColumn, ChartGantt, ChefHat, ChevronDown, ChevronLeft, ChevronRight, Ellipsis, LogOut, Moon, PanelLeftClose, PanelLeftOpen, PencilRuler, Settings, Sun, Utensils, type LucideIcon } from '../ui/icons';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { repo } from '../data';
 import type { ViewKey } from '../domain/constants';
@@ -22,6 +22,8 @@ const VIEW_ICON: Record<ViewKey, LucideIcon> = {
 };
 /** So viele Ansichten passen in die Leiste unten (plus „Mehr“) */
 const BOTTOM_MAX = 4;
+const NAV_KEY = 'tischplan.nav.collapsed';
+const loadCollapsed = () => { try { return localStorage.getItem(NAV_KEY) === '1'; } catch { return false; } };
 
 function SyncIndicator() {
   const live = useApp(s => s.live), saving = useApp(s => s.saving);
@@ -88,13 +90,21 @@ export function Shell() {
     return () => clearInterval(iv);
   }, []);
   useEffect(() => setMenu(null), [loc.pathname]);
+  // Seitenmenü (PC): eingeklappt = nur Icons; wird im Browser gemerkt
+  const [collapsed, setCollapsed] = useState(loadCollapsed);
+  const toggleNav = () => setCollapsed(c => { try { localStorage.setItem(NAV_KEY, c ? '0' : '1'); } catch { /* egal */ } return !c; });
 
   return (
-    <div className={'shell' + (bottom.length ? ' has-bottomnav' : '')}>
+    <div className={'shell' + (bottom.length ? ' has-bottomnav' : '') + (collapsed ? ' nav-collapsed' : '')}>
+      <aside className="sidenav">
+        <span className="brand" title={data.venue.name}><img className="logo-light" src="/joke-icon.svg" alt="JoKe" /><img className="logo-dark" src="/joke-icon-weiss.svg" alt="JoKe" /><span className="venue lbl">{data.venue.name}</span></span>
+        <nav className="topnav" aria-label="Ansichten">{views.map(v => { const I = VIEW_ICON[v]; return (
+          <NavLink key={v} to={PATHS[v]} title={collapsed ? t(v) : undefined} className={({ isActive }) => (isActive ? 'active' : '')}><I aria-hidden="true" /><span className="lbl">{t(v)}</span></NavLink>); })}</nav>
+        <button className="side-toggle" onClick={toggleNav} aria-expanded={!collapsed} aria-label={collapsed ? 'Menü ausklappen' : 'Menü einklappen'} title={collapsed ? 'Menü ausklappen' : 'Menü einklappen'}>
+          {collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}<span className="lbl">Einklappen</span></button>
+      </aside>
+      <div className="shell-main">
       <header>
-        <span className="brand"><img className="logo-light" src="/joke-icon.svg" alt="JoKe" /><img className="logo-dark" src="/joke-icon-weiss.svg" alt="JoKe" /><span className="venue" title={data.venue.name}>{data.venue.name}</span></span>
-        <nav className="topnav">{views.map(v => <NavLink key={v} to={PATHS[v]} className={({ isActive }) => (isActive ? 'active' : '')}>{t(v)}</NavLink>)}</nav>
-        <span className="spacer" />
         {showCtx ? (
           <div className="ctx">
             <button className="btn small icon" aria-label="Vortag" title="Vortag" onClick={() => ui.set({ date: addDays(ui.date, -1), follow: false })}><ChevronLeft /></button>
@@ -110,6 +120,7 @@ export function Shell() {
         <button className="btn small usermenu-btn" aria-haspopup="menu" aria-expanded={menu !== null} onClick={toggleMenu} title={user.email}>{user.name}<ChevronDown /></button>
       </header>
       <main id="main"><ErrorBoundary resetKey={loc.pathname}><Outlet /></ErrorBoundary></main>
+      </div>
       {bottom.length > 0 && (
         <nav className="bottomnav" aria-label="Hauptnavigation">
           {bottom.map(v => { const I = VIEW_ICON[v]; return <NavLink key={v} to={PATHS[v]} aria-label={t(v)} className={({ isActive }) => (isActive ? 'active' : '')}><I /><span>{t('kurz.' + v)}</span></NavLink>; })}

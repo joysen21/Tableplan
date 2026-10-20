@@ -1,6 +1,7 @@
 /** Einstellungen (Admin): Betrieb, Services, Benutzer & Rollen, Daten, Protokoll */
-import { useEffect, useState } from 'react';
-import { Download, Plus, Upload, X } from '../ui/icons';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Building2, CalendarClock, CalendarDays, ChevronDown, Database, Download, History, Plus, QrCode, Upload, Users, X, type LucideIcon } from '../ui/icons';
+import { MOBILE } from '../ui/media';
 import { repo } from '../data';
 import { demoVenueData, newId } from '../domain/demo';
 import { ROLES } from '../domain/constants';
@@ -89,6 +90,17 @@ function Members() {
   );
 }
 
+/** Thematische Gruppe: am PC aufgeklappt, am Handy eingeklappt (antippen öffnet) */
+function Group({ title, hint, icon: I, children }: { title: string; hint: string; icon: LucideIcon; children: ReactNode }) {
+  const [open, setOpen] = useState(() => !window.matchMedia(MOBILE).matches);
+  return (
+    <details className="panel settings-group" open={open} onToggle={e => setOpen(e.currentTarget.open)}>
+      <summary><I className="sg-icon" aria-hidden="true" /><span><b>{title}</b><small className="muted">{hint}</small></span><ChevronDown className="sg-chev" aria-hidden="true" /></summary>
+      <div className="sg-body">{children}</div>
+    </details>
+  );
+}
+
 export function SettingsView() {
   const d = useData();
   const store = useApp();
@@ -99,9 +111,9 @@ export function SettingsView() {
   // Dienstplan-App: keine Services; Daten ersetzen hieße auch Tischplan-Daten der gemeinsamen DB überschreiben
   const roster = EDITION === 'dienstplan';
   return (
-    <div className="hotel">
-      <div>
-      <div className="panel"><h3>{roster ? 'Betrieb' : 'Betrieb & Services'}</h3><div className="body">
+    <div className="settings">
+      <div className="settings-col">
+      <Group title={roster ? 'Betrieb' : 'Betrieb & Services'} hint={roster ? 'Name des Betriebs' : 'Name, Frühstück/Mittag/Abend mit Beginn und Ende'} icon={Building2}><div className="body">
         <Field label="Name des Betriebs" value={d.venue.name} onCommit={v => v.trim() && store.renameVenue(v.trim())} />
         {!roster && <>
         <p className="muted" style={{ fontSize: 12 }}>Reservierungen beginnen zum Beginn des Service (Hotelgäste zur Hotel-Standardzeit) und enden fest zum Ende – so erscheinen sie in der Zeitleiste, z. B. 18:00–20:00.</p>
@@ -109,14 +121,14 @@ export function SettingsView() {
         <button className="btn" onClick={() => store.upsert('services', [{ id: newId(), name: 'Neuer Service', kind: 'abend', start: '17:00', end: '20:00', hotelTime: '18:00', freeSeating: false, pacing: 0,
           turnTimes: [{ maxP: 2, min: 90 }, { maxP: 99, min: 120 }], seatings: [], sort: d.services.length }])}><Plus />Service</button>
         </>}
-      </div></div>
-      <ModulesPanel />
-      {!roster && <StatusPanel />}
-      {!roster && <BrandingPanel />}
+      </div></Group>
+      {!roster && <Group title="Reservierungen" hint="Status umbenennen, eigene Status anlegen" icon={CalendarDays}><StatusPanel /></Group>}
+      {!roster && <Group title="Gäste-Speisekarte (QR)" hint="Logo, Titelbild, Farbe, Begrüßung" icon={QrCode}><BrandingPanel /></Group>}
+      <Group title={roster ? 'Dienstplan' : 'Module & Dienstplan'} hint="Bereiche mit Icon und Leitung, Prüfregeln" icon={CalendarClock}><ModulesPanel /></Group>
       </div>
-      <div>
-        <div className="panel"><h3>Benutzer & Rollen</h3><div className="body"><Members /></div></div>
-        <div className="panel mt12"><h3>Daten</h3><div className="body">
+      <div className="settings-col">
+        <Group title="Benutzer & Rollen" hint="Zugänge und Rechte" icon={Users}><div className="body"><Members /></div></Group>
+        <Group title="Daten & Sicherung" hint="Sicherung exportieren/einspielen, Demo-Daten" icon={Database}><div className="body">
           <div className="row">
             <button className="btn" onClick={() => downloadBlob(`${APP_NAME.toLowerCase()}-sicherung-${today()}.json`, new Blob([JSON.stringify({ format: 'tischplan', version: 2, data: d }, null, 1)], { type: 'application/json' }))}><Download />Sicherung exportieren (JSON)</button>
             {!roster && <><label className="btn"><Upload />Sicherung importieren<input type="file" accept=".json" className="hidden" onChange={async e => {
@@ -131,12 +143,12 @@ export function SettingsView() {
             <button className="btn danger" onClick={() => replace({ ...d, stays: [], reservations: [], audit: [] }, 'Alle Reservierungen & Gäste löschen')}>Reservierungen & Gäste löschen</button></>}
           </div>
           <p className="muted" style={{ fontSize: 12 }}>{repo.mode === 'cloud' ? 'Speicherort: Supabase-Datenbank. Geladen werden Reservierungen der letzten 120 Tage und alle künftigen.' : 'Demo-Modus: Daten nur in diesem Browser.'}</p>
-        </div></div>
-        <div className="panel mt12"><h3>Protokoll (letzte Änderungen)</h3>
+        </div></Group>
+        <Group title="Protokoll" hint="Letzte Änderungen" icon={History}>
           <div style={{ maxHeight: 420, overflow: 'auto' }}><table className="list"><thead><tr><th>Zeit</th><th>Benutzer</th><th>Aktion</th><th>Details</th></tr></thead>
             <tbody>{d.audit.slice(0, 150).map(a => <tr key={a.id}><td style={{ whiteSpace: 'nowrap', fontSize: 12 }}>{new Date(a.ts).toLocaleString('de-DE')}</td><td>{a.userName}</td><td>{a.action}</td><td style={{ fontSize: 12 }}>{a.details}</td></tr>)}</tbody>
           </table></div>
-        </div>
+        </Group>
       </div>
     </div>
   );

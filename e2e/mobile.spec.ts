@@ -264,3 +264,15 @@ test('Hotel: freien Tisch antippen und Gast ohne Tisch zuweisen', async ({ page 
   await expect(page.locator('.toast')).toBeVisible();
   await expect(chips).toHaveCount(n - 1);
 });
+
+test('Einstellungen: am Handy eingeklappt, Antippen öffnet eine Gruppe', async ({ page }) => {
+  await loginDemo(page);
+  await expect(page.locator('aside.sidenav')).toBeHidden();
+  await goView(page, 'Einstellungen');
+  const groups = page.locator('details.settings-group');
+  await expect(groups).toHaveCount(7);
+  for (const g of await groups.all()) await expect(g).not.toHaveAttribute('open', '');
+  await page.screenshot({ path: 'test-results/einstellungen-handy.png' });
+  await page.locator('details.settings-group > summary', { hasText: /^Reservierungen/ }).click();
+  await expect(page.getByRole('button', { name: 'Eigener Status' })).toBeVisible();
+});
