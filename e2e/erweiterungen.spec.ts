@@ -132,3 +132,55 @@ test('Bereich bekommt ein Icon, das im Dienstplan vor Bereich und Mitarbeitenden
   expect((await demo(page)).departments.find((x: any) => x.name === 'Bar').icon).toBe('wein');
   await page.screenshot({ path: 'test-results/bereich-icons.png' });
 });
+
+/** heutige Abend-Reservierung eines externen Gasts (ohne Zimmer) mit Tisch */
+async function externalDinner(page: Page) {
+  return page.evaluate(() => {
+    const v = Object.values(JSON.parse(localStorage.getItem('tischplan.demo.v2')!).data)[0] as any;
+    const day = new Date().toLocaleDateString('sv-SE');
+    const svc = v.services.find((s: any) => s.kind === 'abend');
+    const menu = v.menus.find((m: any) => m.date === day && m.serviceId === svc.id);
+    const r = v.reservations.find((x: any) => x.date === day && x.serviceId === svc.id && !x.stayId && x.tableIds.length && !['storniert', 'noshow'].includes(x.status)
+      && !v.reservations.some((o: any) => o.id !== x.id && o.date === day && o.serviceId === svc.id && o.tableIds.includes(x.tableIds[0])));
+    const table = v.tables.find((t: any) => t.id === r.tableIds[0]);
+    return { id: r.id, name: r.name, menuId: menu.id, token: table.qrToken, table: table.name };
+  });
+}
+
+test('Externer Gast: Menüauswahl im Formular und per QR-Code am Tisch', async ({ page }) => {
+  await loginDemo(page);
+  const r = await externalDinner(page);
+  // per QR: erscheint als „Tisch …“ ohne Namen
+  await page.goto(`/m/${r.token}?demo`);
+  await page.getByRole('tab', { name: /Heute.*Abendessen/ }).click();
+  await expect(page.getByText(`Tisch ${r.table} ·`)).toBeVisible();
+  await expect(page.getByText(r.name)).toHaveCount(0);
+  await page.locator('.gm-step button[aria-label="+"]:not([disabled])').first().click();
+  await page.getByRole('button', { name: 'Auswahl senden' }).click();
+  await expect(page.getByText('Danke! Ihre Auswahl ist bei der Küche angekommen.')).toBeVisible();
+  let c = (await demo(page)).menuChoices.find((x: any) => x.menuId === r.menuId && x.reservationId === r.id);
+  const sum = (x: any) => Object.values(x.counts).reduce((a: number, n) => a + (n as number), 0) as number;
+  const first = sum(c);
+  expect(c.stayId).toBeNull();
+  expect(first).toBeGreaterThan(0);
+
+  // im Formular: Auswahl sichtbar und änderbar
+  await page.goto('/?demo');
+  await page.getByLabel('Service').first().selectOption({ label: 'Abendessen' });
+  await page.locator('.ritem', { hasText: r.name }).click();
+  const menu = page.getByRole('group', { name: 'Menüauswahl' });
+  await menu.locator('button[aria-label^="mehr "]:not([disabled])').first().click();
+  await page.locator('.modal').getByRole('button', { name: 'Speichern' }).click();
+  const confirm = page.getByRole('button', { name: 'Trotzdem speichern' });
+  if (await confirm.isVisible({ timeout: 1000 }).catch(() => false)) await confirm.click();
+  await expect(page.locator('.toast').first()).toContainText('Gespeichert');
+  c = (await demo(page)).menuChoices.find((x: any) => x.menuId === r.menuId && x.reservationId === r.id);
+  expect(sum(c)).toBe(first + 1);
+
+  // Tisch-Popup: Gerichte untereinander mit Menge
+  await page.locator('svg.plan .tb', { hasText: r.table }).first().click();
+  const lines = page.locator('.modal .menu-lines .ml-dish');
+  await expect(lines.first()).toBeVisible();
+  expect(await lines.count()).toBeGreaterThanOrEqual(1);
+  await expect(lines.first()).toContainText('×');
+});

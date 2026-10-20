@@ -253,8 +253,8 @@ export class SupabaseRepo implements Repo {
   async guestMenu(token: string) {
     return (await run<GuestMenuData | null>(this.sb.rpc('guest_menu', { p_token: token }))) ?? null;
   }
-  async guestSave(token: string, menuId: string, stayId: string, counts: Record<string, number>, note = '') {
-    await run(this.sb.rpc('guest_menu_save', { p_token: token, p_menu: menuId, p_stay: stayId, p_counts: counts, p_note: note }));
+  async guestSave(token: string, menuId: string, party: { stayId: string | null; resId?: string | null }, counts: Record<string, number>, note = '') {
+    await run(this.sb.rpc('guest_menu_save', { p_token: token, p_menu: menuId, p_stay: party.stayId, p_counts: counts, p_note: note, p_res: party.resId ?? null }));
   }
 
   /* ---------- Live-Aktualisierung ---------- */

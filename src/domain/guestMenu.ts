@@ -4,7 +4,7 @@
  * Dieselben Regeln prüft die Datenbank in guest_menu / guest_menu_save (Migration 20261013000000_gaeste_menue_qr.sql).
  */
 import { BOARD_MEALS, COURSES } from './constants';
-import { byId, isCancelled, persons } from './logic';
+import { byId, isCancelled, persons, tableNames } from './logic';
 import type { Allergen, Branding, Course, Diet, Menu, MenuChoice, MenuItem, MenuOrdering, Reservation, ServiceKind, Stay, VenueData } from './types';
 import { addDays } from '../lib/time';
 
@@ -24,7 +24,10 @@ export const guestUrl = (origin: string, token: string, demo = false) => `${orig
 
 /* ---------- Was der Gast sieht ---------- */
 export interface GuestDish { course: Course; dishId: string; name: string; nameIt: string; nameEn: string; diet: Diet[]; allergens: Allergen[] }
-export interface GuestRoom { stayId: string; roomNo: string; persons: number; counts: Record<string, number>; note?: string }
+/** Wer per QR wählt: ein Hotelzimmer (stayId) oder eine externe Reservierung am Tisch (resId, roomNo leer) */
+export interface GuestRoom { stayId: string | null; resId?: string | null; roomNo: string; persons: number; counts: Record<string, number>; note?: string }
+/** Schlüssel einer Auswahl-Partei (Zimmer oder Reservierung) */
+export const partyKey = (x: { stayId?: string | null; resId?: string | null }) => x.stayId || 'r:' + (x.resId ?? '');
 /** pick = freie Platzwahl: rooms enthält alle Zimmer mit dieser Mahlzeit, der Gast wählt sein Zimmer aus */
 export interface GuestMenu { id: string; date: string; service: string; kind: string; state: MenuOrdering; pick: boolean; items: GuestDish[]; rooms: GuestRoom[] }
 export interface GuestMenuData { venue: { name: string; branding: Branding }; table: { name: string }; menus: GuestMenu[] }
@@ -37,17 +40,27 @@ export function stayEats(s: Pick<Stay, 'board' | 'arrival' | 'departure'>, kind:
 }
 
 
-/** Hotelzimmer zu einem Menü (Datum + Service): mit Reservierung (optional nur an einem Tisch) –
- *  bei freier Platzwahl alle Zimmer, deren Verpflegung die Mahlzeit enthält (ohne Reservierung) */
-export function menuRooms(d: VenueData, m: Pick<Menu, 'id' | 'date' | 'serviceId'>, tableId?: string): { stay: Stay; res?: Reservation; persons: number; choice?: MenuChoice }[] {
-  const choice = (stay: Stay) => (d.menuChoices ?? []).find(c => c.menuId === m.id && c.stayId === stay.id);
+/** Wer zu einem Menü wählt: Hotelzimmer (stay) oder externe Reservierung (res ohne Zimmer) */
+export interface MenuParty { stay?: Stay; res?: Reservation; persons: number; choice?: MenuChoice; label: string }
+
+/** Gäste zu einem Menü (Datum + Service): alle Reservierungen – Hotelzimmer und externe Gäste – optional nur an einem Tisch;
+ *  bei freier Platzwahl alle Zimmer, deren Verpflegung die Mahlzeit enthält (ohne Reservierung). Zimmer zuerst, nach Nummer. */
+export function menuRooms(d: VenueData, m: Pick<Menu, 'id' | 'date' | 'serviceId'>, tableId?: string): MenuParty[] {
+  const choices = (d.menuChoices ?? []).filter(c => c.menuId === m.id);
   const svc = byId(d.services, m.serviceId);
-  const list = svc?.freeSeating
-    ? d.stays.filter(s => stayEats(s, svc.kind, m.date)).map(stay => ({ stay, persons: persons(stay), choice: choice(stay) }))
+  const room = (stay: Stay, res?: Reservation): MenuParty =>
+    ({ stay, res, persons: res ? persons(res) : persons(stay), choice: choices.find(c => c.stayId === stay.id), label: `Zi. ${stay.roomNo}` });
+  const list: MenuParty[] = svc?.freeSeating
+    ? d.stays.filter(s => stayEats(s, svc.kind, m.date)).map(stay => room(stay))
     : d.reservations
-      .filter(r => r.date === m.date && r.serviceId === m.serviceId && r.stayId && !isCancelled(r) && (!tableId || r.tableIds.includes(tableId)))
-      .flatMap(r => { const stay = byId(d.stays, r.stayId); return stay ? [{ stay, res: r, persons: persons(r), choice: choice(stay) }] : []; });
-  return list.sort((a, b) => a.stay.roomNo.localeCompare(b.stay.roomNo, 'de', { numeric: true }));
+      .filter(r => r.date === m.date && r.serviceId === m.serviceId && !isCancelled(r) && (!tableId || r.tableIds.includes(tableId)))
+      .flatMap(r => {
+        if (!r.stayId) return [{ res: r, persons: persons(r), choice: choices.find(c => c.reservationId === r.id), label: r.name }];
+        const stay = byId(d.stays, r.stayId); return stay ? [room(stay, r)] : [];
+      });
+  // Zimmer zuerst (nach Nummer), dann externe Reservierungen (nach Name)
+  return list.sort((a, b) => Number(!a.stay) - Number(!b.stay) ||
+    (a.stay?.roomNo ?? a.label).localeCompare(b.stay?.roomNo ?? b.label, 'de', { numeric: true }));
 }
 
 /** Gäste-Ansicht für einen Tisch-Schlüssel (heute und morgen, nur freigegebene Menüs) – im Demo-Modus statt der DB-Funktion */
@@ -66,7 +79,9 @@ export function buildGuestMenu(d: VenueData, token: string, day0: string): Guest
           const dish = byId(d.dishes, it.dishId);
           return { course: it.course, dishId: it.dishId, name: dish?.name ?? it.name, nameIt: dish?.nameIt ?? '', nameEn: dish?.nameEn ?? '', diet: dish?.diet ?? [], allergens: it.allergens };
         }),
-        rooms: menuRooms(d, m, tb.id).map(x => ({ stayId: x.stay.id, roomNo: x.stay.roomNo, persons: x.persons, counts: x.choice?.counts ?? {}, note: x.choice?.note ?? '' }))
+        // externe Gäste ohne Namen (Datenschutz) – sie erscheinen als „Tisch …“
+        rooms: menuRooms(d, m, tb.id).map(x => ({ stayId: x.stay?.id ?? null, resId: x.stay ? null : x.res!.id, roomNo: x.stay?.roomNo ?? '', persons: x.persons,
+          counts: x.choice?.counts ?? {}, note: x.choice?.note ?? '' }))
       };
     });
   return { venue: { name: d.venue.name, branding: brandingOf(d.venue) }, table: { name: tb.name }, menus };
@@ -94,15 +109,14 @@ export function cleanCounts(items: Pick<MenuItem, 'course' | 'dishId'>[], person
 /** Gänge eines Menüs in Reihenfolge */
 export const menuCourses = (items: Pick<MenuItem, 'course'>[]) => COURSES.filter(c => items.some(i => i.course === c));
 
-/** Menü und Auswahl eines Hotelzimmers zu einer Reservierung (gleiches Datum + Service) */
-export function menuChoiceFor(d: VenueData, r: Pick<Reservation, 'date' | 'serviceId' | 'stayId'>): { menu?: Menu; choice?: MenuChoice } {
-  if (!r.stayId) return {};
+/** Menü und Auswahl zu einer Reservierung (gleiches Datum + Service): beim Hotelgast die des Zimmers, sonst die der Reservierung */
+export function menuChoiceFor(d: VenueData, r: Pick<Reservation, 'id' | 'date' | 'serviceId' | 'stayId'>): { menu?: Menu; choice?: MenuChoice } {
   const menu = d.menus.find(x => x.date === r.date && x.serviceId === r.serviceId);
-  return { menu, choice: menu && (d.menuChoices ?? []).find(x => x.menuId === menu.id && x.stayId === r.stayId) };
+  return { menu, choice: menu && (d.menuChoices ?? []).find(x => x.menuId === menu.id && (r.stayId ? x.stayId === r.stayId : x.reservationId === r.id)) };
 }
 
-/** Gewähltes Menü eines Hotelzimmers zu einer Reservierung, in Gang-Reihenfolge – für Live-Plan und Service */
-export function chosenDishes(d: VenueData, r: Pick<Reservation, 'date' | 'serviceId' | 'stayId'>): { course: Course; name: string; n: number }[] {
+/** Gewähltes Menü zu einer Reservierung, in Gang-Reihenfolge – für Live-Plan und Service */
+export function chosenDishes(d: VenueData, r: Pick<Reservation, 'id' | 'date' | 'serviceId' | 'stayId'>): { course: Course; name: string; n: number }[] {
   const { menu: m, choice: c } = menuChoiceFor(d, r);
   if (!m || !c) return [];
   return COURSES.flatMap(course => m.items.filter(it => it.course === course && (c.counts[it.dishId] ?? 0) > 0)
@@ -116,10 +130,10 @@ export interface ChoiceSummary {
   rooms: number; chosenRooms: number; persons: number; chosenPersons: number;
   /** gewählte Anzahl je Gericht (dishId) */
   counts: Record<string, number>;
-  /** Zimmer ohne Auswahl */
-  open: { roomNo: string; persons: number; tables: string[] }[];
+  /** Zimmer/Reservierungen ohne Auswahl, z. B. „Zi. 101 · T1“ oder „Rossi · T5“ */
+  open: { label: string; persons: number }[];
   /** Notizen der Gäste zur Auswahl */
-  notes: { roomNo: string; note: string }[];
+  notes: { label: string; note: string }[];
 }
 export function choiceSummary(d: VenueData, m: Menu): ChoiceSummary {
   const rooms = menuRooms(d, m);
@@ -129,7 +143,8 @@ export function choiceSummary(d: VenueData, m: Menu): ChoiceSummary {
   return {
     rooms: rooms.length, chosenRooms: chosen.length,
     persons: rooms.reduce((a, x) => a + x.persons, 0), chosenPersons: chosen.reduce((a, x) => a + x.persons, 0), counts,
-    notes: rooms.filter(x => x.choice?.note).map(x => ({ roomNo: x.stay.roomNo, note: x.choice!.note! })),
-    open: rooms.filter(x => !chosen.includes(x)).map(x => ({ roomNo: x.stay.roomNo, persons: x.persons, tables: (x.res?.tableIds ?? []).map(id => byId(d.tables, id)?.name ?? '?') }))
+    notes: rooms.filter(x => x.choice?.note).map(x => ({ label: x.label, note: x.choice!.note! })),
+    open: rooms.filter(x => !chosen.includes(x)).map(x => ({ persons: x.persons,
+      label: [x.label, x.res?.tableIds.length ? tableNames(d, x.res.tableIds) : byId(d.services, m.serviceId)?.freeSeating ? '' : 'ohne Tisch'].filter(Boolean).join(' · ') }))
   };
 }

@@ -1,7 +1,7 @@
 /** Tisch-Popup, Reservierungs-Info (Service), Walk-in, Tischsperre */
 import { useState } from 'react';
 import { allergyText, hasAllergy } from '../domain/menu';
-import { chosenDishes, chosenText, menuChoiceFor } from '../domain/guestMenu';
+import { chosenDishes, menuChoiceFor } from '../domain/guestMenu';
 import { Minus, Plus, PersonStanding } from '../ui/icons';
 import { newId } from '../domain/demo';
 import { canEdit, canStatus, SEATED_STATES } from '../domain/constants';
@@ -45,9 +45,17 @@ function ResDetails({ r }: { r: Reservation }) {
       <b>{r.vip ? '★ ' : ''}{r.name}</b> · {persons(r)} P{r.children ? ` (${r.children} Kinder)` : ''} · {r.time}–{fromMin(resEnd(r))}
       {stay && <><br />Hotelgast Zi. {stay.roomNo} · {t(stay.board)} · bis {fmtShort(stay.departure)}</>}
       {hasAllergy(r) && <><br />⚠ <b>{allergyText(r)}</b></>}
-      {menu.length > 0 && <><br />🍽 Menü: <b>{chosenText(menu)}</b></>}
-      {menuNote && <><br />📝 Notiz zum Menü: <b>{menuNote}</b></>}
-      {r.stayId && !menu.length && d.menus.some(m => m.date === r.date && m.serviceId === r.serviceId && m.ordering && m.ordering !== 'aus') && <><br /><span className="muted">🍽 Noch kein Menü gewählt</span></>}
+      {/* gewähltes Menü: je Gericht eine Zeile mit Menge, nach Gängen – auch am Handy gut lesbar */}
+      {menu.length > 0 && <div className="menu-lines" aria-label="Gewähltes Menü">
+        <div className="ml-title">🍽 Menü</div>
+        {menu.map((x, i) => <div key={i}>
+          {(i === 0 || menu[i - 1].course !== x.course) && <div className="ml-course">{t(x.course)}</div>}
+          <div className="ml-dish"><b>{x.n}×</b><span>{x.name}</span></div>
+        </div>)}
+        {menuNote && <div className="ml-note">📝 {menuNote}</div>}
+      </div>}
+      {!menu.length && menuNote && <><br />📝 Notiz zum Menü: <b>{menuNote}</b></>}
+      {!menu.length && d.menus.some(m => m.date === r.date && m.serviceId === r.serviceId && m.ordering && m.ordering !== 'aus') && <><br /><span className="muted">🍽 Noch kein Menü gewählt</span></>}
       {r.occasion && <><br />🎉 {r.occasion}</>}
       {r.highchair && <><br />Kinderstuhl</>}
       {r.notes && <><br />📝 {r.notes}</>}

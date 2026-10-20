@@ -92,7 +92,8 @@ export interface MenuItem { course: Course; dishId: string; share: number | null
 export type MenuOrdering = 'aus' | 'offen' | 'geschlossen';
 export interface Menu { id: string; date: string; serviceId: string; portions: number | null; bufferPct: number; notes: string; items: MenuItem[]; ordering?: MenuOrdering }
 /** Auswahl eines Hotelzimmers für ein Menü: Anzahl je Gericht (dishId → Anzahl) */
-export interface MenuChoice { id: string; menuId: string; stayId: string; counts: Record<string, number>; note?: string; updatedAt?: string }
+/** Auswahl zu einem Menü: je Hotelzimmer (stayId) oder je externer Reservierung (reservationId) – Anzahl je Gericht */
+export interface MenuChoice { id: string; menuId: string; stayId: string | null; reservationId?: string | null; counts: Record<string, number>; note?: string; updatedAt?: string }
 
 /* ---------- Dienstplan ---------- */
 export type ContractType = 'unbefristet' | 'befristet' | 'saison' | 'lehrling' | 'aushilfe';

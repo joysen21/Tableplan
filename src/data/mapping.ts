@@ -55,7 +55,7 @@ export const fromDb = {
     items: (r.items ?? []).map((i: Row) => ({ course: i.course, dishId: i.dishId, share: i.share ?? null, name: i.name ?? '', allergens: i.allergens ?? [] })),
     ordering: r.ordering ?? 'aus'
   }),
-  menuChoices: (r: Row): MenuChoice => ({ id: r.id, menuId: r.menu_id, stayId: r.stay_id, counts: r.counts ?? {}, note: r.note ?? '', updatedAt: r.updated_at }),
+  menuChoices: (r: Row): MenuChoice => ({ id: r.id, menuId: r.menu_id, stayId: r.stay_id ?? null, reservationId: r.reservation_id ?? null, counts: r.counts ?? {}, note: r.note ?? '', updatedAt: r.updated_at }),
   departments: (r: Row): Department => ({
     id: r.id, name: r.name, color: r.color ?? '#4F7BD1', sort: r.sort ?? 0, leadIds: r.lead_ids ?? [], guestsPerStaff: r.guests_per_staff ?? null, minStaff: r.min_staff ?? 0,
     icon: r.icon ?? null
@@ -108,7 +108,8 @@ export const toDb = {
   menus: (x: Menu, v: string) => ({
     id: x.id, venue_id: v, date: x.date, service_id: x.serviceId, portions: x.portions, buffer_pct: x.bufferPct, notes: x.notes, items: x.items, ordering: x.ordering ?? 'aus'
   }),
-  menuChoices: (x: MenuChoice, v: string) => ({ id: x.id, venue_id: v, menu_id: x.menuId, stay_id: x.stayId, counts: x.counts, note: (x.note ?? '').trim() }),
+  menuChoices: (x: MenuChoice, v: string) => ({ id: x.id, venue_id: v, menu_id: x.menuId, stay_id: x.stayId ?? null, counts: x.counts, note: (x.note ?? '').trim(),
+    ...(x.reservationId ? { reservation_id: x.reservationId } : {}) }),
   departments: (x: Department, v: string) => ({
     id: x.id, venue_id: v, name: x.name, color: x.color, sort: x.sort, lead_ids: x.leadIds, guests_per_staff: x.guestsPerStaff || null, min_staff: x.minStaff || 0,
     icon: x.icon ?? null

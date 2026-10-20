@@ -41,7 +41,7 @@ test('Gast wählt per QR-Code sein Abendmenü, die Küche sieht die Auswahl', as
   await page.goto('/?demo');
   await goView(page, 'Menü');
   await page.locator('.mw-row.today .mw-cell').last().click();
-  await expect(page.locator('.guest-choice')).toContainText('Zimmern gewählt');
+  await expect(page.locator('.guest-choice')).toContainText('gewählt ·');
   await expect(page.locator('.menu-item-row').filter({ hasText: 'gewählt' }).first()).toBeVisible();
 });
 

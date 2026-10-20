@@ -297,13 +297,13 @@ export function demoGuestChoices(d: VenueData) {
   for (const m of d.menus) if (m.date === t0 || m.date === addDays(t0, 1)) m.ordering = 'offen';
   for (const m of d.menus.filter(x => x.date === t0)) {
     menuRooms(d, m).forEach((x, i) => {
-      if (i % 2) return;
+      if (i % 2 || !x.stay) return;
       const counts: Record<string, number> = {};
       for (const c of menuCourses(m.items)) {
         const list = m.items.filter(it => it.course === c);
         for (let p = 0; p < x.persons; p++) { const it = list[(p + i) % list.length]; counts[it.dishId] = (counts[it.dishId] ?? 0) + 1; }
       }
-      d.menuChoices.push({ id: newId(), menuId: m.id, stayId: x.stay.id, counts });
+      d.menuChoices.push({ id: newId(), menuId: m.id, stayId: x.stay!.id, counts });
     });
   }
 }

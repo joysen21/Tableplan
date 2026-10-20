@@ -41,7 +41,11 @@ describe('Gäste-Speisekarte (QR)', () => {
     expect(v.menus.map(m => m.id)).toEqual([menu.id]);
     expect(v.menus[0].rooms.map(r => [r.stayId, r.persons])).toEqual([[s101.id, 2], [s102.id, 3]]);
     expect(v.menus[0].items[0].nameIt).toBe('Rind IT');
-    expect(buildGuestMenu(d, t2.qrToken, DAY)!.menus[0].rooms).toEqual([]); // externer Gast wählt nicht
+    // externer Gast wählt am Tisch mit – ohne Zimmernummer und ohne Namen
+    const ext = buildGuestMenu(d, t2.qrToken, DAY)!.menus[0].rooms;
+    expect(ext).toHaveLength(1);
+    expect(ext[0]).toMatchObject({ stayId: null, roomNo: '', persons: 4 });
+    expect(ext[0].resId).toBe(d.reservations.find(r => !r.stayId)!.id);
     expect(buildGuestMenu(d, 'falsch-falsch-falsch', DAY)).toBeNull();
     menu.ordering = 'aus';
     expect(buildGuestMenu(d, t1.qrToken, DAY)!.menus).toEqual([]);
@@ -66,7 +70,7 @@ describe('Gäste-Speisekarte (QR)', () => {
     // am Anreisetag gibt es noch kein Frühstück
     breakfast.date = DAY;
     expect(buildGuestMenu(d, t2.qrToken, DAY)!.menus.find(x => x.id === breakfast.id)!.rooms).toEqual([]);
-    expect(choiceSummary(d, { ...breakfast, date: addDays(DAY, 1) }).open.map(o => [o.roomNo, o.tables])).toEqual([['101', []], ['102', []], ['103', []]]);
+    expect(choiceSummary(d, { ...breakfast, date: addDays(DAY, 1) }).open.map(o => o.label)).toEqual(['Zi. 101', 'Zi. 102', 'Zi. 103']);
     expect(s102.board).toBe('HP');
   });
 
@@ -103,8 +107,9 @@ describe('Gäste-Speisekarte (QR)', () => {
     expect(dishPlans(d, menu).map(p => p.portions)).toEqual([5, 5, 9]);
     d.menuChoices.push({ id: newId(), menuId: menu.id, stayId: s102.id, counts: { [fisch.id]: 3, [strudel.id]: 3 } });
     const s = choiceSummary(d, menu);
-    expect([s.rooms, s.chosenRooms, s.persons, s.chosenPersons]).toEqual([2, 1, 5, 3]);
-    expect(s.open.map(o => o.roomNo)).toEqual(['101']);
+    // 2 Zimmer + 1 externe Reservierung (4 P)
+    expect([s.rooms, s.chosenRooms, s.persons, s.chosenPersons]).toEqual([3, 1, 9, 3]);
+    expect(s.open.map(o => o.label)).toEqual(['Zi. 101 · T1', 'Gast · T2']);
     // 3 fest gewählt, übrige 6 Gäste: Rind 3, Fisch 3 + 3 gewählt, Strudel 6 + 3
     const plans = dishPlans(d, menu);
     expect(plans.map(p => [p.portions, p.chosen])).toEqual([[3, 0], [6, 3], [9, 3]]);

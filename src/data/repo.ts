@@ -90,7 +90,8 @@ export interface Repo {
   setStatusConfig(venueId: string, cfg: StatusConfig): Promise<void>;
   // Gäste-Speisekarte per QR – ohne Anmeldung, nur mit dem Tisch-Schlüssel
   guestMenu(token: string): Promise<GuestMenuData | null>;
-  guestSave(token: string, menuId: string, stayId: string, counts: Record<string, number>, note?: string): Promise<void>;
+  /** party = Hotelzimmer (stayId) oder externe Reservierung am Tisch (resId) */
+  guestSave(token: string, menuId: string, party: { stayId: string | null; resId?: string | null }, counts: Record<string, number>, note?: string): Promise<void>;
   // Live-Aktualisierung
   subscribe(venueId: string, onEvent: (e: ChangeEvent) => void, onState: (s: LiveState) => void): () => void;
 }

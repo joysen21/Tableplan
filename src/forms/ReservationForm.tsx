@@ -99,10 +99,11 @@ export function ReservationForm({ r, preset }: { r?: Reservation; preset?: Parti
     // Menüauswahl vorab prüfen, damit nicht nur die Hälfte gespeichert wird
     const { menu, choice } = menuChoiceFor(d, next);
     let choiceRow = null;
-    if (mc && menu && next.stayId) {
+    if (mc && menu) {
       const res = cleanCounts(menu.items, persons(next), mc.counts);
       if ('error' in res) return toast(res.error, 'err');
-      choiceRow = { id: choice?.id ?? newId(), menuId: menu.id, stayId: next.stayId, counts: res.counts, note: mc.note.trim() };
+      // Hotelgast: Auswahl gehört zum Zimmer, sonst zur Reservierung
+      choiceRow = { id: choice?.id ?? newId(), menuId: menu.id, stayId: next.stayId ?? null, reservationId: next.stayId ? null : next.id, counts: res.counts, note: mc.note.trim() };
     }
     let skipped = 0;
     if (isNew && repeat > 0) {
@@ -157,7 +158,7 @@ export function ReservationForm({ r, preset }: { r?: Reservation; preset?: Parti
           <option value="">– kein Hotelgast –</option>
           {inHouse.map(s => <option key={s.id} value={s.id}>Zi. {s.roomNo} · {s.name} ({s.adults + s.children}P, {s.board})</option>)}
         </select></label>
-      {draft.stayId && <><h4 style={{ margin: '14px 0 6px' }}>Menü</h4><MenuChoiceEditor d={d} r={draft} value={mc} onChange={setMc} /></>}
+      <h4 style={{ margin: '14px 0 6px' }}>Menü</h4><MenuChoiceEditor d={d} r={draft} value={mc} onChange={setMc} />
       <label className="mt8">Weitere Unverträglichkeiten / Notiz<input value={draft.allergies} placeholder="z. B. vegetarisch, keine Zwiebeln" onChange={e => upd({ allergies: e.target.value })} /></label>
       <label className="mt8">Notizen<textarea value={draft.notes} onChange={e => upd({ notes: e.target.value })} /></label>
       <div className="row mt8">

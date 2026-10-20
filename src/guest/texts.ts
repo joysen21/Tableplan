@@ -7,12 +7,12 @@ export const LANGS: Lang[] = ['de', 'it', 'en'];
 type Dict = Record<string, string>;
 const T: Record<Lang, Dict> = {
   de: {
-    today: 'Heute', tomorrow: 'Morgen', table: 'Tisch', whichRoom: 'Für welches Zimmer wählen Sie?', room: 'Zimmer', persons: 'Pers.',
+    today: 'Heute', tomorrow: 'Morgen', table: 'Tisch', whichRoom: 'Für wen wählen Sie?', room: 'Zimmer', persons: 'Pers.',
     chooseHint: 'Bitte wählen Sie je Gang, wie oft welches Gericht gewünscht ist.', save: 'Auswahl senden', saving: 'Wird gesendet…',
     saved: 'Danke! Ihre Auswahl ist bei der Küche angekommen.', change: 'Sie können sie ändern, solange die Auswahl offen ist.',
     chosen: 'gewählt', missing: 'noch offen', closed: 'Die Auswahl für dieses Menü ist abgeschlossen.', yourChoice: 'Ihre Auswahl',
     noMenu: 'Für heute ist noch kein Menü zur Auswahl freigegeben. Bitte schauen Sie später noch einmal vorbei.',
-    noRoom: 'Für diesen Tisch ist bei diesem Menü kein Hotelzimmer eingetragen. Bitte wenden Sie sich an unser Team.',
+    noRoom: 'Für diesen Tisch ist bei diesem Menü keine Reservierung eingetragen. Bitte wenden Sie sich an unser Team.',
     invalid: 'Dieser QR-Code ist nicht mehr gültig. Bitte wenden Sie sich an unser Team.', error: 'Senden fehlgeschlagen', retry: 'Erneut laden',
     allergens: 'Allergene', allergenInfo: 'Allergene nach EU-Verordnung 1169/2011', veg: 'vegetarisch', vegan: 'vegan', partial: 'Noch nicht alle Personen haben gewählt – Sie können trotzdem senden.',
     loading: 'Speisekarte wird geladen…',
@@ -21,12 +21,12 @@ const T: Record<Lang, Dict> = {
     noRoomFree: 'Für dieses Menü ist kein Hotelzimmer eingetragen. Bitte wenden Sie sich an unser Team.'
   },
   it: {
-    today: 'Oggi', tomorrow: 'Domani', table: 'Tavolo', whichRoom: 'Per quale camera sceglie?', room: 'Camera', persons: 'pers.',
+    today: 'Oggi', tomorrow: 'Domani', table: 'Tavolo', whichRoom: 'Per chi sceglie?', room: 'Camera', persons: 'pers.',
     chooseHint: 'Indichi per ogni portata quante volte desidera ciascun piatto.', save: 'Invia la scelta', saving: 'Invio in corso…',
     saved: 'Grazie! La Sua scelta è arrivata in cucina.', change: 'Può modificarla finché la scelta è aperta.',
     chosen: 'scelti', missing: 'ancora da scegliere', closed: 'La scelta per questo menù è chiusa.', yourChoice: 'La Sua scelta',
     noMenu: 'Per oggi non è ancora disponibile un menù da scegliere. Riprovi più tardi.',
-    noRoom: 'Per questo tavolo non risulta nessuna camera per questo menù. Si rivolga al nostro personale.',
+    noRoom: 'Per questo tavolo non risulta nessuna prenotazione per questo menù. Si rivolga al nostro personale.',
     invalid: 'Questo codice QR non è più valido. Si rivolga al nostro personale.', error: 'Invio non riuscito', retry: 'Ricarica',
     allergens: 'Allergeni', allergenInfo: 'Allergeni secondo il Regolamento UE 1169/2011', veg: 'vegetariano', vegan: 'vegano', partial: 'Non tutte le persone hanno scelto – può comunque inviare.',
     loading: 'Caricamento del menù…',
@@ -35,12 +35,12 @@ const T: Record<Lang, Dict> = {
     noRoomFree: 'Per questo menù non risulta nessuna camera. Si rivolga al nostro personale.'
   },
   en: {
-    today: 'Today', tomorrow: 'Tomorrow', table: 'Table', whichRoom: 'Which room are you choosing for?', room: 'Room', persons: 'guests',
+    today: 'Today', tomorrow: 'Tomorrow', table: 'Table', whichRoom: 'Who are you choosing for?', room: 'Room', persons: 'guests',
     chooseHint: 'Please choose for each course how many of each dish you would like.', save: 'Send choice', saving: 'Sending…',
     saved: 'Thank you! Your choice has reached the kitchen.', change: 'You can change it as long as the choice is open.',
     chosen: 'chosen', missing: 'still open', closed: 'Choices for this menu are closed.', yourChoice: 'Your choice',
     noMenu: 'There is no menu to choose from yet today. Please check back later.',
-    noRoom: 'No hotel room is assigned to this table for this menu. Please ask our team.',
+    noRoom: 'No reservation is assigned to this table for this menu. Please ask our team.',
     invalid: 'This QR code is no longer valid. Please ask our team.', error: 'Sending failed', retry: 'Reload',
     allergens: 'Allergens', allergenInfo: 'Allergens according to EU Regulation 1169/2011', veg: 'vegetarian', vegan: 'vegan', partial: 'Not everyone has chosen yet – you can still send.',
     loading: 'Loading menu…',

@@ -276,3 +276,27 @@ test('Einstellungen: am Handy eingeklappt, Antippen öffnet eine Gruppe', async 
   await page.locator('details.settings-group > summary', { hasText: /^Reservierungen/ }).click();
   await expect(page.getByRole('button', { name: 'Eigener Status' })).toBeVisible();
 });
+
+test('Tisch antippen: gewähltes Menü als Liste – je Gericht eine Zeile mit Menge', async ({ page }) => {
+  await loginDemo(page);
+  // Tisch eines Zimmers, das das heutige Abendmenü schon gewählt hat (Demo)
+  const table = await page.evaluate(() => {
+    const v = Object.values(JSON.parse(localStorage.getItem('tischplan.demo.v2')!).data)[0] as any;
+    const day = new Date().toLocaleDateString('sv-SE');
+    const svc = v.services.find((s: any) => s.kind === 'abend');
+    const menu = v.menus.find((m: any) => m.date === day && m.serviceId === svc.id);
+    const c = v.menuChoices.find((x: any) => x.menuId === menu.id && x.stayId);
+    const r = v.reservations.find((x: any) => x.date === day && x.serviceId === svc.id && x.stayId === c.stayId && x.tableIds.length);
+    return v.tables.find((t: any) => t.id === r.tableIds[0]).name as string;
+  });
+  await evening(page, 'Plan');
+  await page.locator('svg.plan .tb', { hasText: table }).first().click();
+  const lines = page.locator('.modal .menu-lines .ml-dish');
+  await expect(lines.first()).toBeVisible();
+  expect(await lines.count()).toBeGreaterThan(1);
+  // untereinander: jede Zeile tiefer als die vorige
+  const ys = await lines.evaluateAll(els => els.map(e => e.getBoundingClientRect().top));
+  expect(ys.every((y, i) => i === 0 || y > ys[i - 1])).toBe(true);
+  await page.locator('.modal .menu-lines').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: 'test-results/tisch-menue-handy.png' });
+});

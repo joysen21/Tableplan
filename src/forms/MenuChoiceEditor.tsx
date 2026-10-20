@@ -1,4 +1,4 @@
-/** Menüauswahl eines Hotelzimmers im Reservierungsformular – dieselben Daten wie die Auswahl per QR-Code */
+/** Menüauswahl im Reservierungsformular (Hotelzimmer oder externe Reservierung) – dieselben Daten wie die Auswahl per QR-Code */
 import { byId, persons } from '../domain/logic';
 import { menuChoiceFor, menuCourses } from '../domain/guestMenu';
 import type { Reservation, VenueData } from '../domain/types';
@@ -9,7 +9,6 @@ export interface ChoiceDraft { counts: Record<string, number>; note: string }
 /** value = null → unverändert (gespeicherte Auswahl wird angezeigt) */
 export function MenuChoiceEditor({ d, r, value, onChange, readOnly }: { d: VenueData; r: Reservation; value: ChoiceDraft | null; onChange: (v: ChoiceDraft) => void; readOnly?: boolean }) {
   const { menu, choice } = menuChoiceFor(d, r);
-  if (!r.stayId) return null;
   if (!menu) return <p className="muted" style={{ fontSize: 12 }}>🍽 Für diesen Tag und Service ist kein Menü angelegt.</p>;
   const cur: ChoiceDraft = value ?? { counts: choice?.counts ?? {}, note: choice?.note ?? '' };
   const p = persons(r);

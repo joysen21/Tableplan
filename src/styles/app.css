@@ -664,6 +664,12 @@ table.pub-team tr.me td{background:var(--accent-soft)}
 .st-palette{flex-basis:100%;width:min(420px,80vw);position:absolute;top:100%;left:0;z-index:5;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px;box-shadow:var(--shadow)}
 .st-icon{flex:none;vertical-align:-2px;margin-right:3px}
 .menu-choice{color:var(--hotel)}
+.menu-lines{margin:8px 0 2px;padding:8px 10px;border-radius:8px;background:var(--panel);border:1px solid var(--line)}
+.menu-lines .ml-title{font-weight:700;margin-bottom:2px}
+.menu-lines .ml-course{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-top:6px}
+.menu-lines .ml-dish{display:flex;gap:8px;align-items:baseline;padding:1px 0}
+.menu-lines .ml-dish b{min-width:28px;text-align:right;flex:none}
+.menu-lines .ml-note{margin-top:6px;padding-top:6px;border-top:1px dashed var(--line)}
 .qr-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
 .qr-card{border:1px solid #d9d9d9;border-radius:14px;background:#fff;color:#1f2329;display:flex;flex-direction:column;align-items:center;gap:10px;padding:0 0 14px;overflow:hidden;break-inside:avoid;page-break-inside:avoid}
 .qr-card-head{width:100%;background:var(--brand,#0F2347);color:#fff;display:flex;justify-content:center;align-items:center;min-height:54px;padding:8px 12px;-webkit-print-color-adjust:exact;print-color-adjust:exact}

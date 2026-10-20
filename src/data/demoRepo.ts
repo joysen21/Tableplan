@@ -9,7 +9,7 @@ import { occupies, tableConflicts, resEnd, resStart } from '../domain/logic';
 import { canPlanDept } from '../domain/roster';
 import { shiftsOverlap, weekStart } from '../domain/rosterPlan';
 import type { Branding, Member, MenuChoice, ModuleKey, OnDuty, PublicRoster, Reservation, Role, RosterSettings, Shift, StatusConfig, Stay, VenueData } from '../domain/types';
-import { buildGuestMenu, cleanCounts, newQrToken } from '../domain/guestMenu';
+import { buildGuestMenu, cleanCounts, newQrToken, partyKey } from '../domain/guestMenu';
 import { addDays, today } from '../lib/time';
 import { ROSTER_KEYS, RepoError, type AuthUser, type ChangeEvent, type EntityKey, type EntityMap, type LiveState, type Membership, type Repo } from './repo';
 
@@ -359,13 +359,14 @@ export class DemoRepo implements Repo {
     const d = this.guestVenue(token);
     return d ? buildGuestMenu(normalizeVenueData(d), token, today()) : null;
   }
-  async guestSave(token: string, menuId: string, stayId: string, counts: Record<string, number>, note = '') {
+  async guestSave(token: string, menuId: string, party: { stayId: string | null; resId?: string | null }, counts: Record<string, number>, note = '') {
+    const stayId = party.stayId, resId = party.resId ?? null;
     const found = this.guestVenue(token);
     if (!found) throw new RepoError('other', 'Unbekannter Tisch');
     const view = buildGuestMenu(normalizeVenueData(found), token, today())!;
     const m = view.menus.find(x => x.id === menuId);
     if (!m || m.state !== 'offen') throw new RepoError('other', 'Auswahl ist geschlossen');
-    const room = m.rooms.find(x => x.stayId === stayId);
+    const room = m.rooms.find(x => partyKey(x) === partyKey(party));
     if (!room) throw new RepoError('other', 'Zimmer sitzt nicht an diesem Tisch');
     const res = cleanCounts(m.items, room.persons, counts);
     if ('error' in res) throw new RepoError('other', res.error);
@@ -373,8 +374,8 @@ export class DemoRepo implements Repo {
     let row: MenuChoice | undefined;
     this.mutate(found.venue.id, d => {
       d.menuChoices ??= [];
-      const ex = d.menuChoices.find(c => c.menuId === menuId && c.stayId === stayId);
-      row = { id: ex?.id ?? newId(), menuId, stayId, counts: res.counts, note: note.trim(), updatedAt: new Date().toISOString() };
+      const ex = d.menuChoices.find(c => c.menuId === menuId && (resId ? c.reservationId === resId : c.stayId === stayId));
+      row = { id: ex?.id ?? newId(), menuId, stayId: resId ? null : stayId, reservationId: resId, counts: res.counts, note: note.trim(), updatedAt: new Date().toISOString() };
       d.menuChoices = ex ? d.menuChoices.map(c => (c === ex ? row! : c)) : [...d.menuChoices, row];
     });
     this.emit([{ kind: 'menuChoices', type: 'upsert', row: row! }]);

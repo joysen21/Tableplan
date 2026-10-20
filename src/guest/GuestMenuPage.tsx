@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { repo } from '../data';
 import { ALLERGENS, allergenNo } from '../domain/constants';
-import { menuCourses, type GuestDish, type GuestMenu, type GuestMenuData } from '../domain/guestMenu';
+import { menuCourses, partyKey, type GuestDish, type GuestMenu, type GuestMenuData, type GuestRoom } from '../domain/guestMenu';
 import type { Allergen } from '../domain/types';
 import { addDays, today } from '../lib/time';
 import { allergenName, courseName, initialLang, LANGS, rememberLang, serviceName, tr, type Lang } from './texts';
@@ -68,7 +68,7 @@ export function GuestMenuPage({ token }: { token: string }) {
             ))}
           </div>
         )}
-        {menu && <MenuChooser key={menu.id} token={token} menu={menu} lang={lang} title={`${dayLabel(menu)} · ${serviceName(lang, menu.kind, menu.service)}`} onSaved={load} />}
+        {menu && <MenuChooser key={menu.id} token={token} menu={menu} tableName={data!.table.name} lang={lang} title={`${dayLabel(menu)} · ${serviceName(lang, menu.kind, menu.service)}`} onSaved={load} />}
         {menu && <AllergenLegend lang={lang} items={menu.items} />}
       </main>
 
@@ -83,15 +83,18 @@ export function GuestMenuPage({ token }: { token: string }) {
 const STAY_KEY = 'tischplan.guest.stay';
 const rememberedStay = () => { try { return localStorage.getItem(STAY_KEY); } catch { return null; } };
 
-function MenuChooser({ token, menu, lang, title, onSaved }: { token: string; menu: GuestMenu; lang: Lang; title: string; onSaved: () => void }) {
+function MenuChooser({ token, menu, tableName, lang, title, onSaved }: { token: string; menu: GuestMenu; tableName: string; lang: Lang; title: string; onSaved: () => void }) {
   const rooms = menu.rooms;
   const [stayId, setStayIdRaw] = useState<string | null>(() =>
-    rooms.length === 1 ? rooms[0].stayId : rooms.find(r => r.stayId === rememberedStay())?.stayId ?? null);
+    rooms.length === 1 ? partyKey(rooms[0]) : rooms.some(r => partyKey(r) === rememberedStay()) ? rememberedStay() : null);
   const setStayId = (id: string | null) => {
     setStayIdRaw(id);
     if (id) try { localStorage.setItem(STAY_KEY, id); } catch { /* egal */ }
   };
-  const room = rooms.find(r => r.stayId === stayId);
+  const room = rooms.find(r => partyKey(r) === stayId);
+  // externe Gäste (ohne Zimmer) erscheinen als „Tisch …“, bei mehreren durchnummeriert
+  const ext = rooms.filter(r => !r.roomNo);
+  const label = (r: GuestRoom) => r.roomNo ? `${tr(lang, 'room')} ${r.roomNo}` : `${tr(lang, 'table')} ${tableName}${ext.length > 1 ? ` (${ext.indexOf(r) + 1})` : ''}`;
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
@@ -123,7 +126,7 @@ function MenuChooser({ token, menu, lang, title, onSaved }: { token: string; men
     if (!room) return;
     setBusy(true); setMsg(null);
     try {
-      await repo.guestSave(token, menu.id, room.stayId, Object.fromEntries(Object.entries(counts).filter(([, n]) => n > 0)), note.trim());
+      await repo.guestSave(token, menu.id, { stayId: room.stayId, resId: room.resId }, Object.fromEntries(Object.entries(counts).filter(([, n]) => n > 0)), note.trim());
       setMsg({ ok: true, text: tr(lang, 'saved') });
       onSaved();
     } catch (e: any) { setMsg({ ok: false, text: `${tr(lang, 'error')}: ${e?.message || e}` }); }
@@ -140,20 +143,20 @@ function MenuChooser({ token, menu, lang, title, onSaved }: { token: string; men
           <p>{tr(lang, 'freeSeating')}</p>
           <select className="gm-roompick" aria-label={tr(lang, 'pickRoom')} value={stayId ?? ''} onChange={e => setStayId(e.target.value || null)}>
             <option value="">{tr(lang, 'pickRoom')}</option>
-            {rooms.map(r => <option key={r.stayId} value={r.stayId}>{tr(lang, 'room')} {r.roomNo} · {r.persons} {tr(lang, 'persons')}{Object.keys(r.counts).length ? ' ✓' : ''}</option>)}
+            {rooms.map(r => <option key={partyKey(r)} value={partyKey(r)}>{label(r)} · {r.persons} {tr(lang, 'persons')}{Object.keys(r.counts).length ? ' ✓' : ''}</option>)}
           </select>
         </div>
       ) : rooms.length > 1 && (
         <div className="gm-rooms">
           <p>{tr(lang, 'whichRoom')}</p>
           <div>{rooms.map(r => (
-            <button key={r.stayId} aria-pressed={r.stayId === stayId} onClick={() => setStayId(r.stayId)}>
-              {tr(lang, 'room')} {r.roomNo}<small>{r.persons} {tr(lang, 'persons')}{Object.keys(r.counts).length ? ' · ✓' : ''}</small>
+            <button key={partyKey(r)} aria-pressed={partyKey(r) === stayId} onClick={() => setStayId(partyKey(r))}>
+              {label(r)}<small>{r.persons} {tr(lang, 'persons')}{Object.keys(r.counts).length ? ' · ✓' : ''}</small>
             </button>
           ))}</div>
         </div>
       )}
-      {rooms.length === 1 && room && <p className="gm-roomline">{tr(lang, 'room')} {room.roomNo} · {room.persons} {tr(lang, 'persons')}</p>}
+      {rooms.length === 1 && room && <p className="gm-roomline">{label(room)} · {room.persons} {tr(lang, 'persons')}</p>}
       {room && open && <p className="gm-hint">{tr(lang, 'chooseHint')}</p>}
 
       {courses.map(c => {
