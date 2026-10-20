@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pickableStatuses, resolveStatus, statusConfigErrors, statusInfo, statusKey, statusOptions } from './statuses';
+import { pickableStatuses, resolveStatus, statusConfigErrors, statusInfo, statusKey, statusOptions, tableLook } from './statuses';
 import type { StatusConfig } from './types';
 
 const cfg: StatusConfig = {
@@ -34,5 +34,18 @@ describe('Reservierungs-Status je Betrieb', () => {
     expect(statusConfigErrors(cfg)).toEqual([]);
     expect(statusConfigErrors({ custom: [{ id: 'x', label: ' ', color: '#000000', base: 'platziert' }] })).toContain('Jeder eigene Status braucht eine Bezeichnung');
     expect(statusConfigErrors({ custom: [{ id: 'x', label: 'Platziert', color: '#000000', base: 'platziert' }] })[0]).toMatch(/doppelt/);
+  });
+});
+
+describe('Raumplan: Tische in den Farben der Reservierungs-Status', () => {
+  const venue = { statusConfig: { builtIn: { platziert: { label: 'Am Tisch', color: '#123456' } }, custom: [{ id: 'c1', label: 'Aperitif', color: '#00aa00', base: 'platziert' as const }] } };
+  it('nimmt Bezeichnung und Farbe des Status, auch eigener Status', () => {
+    expect(tableLook(venue, { st: 'platziert', r: { status: 'platziert' } })).toMatchObject({ fill: '#123456', label: 'Am Tisch', alert: '' });
+    expect(tableLook(venue, { st: 'platziert', r: { status: 'platziert', subStatus: 'c1' } })).toMatchObject({ fill: '#00aa00', label: 'Aperitif' });
+  });
+  it('bald = blass, überfällig/überzogen = Hinweis, frei/gesperrt eigene Farben', () => {
+    expect(tableLook(venue, { st: 'bald', r: { status: 'bestaetigt' } })).toMatchObject({ faded: true, label: 'Bestätigt · kommt bald' });
+    expect(tableLook(venue, { st: 'ueberzogen', r: { status: 'platziert' } })).toMatchObject({ alert: 'ueberzogen', mark: '⌛' });
+    expect(tableLook(venue, { st: 'frei' })).toMatchObject({ fill: 'var(--st-frei)', label: 'Frei' });
   });
 });

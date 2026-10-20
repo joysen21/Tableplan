@@ -58,3 +58,26 @@ export function statusConfigErrors(cfg: StatusConfig): string[] {
   if (dup) errs.push(`Bezeichnung doppelt: „${dup}“`);
   return [...new Set(errs)];
 }
+
+/** Status, die im Raumplan einen Tisch belegen (Legende und Farben im Live-Plan) */
+export const PLAN_BASES: ResStatus[] = ['angefragt', 'bestaetigt', 'eingetroffen', 'platziert', 'rechnung'];
+
+export interface TableLook {
+  /** Füllfarbe (Farbe des Reservierungs-Status, sonst Frei/Gesperrt) */ fill: string;
+  /** Bezeichnung wie in der Legende */ label: string;
+  /** Gast kommt bald (≤ 60 Min.) → blass */ faded: boolean;
+  /** überfällig (Gast nicht da) bzw. Zeit überzogen → rote Umrandung */ alert: '' | 'spaet' | 'ueberzogen';
+  /** kurzes Zeichen hinter dem Tischnamen */ mark: string;
+}
+
+/** Darstellung eines Tisches im Raumplan – deckungsgleich mit den Reservierungs-Status aus den Einstellungen */
+export function tableLook(venue: Pick<Venue, 'statusConfig'>, s: { st: string; r?: Pick<Reservation, 'status' | 'subStatus'> & Partial<Reservation> }): TableLook {
+  if (s.st === 'frei') return { fill: 'var(--st-frei)', label: 'Frei', faded: false, alert: '', mark: '' };
+  if (s.st === 'gesperrt') return { fill: 'var(--st-gesperrt)', label: 'Gesperrt', faded: false, alert: '', mark: '✕' };
+  // Hotel-Zuweisung zeigt Aufenthalte ohne Reservierungs-Status
+  if (!s.r?.status) return { fill: `var(--st-${s.st})`, label: t(s.st), faded: false, alert: '', mark: '' };
+  const info = statusInfo(venue, s.r);
+  const alert = s.st === 'ueberfaellig' ? 'spaet' : s.st === 'ueberzogen' ? 'ueberzogen' : '';
+  const extra = s.st === 'bald' ? ' · kommt bald' : alert === 'spaet' ? ' · überfällig' : alert === 'ueberzogen' ? ' · Zeit überzogen' : '';
+  return { fill: info.color, label: info.label + extra, faded: s.st === 'bald', alert, mark: s.st === 'bald' ? '⏳' : alert === 'spaet' ? '!' : alert === 'ueberzogen' ? '⌛' : '' };
+}

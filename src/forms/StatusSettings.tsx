@@ -14,6 +14,14 @@ import { StatusIconPicker } from '../ui/StatusIcon';
 
 type BuiltInPatch = { label?: string; color?: string; hidden?: boolean; icon?: string };
 
+/** Was ein eigener Status für den Tisch bedeutet – nötig für Live-Plan, Konfliktprüfung und Doppelbuchungsschutz */
+const TABLE_MEANING: { base: ResStatus; label: string }[] = [
+  { base: 'bestaetigt', label: 'Gast wird erwartet – Tisch reserviert' },
+  { base: 'platziert', label: 'Gast ist da – Tisch belegt' },
+  { base: 'abgeschlossen', label: 'Erledigt – Tisch wieder frei' },
+  { base: 'storniert', label: 'Abgesagt – Tisch frei' }
+];
+
 export function StatusPanel() {
   const d = useData();
   const store = useApp();
@@ -36,11 +44,9 @@ export function StatusPanel() {
     setBusy(false);
   }
 
-  const customOf = (s: ResStatus) => (cfg.custom ?? []).filter(c => c.base === s);
   return (
     <div className="panel mt12"><h3>Reservierungs-Status</h3><div className="body">
-      <p className="muted" style={{ fontSize: 12, marginTop: 0 }}>Bezeichnung, Symbol und Farbe jedes Status ändern. Eigene Status verhalten sich wie ihr Grundstatus
-        (z. B. „Aperitif“ wie Platziert) – Live-Plan und Konfliktprüfung richten sich danach.</p>
+      <p className="muted" style={{ fontSize: 12, marginTop: 0 }}>Bezeichnung, Symbol und Farbe jedes Status ändern – so erscheinen sie überall, auch im Live-Plan und seiner Legende.</p>
       <div className="status-list">
         {ALL_STATUS.map(s => {
           const b = cfg.builtIn?.[s] ?? {};
@@ -56,23 +62,29 @@ export function StatusPanel() {
                 <button type="button" className="btn small icon ghost" aria-label={`${t(s)} zurücksetzen`} title="Standard wiederherstellen"
                   disabled={!b.label && !b.color && !b.icon && !b.hidden} onClick={() => setBuiltIn(s, { label: undefined, color: undefined, icon: undefined, hidden: false })}><RotateCcw /></button>
               </div>
-              {customOf(s).map(c => (
-                <div key={c.id} className="status-row custom">
-                  <StatusIconPicker value={c.icon || DEFAULT_STATUS_ICON[c.base]} color={c.color} label={c.label || 'eigener Status'} onChange={icon => setCustom(c.id, { icon })} />
-                  <input aria-label="Bezeichnung eigener Status" value={c.label} placeholder="z. B. Aperitif" onChange={e => setCustom(c.id, { label: e.target.value })} />
-                  <input type="color" aria-label={`Farbe ${c.label}`} value={c.color} onChange={e => setCustom(c.id, { color: e.target.value })} />
-                  <select aria-label={`Grundstatus ${c.label}`} title="verhält sich wie" value={c.base} onChange={e => setCustom(c.id, { base: e.target.value as ResStatus })}>
-                    {ALL_STATUS.map(x => <option key={x} value={x}>wie {t(x)}</option>)}</select>
-                  <button type="button" className="btn small icon ghost danger" aria-label={`${c.label || 'Status'} löschen`} title="Löschen" onClick={() => {
-                    const n = inUse(c.id);
-                    if (n) toast(`${n} Reservierung(en) zeigen danach wieder „${t(c.base)}“`);
-                    setCfg(x => ({ ...x, custom: (x.custom ?? []).filter(y => y.id !== c.id) }));
-                  }}><Trash2 /></button>
-                </div>
-              ))}
             </div>
           );
         })}
+      </div>
+      <h4 style={{ margin: '14px 0 4px' }}>Eigene Status</h4>
+      <p className="muted" style={{ fontSize: 12, margin: '0 0 6px' }}>Komplett eigene Status mit Name, Symbol und Farbe. Angegeben wird nur, was er für den Tisch bedeutet.</p>
+      <div className="status-list">
+        {(cfg.custom ?? []).map(c => (
+          <div key={c.id} className="status-row">
+            <StatusIconPicker value={c.icon || DEFAULT_STATUS_ICON[c.base]} color={c.color} label={c.label || 'eigener Status'} onChange={icon => setCustom(c.id, { icon })} />
+            <input aria-label="Bezeichnung eigener Status" value={c.label} placeholder="z. B. Aperitif" onChange={e => setCustom(c.id, { label: e.target.value })} />
+            <input type="color" aria-label={`Farbe ${c.label}`} value={c.color} onChange={e => setCustom(c.id, { color: e.target.value })} />
+            <select aria-label={`Tisch bei ${c.label || 'eigenem Status'}`} title="Bedeutung für den Tisch" value={TABLE_MEANING.some(m => m.base === c.base) ? c.base : 'platziert'}
+              onChange={e => setCustom(c.id, { base: e.target.value as ResStatus })}>
+              {TABLE_MEANING.map(m => <option key={m.base} value={m.base}>{m.label}</option>)}</select>
+            <button type="button" className="btn small icon ghost danger" aria-label={`${c.label || 'Status'} löschen`} title="Löschen" onClick={() => {
+              const n = inUse(c.id);
+              if (n) toast(`${n} Reservierung(en) zeigen danach wieder den Standard-Status`);
+              setCfg(x => ({ ...x, custom: (x.custom ?? []).filter(y => y.id !== c.id) }));
+            }}><Trash2 /></button>
+          </div>
+        ))}
+        {!(cfg.custom ?? []).length && <p className="muted" style={{ margin: 0 }}>Noch keine eigenen Status.</p>}
       </div>
       <div className="row mt8">
         <button className="btn small" onClick={() => setCfg(c => ({ ...c, custom: [...(c.custom ?? []), { id: newId(), label: '', color: '#4F7BD1', base: 'platziert', icon: 'aperitif' }] }))}><Plus />Eigener Status</button>

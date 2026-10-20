@@ -1,10 +1,11 @@
 /** Raumplan als SVG – gemeinsam für Live-Plan, Hotel-Zuweisung, Editor und Druck */
 import type { PointerEvent as RPE, Ref } from 'react';
 import { hasAllergy } from '../domain/menu';
-import { TABLE_STATE_ICON, TABLE_STATES } from '../domain/constants';
 import { byId, persons, type TableStatus } from '../domain/logic';
+import { PLAN_BASES, pickableStatuses, tableLook } from '../domain/statuses';
+import { useData } from '../store/hooks';
+import { StatusIcon } from './StatusIcon';
 import type { Decor, DiningTable, Room, VenueData } from '../domain/types';
-import { t } from '../lib/i18n';
 
 interface Props {
   data: VenueData; room: Room; mode: 'live' | 'edit' | 'assign';
@@ -73,7 +74,7 @@ export function FloorPlan(p: Props) {
   }
   return (
     <svg className={'plan mode-' + mode} viewBox={`0 0 ${room.width} ${room.height}`} ref={p.svgRef} onPointerDown={e => { if (e.target === e.currentTarget || (e.target as Element).classList.contains('plan-bg')) p.onBackgroundDown?.(e); }}>
-      <style>{'.chair{fill:var(--panel);stroke:var(--muted);stroke-width:1.5}.benchseat{fill:var(--decor)}.tbody{stroke:rgba(0,0,0,.25);stroke-width:1.5}'}</style>
+      <style>{'.chair{fill:var(--panel);stroke:var(--muted);stroke-width:1.5}.benchseat{fill:var(--decor)}.tbody{stroke:rgba(0,0,0,.25);stroke-width:1.5}.tbody.alert{stroke:var(--danger);stroke-width:4}'}</style>
       <defs><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" fill="none" stroke="var(--plan-grid)" strokeWidth={1} /></pattern></defs>
       <rect className="plan-bg" width={room.width} height={room.height} fill="url(#grid)" />
       {room.backgroundUrl && <image className="plan-bg" href={room.backgroundUrl} x={0} y={0} width={room.width} height={room.height} preserveAspectRatio="xMidYMid meet" opacity={mode === 'edit' ? 0.55 : 0.35} />}
@@ -81,11 +82,13 @@ export function FloorPlan(p: Props) {
       {lines}
       {tables.map(tb => {
         const s = st(tb);
-        const fill = `var(--st-${s.st})`, light = s.st === 'frei';
+        // Farbe und Bezeichnung = Reservierungs-Status aus den Einstellungen (wie in der Legende)
+        const look = tableLook(data.venue, s);
+        const fill = look.fill, light = s.st === 'frei' || look.faded;
         const station = byId(data.stations, tb.stationId);
         const sel = p.sel === tb.id, hl = p.highlight?.has(tb.id);
         const w = tb.width, h = tb.height, col = light ? 'var(--text)' : '#fff';
-        const lineEls: JSX.Element[] = [<tspan key="n" x={0} fontWeight={700} fontSize={14}>{tb.name} {TABLE_STATE_ICON[s.st]}</tspan>];
+        const lineEls: JSX.Element[] = [<tspan key="n" x={0} fontWeight={700} fontSize={14}>{tb.name} {look.mark}</tspan>];
         const small = Math.min(w, h) < 66, maxLen = small ? 7 : 12;
         const r = s.r || (mode === 'assign' ? s.next : undefined);
         if (mode !== 'edit' && r && s.r) {
@@ -104,11 +107,13 @@ export function FloorPlan(p: Props) {
         return (
           <g key={tb.id} className="tb" data-table-id={tb.id} transform={`translate(${tb.x} ${tb.y}) rotate(${tb.rotation || 0})`}
             style={{ cursor: mode === 'edit' ? 'move' : 'pointer' }} onPointerDown={p.onTableDown ? e => p.onTableDown!(e, tb) : undefined}
-            aria-label={`Tisch ${tb.name}, ${t(s.st)}`}>
+            aria-label={`Tisch ${tb.name}, ${look.label}`}>
             {(sel || hl) && <rect x={-w / 2 - 16} y={-h / 2 - 16} width={w + 32} height={h + 32} rx={12} fill="none" stroke={hl ? 'var(--hotel)' : 'var(--hl)'} strokeWidth={3} strokeDasharray="6 4" />}
             {tb.chairs !== false && <Chairs tb={tb} />}
             {outline}
-            {tb.shape === 'round' ? <ellipse rx={w / 2} ry={h / 2} fill={fill} className="tbody" /> : <rect x={-w / 2} y={-h / 2} width={w} height={h} rx={7} fill={fill} className="tbody" />}
+            {tb.shape === 'round'
+              ? <ellipse rx={w / 2} ry={h / 2} fill={fill} fillOpacity={look.faded ? 0.4 : 1} className={'tbody' + (look.alert ? ' alert' : '')} />
+              : <rect x={-w / 2} y={-h / 2} width={w} height={h} rx={7} fill={fill} fillOpacity={look.faded ? 0.4 : 1} className={'tbody' + (look.alert ? ' alert' : '')} />}
             <text textAnchor="middle" y={dy} fill={col} transform={`rotate(${-(tb.rotation || 0)})`} pointerEvents="none">{lineEls}</text>
             {mode === 'edit' && sel && p.onResizeDown && <rect x={w / 2 - 6} y={h / 2 - 6} width={14} height={14} fill="var(--hl)" style={{ cursor: 'nwse-resize' }} onPointerDown={e => { e.stopPropagation(); p.onResizeDown!(e, tb); }} />}
           </g>
@@ -118,10 +123,17 @@ export function FloorPlan(p: Props) {
   );
 }
 
+/** Legende = die Reservierungs-Status aus den Einstellungen (Bezeichnung, Farbe, Symbol), dazu Frei/Gesperrt und Hinweise */
 export function Legend() {
+  const d = useData();
+  const list = pickableStatuses(d.venue.statusConfig).filter(o => PLAN_BASES.includes(o.base) && !o.hidden);
   return (
     <div className="legend">
-      {TABLE_STATES.map(s => <span key={s}><i style={{ background: `var(--st-${s})` }} />{TABLE_STATE_ICON[s]} {t(s)}</span>)}
+      <span><i style={{ background: 'var(--st-frei)' }} />Frei</span>
+      {list.map(o => <span key={o.key}><i style={{ background: o.color }} /><StatusIcon icon={o.icon} />{o.label}</span>)}
+      <span><i style={{ background: 'var(--st-gesperrt)' }} />✕ Gesperrt</span>
+      <span><i className="faded" />⏳ kommt bald</span>
+      <span><i className="alert" />! überfällig · ⌛ Zeit überzogen</span>
       <span>⌂ Hotelgast</span><span>⚠ Allergie</span><span>★ VIP</span>
     </div>
   );

@@ -66,10 +66,10 @@ function Members() {
   return (
     <>
       {list.map(m => (
-        <div key={m.userId} className="row mb8">
-          <div style={{ flex: 2 }}><Field label="" value={m.name} onCommit={v => act(() => repo.updateMember(d.venue.id, m.userId, { name: v }))} /></div>
-          <span className="muted" style={{ flex: 2, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.email}</span>
-          <select style={{ flex: 2, width: 'auto' }} value={m.role} disabled={m.userId === user.id} onChange={e => act(() => repo.updateMember(d.venue.id, m.userId, { role: e.target.value as Role }))}>
+        <div key={m.userId} className="row mb8 member-row">
+          <div className="m-name"><Field label="" value={m.name} onCommit={v => act(() => repo.updateMember(d.venue.id, m.userId, { name: v }))} /></div>
+          <span className="muted m-email" title={m.email}>{m.email}</span>
+          <select className="m-role" aria-label={`Rolle ${m.name}`} value={m.role} disabled={m.userId === user.id} onChange={e => act(() => repo.updateMember(d.venue.id, m.userId, { role: e.target.value as Role }))}>
             {ROLES.map(r => <option key={r} value={r}>{t(r)}</option>)}</select>
           <button className="btn small icon danger" disabled={m.userId === user.id} aria-label="Benutzer entfernen" title="Benutzer entfernen" onClick={async () => {
             if (await confirmDialog('Benutzer entfernen?', [`${m.name} (${m.email}) verliert den Zugriff auf diesen Betrieb.`], 'Entfernen', true)) act(() => repo.removeMember(d.venue.id, m.userId), 'Entfernt');
@@ -77,7 +77,7 @@ function Members() {
         </div>
       ))}
       <h4 style={{ margin: '14px 0 6px' }}>Benutzer hinzufügen</h4>
-      <div className="grid3">
+      <div className="grid3 member-add">
         <label>E-Mail<input type="email" value={nm.email} onChange={e => setNm({ ...nm, email: e.target.value })} /></label>
         <label>Name<input value={nm.name} onChange={e => setNm({ ...nm, name: e.target.value })} /></label>
         <label>Rolle<select value={nm.role} onChange={e => setNm({ ...nm, role: e.target.value as Role })}>{ROLES.map(r => <option key={r} value={r}>{t(r)}</option>)}</select></label>

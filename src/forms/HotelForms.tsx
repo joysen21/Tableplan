@@ -110,8 +110,7 @@ export function StayForm({ stay }: { stay?: Stay }) {
         <label>Zimmer *<input value={s.roomNo} onChange={e => upd({ roomNo: e.target.value })} autoFocus={isNew} /></label>
         <label>Name *<input value={s.name} onChange={e => upd({ name: e.target.value })} /></label>
         <label>Verpflegung<select value={s.board} onChange={e => upd({ board: e.target.value as Board })}>{BOARDS.map(b => <option key={b} value={b}>{t(b)}</option>)}</select></label>
-        <label>Erwachsene<input type="number" min={1} value={s.adults} onChange={e => upd({ adults: Math.max(1, +e.target.value || 1) })} /></label>
-        <label>Kinder<input type="number" min={0} value={s.children} onChange={e => upd({ children: Math.max(0, +e.target.value || 0) })} /></label>
+        <label>Personen<input type="number" min={1} value={s.adults + s.children} onChange={e => upd({ adults: Math.max(1, +e.target.value || 1), children: 0 })} /></label>
         <label>Telefon<input value={s.phone} onChange={e => upd({ phone: e.target.value })} /></label>
         <label>Anreise<input type="date" value={s.arrival} onChange={e => upd({ arrival: e.target.value })} /></label>
         <label>Abreise<input type="date" value={s.departure} onChange={e => upd({ departure: e.target.value })} /></label>
@@ -189,7 +188,7 @@ export function StayImport() {
       <p className="muted" style={{ marginTop: 0 }}>
         <b>ASA-Zimmerliste</b>: wird erkannt und je Reservierung + Zimmer zu einem Aufenthalt zusammengefasst. Die Datei gilt als kompletter Gästestand –
         wer fehlt, gilt als abgereist bzw. storniert. Geburtsdatum, Land und Meldedaten werden nicht gespeichert.<br />
-        <b>Einfaches Format</b>: <code>Zimmer;Name;Erwachsene;Kinder;Anreise;Abreise;Verpflegung;Allergien;Notiz</code><br />
+        <b>Einfaches Format</b>: <code>Zimmer;Name;Personen;;Anreise;Abreise;Verpflegung;Allergien;Notiz</code> (4. Spalte leer; steht dort eine Zahl, wird sie dazugezählt)<br />
         Feste Tische, Essenszeiten, Allergien und Notizen aus dem Tischplan bleiben erhalten.</p>
       <input type="file" accept=".csv,.txt,text/csv,text/plain" aria-label="CSV-Datei" onChange={e => { const f = e.target.files?.[0]; if (f) { setResult(''); readTextFile(f).then(setText); } }} />
       <textarea style={{ minHeight: 80, marginTop: 8 }} value={text} placeholder="…oder hier einfügen" onChange={e => { setResult(''); setText(e.target.value); }} />

@@ -5,7 +5,7 @@ import { chosenDishes, menuChoiceFor } from '../domain/guestMenu';
 import { Minus, Plus, PersonStanding } from '../ui/icons';
 import { newId } from '../domain/demo';
 import { canEdit, canStatus, SEATED_STATES } from '../domain/constants';
-import { pickableStatuses, statusInfo, statusKey } from '../domain/statuses';
+import { pickableStatuses, statusInfo, statusKey, tableLook } from '../domain/statuses';
 import { StatusIcon } from '../ui/StatusIcon';
 import { byId, capacity, freeMinutes, isBlocked, occupies, persons, resEnd, resStart, suggestTables, tableConflicts, tableNames, tableStatusAt, untilEnd } from '../domain/logic';
 import type { Reservation, ResStatus } from '../domain/types';
@@ -42,7 +42,7 @@ function ResDetails({ r }: { r: Reservation }) {
   const menuNote = menuChoiceFor(d, r).choice?.note;
   return (
     <div className="infobox">
-      <b>{r.vip ? '★ ' : ''}{r.name}</b> · {persons(r)} P{r.children ? ` (${r.children} Kinder)` : ''} · {r.time}–{fromMin(resEnd(r))}
+      <b>{r.vip ? '★ ' : ''}{r.name}</b> · {persons(r)} P · {r.time}–{fromMin(resEnd(r))}
       {stay && <><br />Hotelgast Zi. {stay.roomNo} · {t(stay.board)} · bis {fmtShort(stay.departure)}</>}
       {hasAllergy(r) && <><br />⚠ <b>{allergyText(r)}</b></>}
       {/* gewähltes Menü: je Gericht eine Zeile mit Menge, nach Gängen – auch am Handy gut lesbar */}
@@ -93,7 +93,7 @@ export function TablePopup({ tableId }: { tableId: string }) {
       {r && edit && <button className="btn primary" onClick={() => openDialog({ type: 'reservation', r })}>Reservierung bearbeiten</button>}
       <button className="btn" onClick={closeDialog}>Schließen</button></>}>
       <p className="muted" style={{ marginTop: 0 }}>{tb.minPersons}–{tb.maxPersons} Personen · {byId(d.rooms, tb.roomId)?.name}{station ? ' · ' + station.name : ''}
-        {tb.features.length > 0 && <><br />{tb.features.map(t).join(', ')}</>} · Status: <b>{t(s.st)}</b></p>
+        {tb.features.length > 0 && <><br />{tb.features.map(t).join(', ')}</>} · Status: <b>{tableLook(d.venue, s).label}</b></p>
       {r && <ResDetails r={r} />}
       {r && canStatus(role) && <StatusButtons r={r} />}
       {r && edit && (

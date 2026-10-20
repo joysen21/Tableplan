@@ -47,7 +47,7 @@ export function ReportsView() {
       return (
         <div key={s.id}><h4>{s.name} – {rs.length} Reservierungen, {rs.reduce((a, r) => a + persons(r), 0)} Gäste</h4>
           <table className="list"><thead><tr><th>Zeit</th><th>Name</th><th>P</th><th>Tisch</th><th>Hinweise</th><th>Status</th></tr></thead>
-            <tbody>{rs.map(r => <tr key={r.id}><td>{r.time}</td><td>{r.vip ? '★ ' : ''}{r.name}</td><td>{r.adults}{r.children ? `+${r.children} Ki.` : ''}</td>
+            <tbody>{rs.map(r => <tr key={r.id}><td>{r.time}</td><td>{r.vip ? '★ ' : ''}{r.name}</td><td>{persons(r)}</td>
               <td>{tableNames(d, r.tableIds) || '–'}</td><td>{hasAllergy(r) && <>⚠ <b>{allergyText(r)}</b> </>}{r.occasion && `🎉 ${r.occasion} `}{r.highchair && 'Kinderstuhl '}{r.notes}</td>
               <td>{statusInfo(d.venue, r).label}</td></tr>)}</tbody></table></div>
       );
@@ -57,13 +57,13 @@ export function ReportsView() {
     const slots: { m: number; c: number }[] = [];
     for (let m = toMin(svc.start); m <= toMin(svc.end); m += 15) slots.push({ m, c: rs.filter(r => Math.floor(resStart(r) / 15) * 15 === m).reduce((a, r) => a + persons(r), 0) });
     const max = Math.max(1, ...slots.map(s => s.c));
-    const tot = rs.reduce((a, r) => a + persons(r), 0), kids = rs.reduce((a, r) => a + r.children, 0), hotel = rs.filter(r => r.stayId).reduce((a, r) => a + persons(r), 0);
+    const tot = rs.reduce((a, r) => a + persons(r), 0), hotel = rs.filter(r => r.stayId).reduce((a, r) => a + persons(r), 0);
     const big = rs.filter(r => persons(r) >= 6), unas = rs.filter(r => !r.tableIds.length), blocked = d.tables.filter(x => isBlocked(d, x.id, D, svc.id));
     const peak = slots.reduce((a, s) => (s.c > a.c ? s : a), slots[0] ?? { m: 0, c: 0 });
     body = <>{head('Küchenvorschau & Briefing', svc.name)}
       <div className="kpis" style={{ padding: 0, border: 0 }}>
         <div className="kpi"><b>{tot}</b><small>Gäste gesamt</small></div><div className="kpi"><b>{hotel}</b><small>Hotelgäste</small></div>
-        <div className="kpi"><b>{tot - hotel}</b><small>Extern</small></div><div className="kpi"><b>{kids}</b><small>Kinder</small></div>
+        <div className="kpi"><b>{tot - hotel}</b><small>Extern</small></div>
         <div className="kpi"><b>{rs.filter(hasAllergy).length}</b><small>mit Allergien</small></div>
       </div>
       <MenuBrief d={d} menu={findMenu(d, D, svc.id)} />
@@ -90,7 +90,7 @@ export function ReportsView() {
         <tbody>{stays.map(s => {
           const r = d.reservations.find(z => z.stayId === s.id && z.date === D && z.serviceId === dinner?.id);
           return <tr key={s.id}><td><b>{s.roomNo}</b></td><td>{s.vip ? '★ ' : ''}{s.name}{s.arrival === D && <span className="badge hotel"> Anreise</span>}</td>
-            <td>{s.adults}{s.children ? '+' + s.children : ''}</td><td>{s.board}</td>
+            <td>{s.adults + s.children}</td><td>{s.board}</td>
             <td><b>{tableNames(d, r ? r.tableIds : s.tableIds) || (needsTable(d, s) ? '— fehlt —' : 'frei')}</b></td><td>{r?.time}</td>
             <td>{fmtShort(s.departure)}</td><td>{[allergyText(s), s.notes].filter(Boolean).join(' · ')}</td></tr>;
         })}</tbody></table>

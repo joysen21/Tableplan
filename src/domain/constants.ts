@@ -1,4 +1,4 @@
-import type { Allergen, Board, ContractType, Course, Department, Diet, ResStatus, Role, ServiceKind, TableFeature, TableState, Unit, Venue } from './types';
+import type { Allergen, Board, ContractType, Course, Department, Diet, ResStatus, Role, ServiceKind, TableFeature, Unit, Venue } from './types';
 
 export const RES_STATUS_COLOR: Record<ResStatus, string> = {
   angefragt: '#8A97B0', bestaetigt: '#4F7BD1', eingetroffen: '#a371f7', platziert: '#2da44e',
@@ -7,8 +7,6 @@ export const RES_STATUS_COLOR: Record<ResStatus, string> = {
 export const ALL_STATUS = Object.keys(RES_STATUS_COLOR) as ResStatus[];
 export const OPEN_STATES: ResStatus[] = ['angefragt', 'bestaetigt'];
 export const SEATED_STATES: ResStatus[] = ['eingetroffen', 'platziert', 'rechnung'];
-export const TABLE_STATES: TableState[] = ['frei', 'reserviert', 'bald', 'platziert', 'rechnung', 'ueberfaellig', 'ueberzogen', 'gesperrt'];
-export const TABLE_STATE_ICON: Record<TableState, string> = { frei: '', reserviert: '◷', bald: '⏳', platziert: '●', rechnung: '€', ueberfaellig: '!', ueberzogen: '⌛', gesperrt: '✕' };
 export const FEATURES: TableFeature[] = ['fenster', 'rollstuhl', 'hund', 'kinder', 'ruhig'];
 export const OCCASIONS = ['', 'Geburtstag', 'Jubiläum', 'Business', 'Hochzeitstag', 'Familienfeier', 'Sonstiges'];
 export const SOURCES = ['Telefon', 'Walk-in', 'Hotel', 'Hotel-Rezeption', 'Website', 'Google', 'E-Mail', 'Persönlich'];

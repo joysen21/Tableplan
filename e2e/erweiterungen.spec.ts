@@ -184,3 +184,27 @@ test('Externer Gast: Menüauswahl im Formular und per QR-Code am Tisch', async (
   expect(await lines.count()).toBeGreaterThanOrEqual(1);
   await expect(lines.first()).toContainText('×');
 });
+
+test('Legende im Live-Plan = Reservierungs-Status aus den Einstellungen; nur noch „Personen“', async ({ page }) => {
+  await loginDemo(page);
+  await goView(page, 'Einstellungen');
+  await page.getByLabel('Bezeichnung Platziert').fill('Am Tisch');
+  await page.getByRole('button', { name: 'Eigener Status' }).click();
+  await page.getByLabel('Bezeichnung eigener Status').fill('Aperitif');
+  // eigener Status: kein „wie …“, nur die Bedeutung für den Tisch
+  await expect(page.getByLabel('Tisch bei Aperitif')).toHaveValue('platziert');
+  await page.getByRole('button', { name: 'Status speichern' }).click();
+  await expect(page.locator('.toast')).toContainText('Status gespeichert');
+  await goView(page, 'Live-Plan');
+  const legend = page.locator('.legend');
+  await expect(legend).toContainText('Am Tisch');
+  await expect(legend).toContainText('Aperitif');
+  await expect(legend).not.toContainText('Platziert');
+  await expect(legend).not.toContainText('Bald fällig');
+  await page.screenshot({ path: 'test-results/live-legende.png' });
+
+  await page.getByRole('button', { name: 'Reservierung', exact: true }).click();
+  await expect(page.locator('.modal').getByLabel('Personen')).toHaveValue('2');
+  await expect(page.locator('.modal').getByLabel('Erwachsene', { exact: true })).toHaveCount(0);
+  await expect(page.locator('.modal').getByLabel('Kinder', { exact: true })).toHaveCount(0);
+});

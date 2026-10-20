@@ -20,7 +20,7 @@ import { MenuChoiceEditor, type ChoiceDraft } from './MenuChoiceEditor';
 
 /** Feldnamen für die Rückfrage bei Bearbeitungskonflikten */
 const FIELD_LABEL: Partial<Record<keyof Reservation, string>> = {
-  date: 'Datum', serviceId: 'Service', time: 'Uhrzeit', duration: 'Dauer', adults: 'Erwachsene', children: 'Kinder', name: 'Name',
+  date: 'Datum', serviceId: 'Service', time: 'Uhrzeit', duration: 'Dauer', adults: 'Personen', children: 'Personen', name: 'Name',
   phone: 'Telefon', email: 'E-Mail', occasion: 'Anlass', allergies: 'Notiz zu Unverträglichkeiten', allergens: 'Allergene', notes: 'Notizen',
   highchair: 'Kinderstuhl', vip: 'VIP', source: 'Quelle', status: 'Status', wishes: 'Wünsche', stayId: 'Hotelgast', tableIds: 'Tisch',
   seatedAt: 'Platziert um', finishedAt: 'Fertig um'
@@ -135,10 +135,9 @@ export function ReservationForm({ r, preset }: { r?: Reservation; preset?: Parti
         <label>Datum<input type="date" value={draft.date} onChange={e => e.target.value && upd({ date: e.target.value })} /></label>
         <label>Service<select value={draft.serviceId} onChange={e => upd({ serviceId: e.target.value })}>
           {d.services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
-        <label>Erwachsene<input type="number" min={0} max={99} value={draft.adults} onChange={e => upd({ adults: +e.target.value || 0 })} /></label>
+        <label>Personen<input type="number" min={1} max={99} value={persons(draft)} onChange={e => upd({ adults: Math.max(0, +e.target.value || 0), children: 0 })} /></label>
       </div>
       <div className="grid3 mt8">
-        <label>Kinder<input type="number" min={0} max={99} value={draft.children} onChange={e => upd({ children: +e.target.value || 0 })} /></label>
         <div className="muted" style={{ alignSelf: 'end', fontSize: 13, paddingBottom: 8 }} data-testid="res-time">Zeit {draft.time}–{fromMin(resEnd(draft))} (laut {svc?.name ?? 'Service'})</div>
       </div>
       <div className="grid2 mt8">
@@ -153,7 +152,7 @@ export function ReservationForm({ r, preset }: { r?: Reservation; preset?: Parti
         <select value={draft.stayId ?? ''} onChange={e => {
           const st = byId(d.stays, e.target.value);
           if (!st) return upd({ stayId: null });
-          upd({ stayId: st.id, name: `${st.name} · Zi. ${st.roomNo}`, adults: st.adults, children: st.children, allergies: st.allergies || draft.allergies, allergens: st.allergens?.length ? [...st.allergens] : draft.allergens, source: 'Hotel', vip: st.vip });
+          upd({ stayId: st.id, name: `${st.name} · Zi. ${st.roomNo}`, adults: st.adults + st.children, children: 0, allergies: st.allergies || draft.allergies, allergens: st.allergens?.length ? [...st.allergens] : draft.allergens, source: 'Hotel', vip: st.vip });
         }}>
           <option value="">– kein Hotelgast –</option>
           {inHouse.map(s => <option key={s.id} value={s.id}>Zi. {s.roomNo} · {s.name} ({s.adults + s.children}P, {s.board})</option>)}

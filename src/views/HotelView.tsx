@@ -40,7 +40,7 @@ export function HotelView() {
     <div className="table-scroll"><table className="list"><thead><tr><th>Zi.</th><th>Name</th><th>P</th><th>VP</th><th>Aufenthalt</th><th>Tisch</th><th>Hinweis</th></tr></thead>
       <tbody>{list.map(s => (
         <tr key={s.id} className="clickable" onClick={() => openDialog({ type: 'stay', stay: s })}>
-          <td><b>{s.roomNo}</b></td><td>{s.vip ? '★ ' : ''}{s.name}</td><td>{s.adults}{s.children ? '+' + s.children : ''}</td>
+          <td><b>{s.roomNo}</b></td><td>{s.vip ? '★ ' : ''}{s.name}</td><td>{s.adults + s.children}</td>
           <td><span className="badge">{s.board}</span></td><td style={{ fontSize: 12 }}>{fmtShort(s.arrival)} – {fmtShort(s.departure)}</td>
           <td>{s.tableIds.length ? tableNames(d, s.tableIds) : needsTable(d, s) ? <b style={{ color: 'var(--danger)' }}>fehlt</b> : <span className="muted">frei</span>}</td>
           <td style={{ fontSize: 12 }}>{hasAllergy(s) && '⚠ ' + allergyText(s)}</td>

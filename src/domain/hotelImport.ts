@@ -124,7 +124,7 @@ function parseSimple(rows: string[][]): ParsedImport {
     if (c[0] && !c[1] && !c[4] && !c[5]) { emptyRooms++; return; } // leeres Zimmer
     const arrival = parseDate(c[4] ?? ''), departure = parseDate(c[5] ?? ''), board = c[6] ? parseBoard(c[6]) : 'HP';
     if (!c[0] || !c[1] || !arrival || !departure || departure <= arrival || !board) { errors.push(`Zeile ${i + 2}: ungültig`); return; }
-    stays.push({ externalId: null, roomNo: c[0], name: c[1], adults: +c[2] || 1, children: +c[3] || 0, arrival, departure, board,
+    stays.push({ externalId: null, roomNo: c[0], name: c[1], adults: (+c[2] || 1) + (+c[3] || 0), children: 0, arrival, departure, board, // nur Personen, keine Kinder-Aufteilung
       allergies: c[7] ?? '', notes: c[8] ?? '' });
   });
   return { format: 'einfach', stays, errors, cancelled: 0, emptyRooms };

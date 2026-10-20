@@ -300,3 +300,21 @@ test('Tisch antippen: gewähltes Menü als Liste – je Gericht eine Zeile mit M
   await page.locator('.modal .menu-lines').scrollIntoViewIfNeeded();
   await page.screenshot({ path: 'test-results/tisch-menue-handy.png' });
 });
+
+test('Benutzer & Rollen am Handy: Name und E-Mail in voller Breite lesbar', async ({ page }) => {
+  await loginDemo(page);
+  await goView(page, 'Einstellungen');
+  await page.locator('details.settings-group > summary', { hasText: /^Benutzer/ }).click();
+  const row = page.locator('.member-row').first();
+  const name = row.locator('.m-name input');
+  await expect(name).toHaveValue('Anna (Admin)');
+  const nb = (await name.boundingBox())!, rb = (await row.boundingBox())!;
+  expect(nb.width).toBeGreaterThan(rb.width * 0.9); // ganze Zeile
+  // Text passt hinein
+  expect(await name.evaluate((e: HTMLInputElement) => e.scrollWidth <= e.clientWidth)).toBe(true);
+  // Benutzer hinzufügen: Felder untereinander
+  const add = page.locator('.member-add');
+  const [em, nm] = [await add.getByLabel('E-Mail').boundingBox(), await add.getByLabel('Name').boundingBox()];
+  expect(nm!.y).toBeGreaterThan(em!.y + em!.height - 1);
+  await page.locator('details.settings-group', { hasText: 'Benutzer' }).first().screenshot({ path: 'test-results/benutzer-handy.png' });
+});

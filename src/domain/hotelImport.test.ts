@@ -115,7 +115,7 @@ describe('Abgleich mit dem Bestand', () => {
     expect(p.format).toBe('einfach');
     const plan = planImport([ex], p, opts);
     expect(plan.remove).toEqual([]);
-    expect(plan.create[0]).toMatchObject({ roomNo: '201', adults: 2, children: 1, board: 'VP', externalId: null });
+    expect(plan.create[0]).toMatchObject({ roomNo: '201', adults: 3, children: 0, board: 'VP', externalId: null });
   });
 });
 

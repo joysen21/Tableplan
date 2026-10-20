@@ -23,7 +23,7 @@ export function ResItem({ d, r, showDate, draggable, onPointerDown, onClick }: {
       <div className="time">{showDate && <>{fmtShort(r.date)}<br /></>}{r.time}</div>
       <div className="main">
         <div className="name">{r.vip ? '★ ' : ''}{r.name}</div>
-        <div className="sub">{persons(r)} P{r.children ? ` (${r.children} Ki.)` : ''} · {r.tableIds.length ? 'Tisch ' + tableNames(d, r.tableIds) : <b style={{ color: 'var(--danger)' }}>ohne Tisch</b>}
+        <div className="sub">{persons(r)} P · {r.tableIds.length ? 'Tisch ' + tableNames(d, r.tableIds) : <b style={{ color: 'var(--danger)' }}>ohne Tisch</b>}
           {hasAllergy(r) ? ' · ⚠ ' + allergyText(r) : ''}{r.occasion ? ' · 🎉 ' + r.occasion : ''}</div>
         {(menu || note) && <div className="sub menu-choice" title="Per QR gewähltes Menü">{menu && <>🍽 {menu}</>}{note && <> · 📝 {note}</>}</div>}
       </div>
