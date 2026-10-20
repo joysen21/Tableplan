@@ -39,7 +39,12 @@ export async function loginDemo(page: Page, who = 'Anna (Admin)', theme?: 'light
 /** Ansicht öffnen – über die Navigation oder (am Handy) über das „Mehr“-Menü */
 export async function goView(page: Page, name: string) {
   const link = page.getByRole('link', { name, exact: true });
-  if (await link.isVisible()) return link.click();
+  if (await link.isVisible()) {
+    await link.click();
+    // Maus vom Seitenmenü wegbewegen – sonst bleibt es (aufgeklappt) über dem Inhalt
+    const v = page.viewportSize()!;
+    return page.mouse.move(v.width / 2, v.height / 2);
+  }
   await page.getByRole('button', { name: 'Mehr' }).click();
   await page.getByRole('menuitem', { name, exact: true }).click();
 }
