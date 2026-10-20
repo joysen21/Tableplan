@@ -8,7 +8,8 @@ import { RepoError, type ChangeEvent, type EntityKey, type EntityMap, type LiveS
 import { demoVenueData, emptyVenueData, newId, normalizeVenueData } from '../domain/demo';
 import { OPEN_STATES } from '../domain/constants';
 import { planStay } from '../domain/logic';
-import type { Branding, ModuleKey, Reservation, ResStatus, RosterSettings, SessionUser, Stay, VenueData } from '../domain/types';
+import type { Branding, ModuleKey, Reservation, RosterSettings, SessionUser, StatusConfig, Stay, VenueData } from '../domain/types';
+import { resolveStatus, statusInfo } from '../domain/statuses';
 import { EDITION } from '../lib/edition';
 import { nowMin, today } from '../lib/time';
 import { toast } from '../ui/notify';
@@ -28,7 +29,8 @@ interface AppState {
   setupVenue(kind: 'demo' | 'empty'): Promise<void>;
   reload(): Promise<void>;
   saveReservations(items: Reservation[], deleteIds?: string[], logText?: [string, string]): Promise<boolean>;
-  setStatus(r: Reservation, status: ResStatus): Promise<boolean>;
+  /** key = Standard-Status oder id eines eigenen Status */
+  setStatus(r: Reservation, key: string): Promise<boolean>;
   saveStay(stay: Stay, opts?: { resetManual?: boolean; logText?: [string, string] }): Promise<{ ok: boolean; skipped: string[] }>;
   deleteStay(stay: Stay): Promise<boolean>;
   upsert<K extends EntityKey>(kind: K, rows: EntityMap[K][], logText?: [string, string]): Promise<boolean>;
@@ -38,6 +40,7 @@ interface AppState {
   setRosterSettings(settings: Partial<RosterSettings>): Promise<boolean>;
   /** Erscheinungsbild der Gäste-Speisekarte (QR) speichern */
   setBranding(branding: Branding): Promise<boolean>;
+  setStatusConfig(cfg: StatusConfig): Promise<boolean>;
   replaceAll(data: VenueData, logText: string): Promise<boolean>;
   log(action: string, details?: string): void;
 }
@@ -54,7 +57,7 @@ export function applyEvent(d: VenueData, e: ChangeEvent): VenueData {
     return i >= 0 ? list.map((x, j) => (j === i ? row : x)) : [...list, row];
   };
   switch (e.kind) {
-    case 'venue': return { ...d, venue: { ...d.venue, name: e.name, modules: e.modules ?? d.venue.modules, rosterSettings: e.rosterSettings ?? d.venue.rosterSettings, branding: e.branding ?? d.venue.branding } };
+    case 'venue': return { ...d, venue: { ...d.venue, name: e.name, modules: e.modules ?? d.venue.modules, rosterSettings: e.rosterSettings ?? d.venue.rosterSettings, branding: e.branding ?? d.venue.branding, statusConfig: e.statusConfig ?? d.venue.statusConfig } };
     case 'audit': return d.audit.some(a => a.id === e.row.id) ? d : { ...d, audit: [e.row, ...d.audit].slice(0, 500) };
     case 'reservation_tables': {
       const r = d.reservations.find(x => x.id === e.reservationId);
@@ -186,9 +189,11 @@ export const useApp = create<AppState>((set, get) => {
       if (logText) get().log(...logText);
       return true;
     },
-    async setStatus(r, status) {
+    async setStatus(r, key) {
+      const venue = get().data!.venue;
+      const { status, subStatus } = resolveStatus(venue.statusConfig, key);
       const patch = {
-        status,
+        status, subStatus,
         seatedAt: status === 'platziert' && r.status !== 'platziert' && r.date === today() ? nowMin() : r.seatedAt,
         finishedAt: status === 'abgeschlossen' && r.date === today() ? nowMin() : r.finishedAt
       };
@@ -197,7 +202,7 @@ export const useApp = create<AppState>((set, get) => {
       // neuen Bearbeitungsstand übernehmen, sonst gälte die eigene Änderung später als Konflikt
       const upd = ok.updatedAt ? { updatedAt: ok.updatedAt } : {};
       set(s => (s.data ? { data: { ...s.data, reservations: s.data.reservations.map(x => (x.id === r.id ? { ...x, ...patch, ...upd } : x)) } } : {}));
-      get().log('Status geändert', `${r.name}: ${r.status} → ${status}`);
+      get().log('Status geändert', `${r.name}: ${statusInfo(venue, r).label} → ${statusInfo(venue, patch).label}`);
       return true;
     },
     async saveStay(stay, opts = {}) {
@@ -259,6 +264,13 @@ export const useApp = create<AppState>((set, get) => {
       if (!ok) return false;
       set(s => (s.data ? { data: { ...s.data, venue: { ...s.data.venue, rosterSettings: settings } } } : {}));
       get().log('Prüfregeln Dienstplan geändert');
+      return true;
+    },
+    async setStatusConfig(cfg) {
+      const ok = await write(async () => { await repo.setStatusConfig(venueId(), cfg); return true; });
+      if (!ok) return false;
+      set(s => (s.data ? { data: { ...s.data, venue: { ...s.data.venue, statusConfig: cfg } } } : {}));
+      get().log('Status-Einstellungen geändert', `${cfg.custom?.length ?? 0} eigene Status`);
       return true;
     },
     async setBranding(branding) {

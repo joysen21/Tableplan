@@ -5,6 +5,7 @@ import { Trash2 } from '../ui/icons';
 import { newId } from '../domain/demo';
 import { BOARDS, MAX_ROOMS_PER_TABLE } from '../domain/constants';
 import { parseImport, planImport } from '../domain/hotelImport';
+import { statusInfo } from '../domain/statuses';
 import { byId, capacity, isInHouse, needsTable, stayNights, stayTableConflicts, tableNames } from '../domain/logic';
 import type { Board, Stay, VenueData } from '../domain/types';
 import { t } from '../lib/i18n';
@@ -126,7 +127,7 @@ export function StayForm({ stay }: { stay?: Stay }) {
         {!needsTable(d, s) && ' Diese Verpflegung braucht keinen Tisch.'}</p>
       {!isNew && <><h4 style={{ margin: '12px 0 6px' }}>Reservierungen dieses Aufenthalts</h4>
         {own.length ? own.map(r => <div key={r.id} style={{ fontSize: 13 }}>{fmtShort(r.date)} {byId(d.services, r.serviceId)?.name} {r.time} · Tisch {tableNames(d, r.tableIds) || '–'}
-          {r.manualTable && <span className="badge"> manuell</span>} · {t(r.status)}</div>) : <span className="muted">keine</span>}</>}
+          {r.manualTable && <span className="badge"> manuell</span>} · {statusInfo(d.venue, r).label}</div>) : <span className="muted">keine</span>}</>}
     </Modal>
   );
 }

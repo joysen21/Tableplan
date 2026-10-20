@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { Trash2, X } from '../ui/icons';
 import { newId } from '../domain/demo';
 import { guessAllergens } from '../domain/menu';
-import { ALL_STATUS, FEATURES, OCCASIONS, SOURCES } from '../domain/constants';
+import { FEATURES, OCCASIONS, SOURCES } from '../domain/constants';
+import { pickableStatuses, resolveStatus, statusKey } from '../domain/statuses';
 import { byId, capacity, checkReservation, isInHouse, mergeEdits, persons, resEnd, resStart, serviceTime, suggestTables, tableBusy, tableConflicts, tableNames, untilEnd } from '../domain/logic';
 import type { Reservation } from '../domain/types';
 import { t } from '../lib/i18n';
@@ -130,7 +131,8 @@ export function ReservationForm({ r, preset }: { r?: Reservation; preset?: Parti
         <label>Telefon<input type="tel" value={draft.phone} onChange={e => upd({ phone: e.target.value })} /></label>
         <label>Quelle<select value={draft.source} onChange={e => upd({ source: e.target.value })}>{SOURCES.map(s => <option key={s}>{s}</option>)}</select></label>
         <label>Anlass<select value={draft.occasion} onChange={e => upd({ occasion: e.target.value })}>{OCCASIONS.map(s => <option key={s} value={s}>{s || '–'}</option>)}</select></label>
-        <label>Status<select value={draft.status} onChange={e => upd({ status: e.target.value as Reservation['status'] })}>{ALL_STATUS.map(s => <option key={s} value={s}>{t(s)}</option>)}</select></label>
+        <label>Status<select value={statusKey(d.venue.statusConfig, draft)} onChange={e => upd(resolveStatus(d.venue.statusConfig, e.target.value))}>
+          {pickableStatuses(d.venue.statusConfig, statusKey(d.venue.statusConfig, draft)).map(o => <option key={o.key} value={o.key}>{o.custom ? '– ' : ''}{o.label}</option>)}</select></label>
       </div>
       <label className="mt8">Hotelgast verknüpfen
         <select value={draft.stayId ?? ''} onChange={e => {

@@ -1,7 +1,7 @@
 /** Datenzugriff über Supabase (Postgres + Auth + Realtime + Storage) */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { MAX_ROOMS_PER_TABLE } from '../domain/constants';
-import type { Branding, ModuleKey, OnDuty, PublicRoster, Reservation, Role, RosterSettings, Stay, VenueData } from '../domain/types';
+import type { Branding, ModuleKey, OnDuty, PublicRoster, Reservation, Role, RosterSettings, StatusConfig, Stay, VenueData } from '../domain/types';
 import type { GuestMenuData } from '../domain/guestMenu';
 import { addDays, today } from '../lib/time';
 import { entityFromDb, entityToDb, fromDb, KIND_OF, TABLE_OF, toDb } from './mapping';
@@ -131,7 +131,7 @@ export class SupabaseRepo implements Repo {
       this.loadRoster(venueId, cutoff), this.loadChoices(venueId)
     ]);
     return {
-      venue: { id: venueId, name: venue?.name ?? venueName, modules: this.rosterReady ? venue?.modules ?? [] : [], rosterSettings: venue?.roster_settings ?? {}, branding: venue?.branding ?? undefined },
+      venue: { id: venueId, name: venue?.name ?? venueName, modules: this.rosterReady ? venue?.modules ?? [] : [], rosterSettings: venue?.roster_settings ?? {}, branding: venue?.branding ?? undefined, statusConfig: venue?.status_config ?? {} },
       rooms: rooms.map(fromDb.rooms).sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name)),
       stations: stations.map(fromDb.stations), tables: tables.map(fromDb.tables), decor: decor.map(fromDb.decor),
       combos: combos.map(fromDb.combos), layouts: layouts.map(fromDb.layouts),
@@ -193,8 +193,8 @@ export class SupabaseRepo implements Repo {
     }
     return out;
   }
-  async setStatus(venueId: string, id: string, patch: Pick<Reservation, 'status' | 'seatedAt' | 'finishedAt'>) {
-    const row = await run<{ updated_at: string } | null>(this.sb.from('reservations').update({ status: patch.status, seated_at: patch.seatedAt, finished_at: patch.finishedAt })
+  async setStatus(venueId: string, id: string, patch: Pick<Reservation, 'status' | 'subStatus' | 'seatedAt' | 'finishedAt'>) {
+    const row = await run<{ updated_at: string } | null>(this.sb.from('reservations').update({ status: patch.status, sub_status: patch.subStatus ?? null, seated_at: patch.seatedAt, finished_at: patch.finishedAt })
       .eq('venue_id', venueId).eq('id', id).select('updated_at').maybeSingle());
     return row?.updated_at;
   }
@@ -245,13 +245,16 @@ export class SupabaseRepo implements Repo {
   async setBranding(venueId: string, branding: Branding) {
     await run(this.sb.from('venues').update({ branding }).eq('id', venueId));
   }
+  async setStatusConfig(venueId: string, cfg: StatusConfig) {
+    await run(this.sb.from('venues').update({ status_config: cfg }).eq('id', venueId));
+  }
 
   /* ---------- Gäste-Speisekarte (ohne Anmeldung) ---------- */
   async guestMenu(token: string) {
     return (await run<GuestMenuData | null>(this.sb.rpc('guest_menu', { p_token: token }))) ?? null;
   }
-  async guestSave(token: string, menuId: string, stayId: string, counts: Record<string, number>) {
-    await run(this.sb.rpc('guest_menu_save', { p_token: token, p_menu: menuId, p_stay: stayId, p_counts: counts }));
+  async guestSave(token: string, menuId: string, stayId: string, counts: Record<string, number>, note = '') {
+    await run(this.sb.rpc('guest_menu_save', { p_token: token, p_menu: menuId, p_stay: stayId, p_counts: counts, p_note: note }));
   }
 
   /* ---------- Live-Aktualisierung ---------- */
@@ -263,7 +266,7 @@ export class SupabaseRepo implements Repo {
     const handle = (p: any) => {
       const table: string = p.table;
       if (table === 'venues') {
-        if (p.new?.id === venueId) onEvent({ kind: 'venue', type: 'upsert', name: p.new.name, modules: this.rosterReady ? p.new.modules : undefined, rosterSettings: p.new.roster_settings, branding: p.new.branding ?? undefined });
+        if (p.new?.id === venueId) onEvent({ kind: 'venue', type: 'upsert', name: p.new.name, modules: this.rosterReady ? p.new.modules : undefined, rosterSettings: p.new.roster_settings, branding: p.new.branding ?? undefined, statusConfig: p.new.status_config ?? undefined });
         return;
       }
       const kind = KIND_OF[table];

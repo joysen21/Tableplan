@@ -20,7 +20,11 @@ export type ModuleKey = 'dienstplan';
 /** Erscheinungsbild der Gäste-Speisekarte (QR): Logo, Titelbild, Akzentfarbe, Titel und Begrüßung */
 /** welcomeIt/welcomeEn optional – fehlt die Übersetzung, erscheint der deutsche Text */
 export interface Branding { title: string; welcome: string; welcomeIt?: string; welcomeEn?: string; color: string; logoUrl: string | null; coverUrl: string | null }
-export interface Venue { id: string; name: string; modules: ModuleKey[]; rosterSettings?: Partial<RosterSettings>; branding?: Branding }
+/** Eigener Reservierungs-Status: verhält sich wie sein Grundstatus (base), hat aber eigene Bezeichnung und Farbe */
+export interface CustomStatus { id: string; label: string; color: string; base: ResStatus }
+/** Status-Einstellungen je Betrieb: Standard-Status umbenennen/umfärben/ausblenden, eigene Status ergänzen */
+export interface StatusConfig { builtIn?: Partial<Record<ResStatus, { label?: string; color?: string; hidden?: boolean }>>; custom?: CustomStatus[] }
+export interface Venue { id: string; name: string; modules: ModuleKey[]; rosterSettings?: Partial<RosterSettings>; branding?: Branding; statusConfig?: StatusConfig }
 
 export interface Member { userId: string; role: Role; name: string; email: string }
 
@@ -67,6 +71,8 @@ export interface Reservation {
   adults: number; children: number; name: string; phone: string; email: string;
   occasion: string; allergies: string; allergens: Allergen[]; notes: string; highchair: boolean; vip: boolean;
   source: string; status: ResStatus; wishes: TableFeature[]; stayId: string | null;
+  /** eigener Status (id aus venue.statusConfig.custom); status bleibt der Grundstatus für alle Abläufe */
+  subStatus?: string | null;
   manualTable: boolean; seriesId: string | null; seatedAt: number | null; finishedAt: number | null;
   tableIds: string[]; updatedAt?: string;
 }
@@ -86,13 +92,15 @@ export interface MenuItem { course: Course; dishId: string; share: number | null
 export type MenuOrdering = 'aus' | 'offen' | 'geschlossen';
 export interface Menu { id: string; date: string; serviceId: string; portions: number | null; bufferPct: number; notes: string; items: MenuItem[]; ordering?: MenuOrdering }
 /** Auswahl eines Hotelzimmers für ein Menü: Anzahl je Gericht (dishId → Anzahl) */
-export interface MenuChoice { id: string; menuId: string; stayId: string; counts: Record<string, number>; updatedAt?: string }
+export interface MenuChoice { id: string; menuId: string; stayId: string; counts: Record<string, number>; note?: string; updatedAt?: string }
 
 /* ---------- Dienstplan ---------- */
 export type ContractType = 'unbefristet' | 'befristet' | 'saison' | 'lehrling' | 'aushilfe';
 /** Bereich/Abteilung (Küche, Service …). leadIds = Benutzer (user_id), die den Bereich planen dürfen */
 /** guestsPerStaff: Besetzungsschlüssel (1 Kraft je n Gäste im Spitzen-Service, null = aus), minStaff: Mindestbesetzung pro Tag */
-export interface Department { id: string; name: string; color: string; sort: number; leadIds: string[]; guestsPerStaff: number | null; minStaff: number }
+export interface Department { id: string; name: string; color: string; sort: number; leadIds: string[]; guestsPerStaff: number | null; minStaff: number;
+  /** Icon statt Farbpunkt (Schlüssel aus DEPARTMENT_ICONS) */
+  icon?: string | null }
 /** Tätigkeit innerhalb eines Bereichs (Koch, Commis …) */
 export interface Position { id: string; departmentId: string; name: string; sort: number }
 /** Mitarbeiter/in. departmentId = Stammbereich; positionIds = Qualifikationen (auch aus anderen Bereichen) */

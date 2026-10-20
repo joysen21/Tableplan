@@ -4,7 +4,7 @@
  */
 import type {
   Absence, AuditEntry, Branding, Decor, Department, DiningTable, Dish, Ingredient, Layout, Member, Menu, MenuChoice, ModuleKey, OnDuty, Position, Publication,
-  PublicRoster, Reservation, Role, Room, RosterSettings, Service, Shift, ShiftTemplate, Staff, Station, Stay, TableBlock, TableCombo, VenueData
+  PublicRoster, Reservation, Role, Room, RosterSettings, Service, Shift, ShiftTemplate, Staff, Station, StatusConfig, Stay, TableBlock, TableCombo, VenueData
 } from '../domain/types';
 import type { GuestMenuData } from '../domain/guestMenu';
 
@@ -34,7 +34,7 @@ export type ChangeEvent =
   | { kind: 'reservations'; type: 'upsert'; row: Omit<Reservation, 'tableIds'> }
   | { kind: 'reservation_tables'; type: 'link' | 'unlink'; reservationId: string; tableId: string }
   | { kind: 'audit'; type: 'insert'; row: AuditEntry }
-  | { kind: 'venue'; type: 'upsert'; name: string; modules?: ModuleKey[]; rosterSettings?: Partial<RosterSettings>; branding?: Branding };
+  | { kind: 'venue'; type: 'upsert'; name: string; modules?: ModuleKey[]; rosterSettings?: Partial<RosterSettings>; branding?: Branding; statusConfig?: StatusConfig };
 
 export type LiveState = 'connecting' | 'live' | 'down';
 
@@ -75,7 +75,7 @@ export interface Repo {
   // Schreiben
   saveReservations(venueId: string, items: Reservation[], deleteIds?: string[]): Promise<Reservation[]>;
   /** Nur den Status ändern; liefert den neuen Bearbeitungsstand (updatedAt) */
-  setStatus(venueId: string, id: string, patch: Pick<Reservation, 'status' | 'seatedAt' | 'finishedAt'>): Promise<string | undefined>;
+  setStatus(venueId: string, id: string, patch: Pick<Reservation, 'status' | 'subStatus' | 'seatedAt' | 'finishedAt'>): Promise<string | undefined>;
   saveStay(venueId: string, stay: Stay, items: Reservation[], deleteIds: string[]): Promise<{ stay: Stay; reservations: Reservation[] }>;
   deleteStay(venueId: string, stayId: string, deleteReservationIds: string[]): Promise<void>;
   upsert<K extends EntityKey>(venueId: string, kind: K, rows: EntityMap[K][]): Promise<void>;
@@ -86,9 +86,11 @@ export interface Repo {
   uploadBackground(venueId: string, file: File): Promise<string>;
   /** Erscheinungsbild der Gäste-Speisekarte (nur Admin) */
   setBranding(venueId: string, branding: Branding): Promise<void>;
+  /** Eigene Reservierungs-Status (nur Admin) */
+  setStatusConfig(venueId: string, cfg: StatusConfig): Promise<void>;
   // Gäste-Speisekarte per QR – ohne Anmeldung, nur mit dem Tisch-Schlüssel
   guestMenu(token: string): Promise<GuestMenuData | null>;
-  guestSave(token: string, menuId: string, stayId: string, counts: Record<string, number>): Promise<void>;
+  guestSave(token: string, menuId: string, stayId: string, counts: Record<string, number>, note?: string): Promise<void>;
   // Live-Aktualisierung
   subscribe(venueId: string, onEvent: (e: ChangeEvent) => void, onState: (s: LiveState) => void): () => void;
 }

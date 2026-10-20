@@ -2,10 +2,9 @@ import type { PointerEvent as RPE } from 'react';
 import { allergyText, hasAllergy } from '../domain/menu';
 import { chosenDishes, chosenText } from '../domain/guestMenu';
 import { GripVertical } from '../ui/icons';
-import { RES_STATUS_COLOR } from '../domain/constants';
+import { statusInfo } from '../domain/statuses';
 import { checkReservation, occupies, persons, tableNames } from '../domain/logic';
 import type { Reservation, VenueData } from '../domain/types';
-import { t } from '../lib/i18n';
 import { fmtShort } from '../lib/time';
 
 /** Eine Reservierung in Listen; mit `draggable` erscheint ein Griff (am Handy wird nur daran gezogen) */
@@ -15,6 +14,7 @@ export function ResItem({ d, r, showDate, draggable, onPointerDown, onClick }: {
   const unassigned = occupies(r) && !r.tableIds.length;
   const issues = checkReservation(d, r);
   const menu = chosenText(chosenDishes(d, r));
+  const st = statusInfo(d.venue, r);
   return (
     <div className={'ritem' + (unassigned ? ' unassigned' : '') + (occupies(r) || r.status === 'abgeschlossen' ? '' : ' cancel') + (onClick ? ' clickable' : '')} data-res={r.id} onPointerDown={onPointerDown} onClick={onClick}>
       {draggable && <span className="grip" data-drag-handle title="Auf einen Tisch ziehen" aria-hidden="true"><GripVertical /></span>}
@@ -27,7 +27,7 @@ export function ResItem({ d, r, showDate, draggable, onPointerDown, onClick }: {
       </div>
       <div style={{ textAlign: 'right' }}>
         {r.stayId && <><span className="badge hotel">Hotel</span><br /></>}
-        <span className="badge st" style={{ background: RES_STATUS_COLOR[r.status] }}>{t(r.status)}</span>
+        <span className="badge st" style={{ background: st.color }}>{st.label}</span>
         {issues.length > 0 && <><br /><span className="badge warn" title={issues.map(i => i.text).join('\n')}>⚠ {issues.length}</span></>}
       </div>
     </div>

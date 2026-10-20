@@ -4,7 +4,8 @@ import { allergyText, hasAllergy } from '../domain/menu';
 import { chosenDishes, chosenText } from '../domain/guestMenu';
 import { Minus, Plus, PersonStanding } from '../ui/icons';
 import { newId } from '../domain/demo';
-import { canEdit, canStatus, RES_STATUS_COLOR, SEATED_STATES } from '../domain/constants';
+import { canEdit, canStatus, SEATED_STATES } from '../domain/constants';
+import { pickableStatuses, statusInfo, statusKey } from '../domain/statuses';
 import { byId, capacity, freeMinutes, isBlocked, occupies, persons, resEnd, resStart, suggestTables, tableConflicts, tableNames, tableStatusAt, untilEnd } from '../domain/logic';
 import type { Reservation, ResStatus } from '../domain/types';
 import { t } from '../lib/i18n';
@@ -21,10 +22,14 @@ const STATUS_BUTTONS: ResStatus[] = ['eingetroffen', 'platziert', 'rechnung', 'a
 
 function StatusButtons({ r }: { r: Reservation }) {
   const setStatus = useApp(s => s.setStatus);
+  const cfg = useData().venue.statusConfig;
+  const cur = statusKey(cfg, r);
+  // Standard-Status ab „Eingetroffen“ plus eigene Status dazu, ausgeblendete nicht
+  const opts = pickableStatuses(cfg, cur).filter(o => STATUS_BUTTONS.includes(o.base));
   return (
-    <div className="stbtns">{STATUS_BUTTONS.map(x => (
-      <button key={x} className="btn" aria-pressed={r.status === x} style={{ borderLeft: `5px solid ${RES_STATUS_COLOR[x]}` }}
-        onClick={async () => { if (await setStatus(r, x)) closeDialog(); }}>{t(x)}</button>
+    <div className="stbtns">{opts.map(o => (
+      <button key={o.key} className="btn" aria-pressed={cur === o.key} style={{ borderLeft: `5px solid ${o.color}` }}
+        onClick={async () => { if (await setStatus(r, o.key)) closeDialog(); }}>{o.label}</button>
     ))}</div>
   );
 }
@@ -43,7 +48,7 @@ function ResDetails({ r }: { r: Reservation }) {
       {r.occasion && <><br />🎉 {r.occasion}</>}
       {r.highchair && <><br />Kinderstuhl</>}
       {r.notes && <><br />📝 {r.notes}</>}
-      <br />Status: <b>{t(r.status)}</b> · Tisch(e): {tableNames(d, r.tableIds) || '–'}
+      <br />Status: <b>{statusInfo(d.venue, r).label}</b> · Tisch(e): {tableNames(d, r.tableIds) || '–'}
     </div>
   );
 }
@@ -112,7 +117,7 @@ export function TablePopup({ tableId }: { tableId: string }) {
       <h4 style={{ margin: '16px 0 6px' }}>{ui.date === today() ? 'Heute' : fmtDate(ui.date)} an diesem Tisch</h4>
       {dayRes.length ? dayRes.map(x => (
         <div key={x.id} className="row" style={{ fontSize: 13, padding: '3px 0' }}>
-          <b>{x.time}–{fromMin(resEnd(x))}</b> {x.name} · {persons(x)}P <span className="badge st" style={{ background: RES_STATUS_COLOR[x.status] }}>{t(x.status)}</span>
+          <b>{x.time}–{fromMin(resEnd(x))}</b> {x.name} · {persons(x)}P <span className="badge st" style={{ background: statusInfo(d.venue, x).color }}>{statusInfo(d.venue, x).label}</span>
         </div>)) : <p className="muted">Keine Reservierungen.</p>}
     </Modal>
   );

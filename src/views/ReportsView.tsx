@@ -2,6 +2,7 @@
 import { useState, type ReactNode } from 'react';
 import { Printer } from '../ui/icons';
 import { byId, isBlocked, isCancelled, isInHouse, needsTable, persons, resStart, tableNames, tableStatusAt } from '../domain/logic';
+import { statusInfo } from '../domain/statuses';
 import type { Menu, Reservation, VenueData } from '../domain/types';
 import { ALLERGENS, allergenNo, COURSES } from '../domain/constants';
 import { allergenWarnings, allergyText, dishAllergens, dishPlans, findMenu, hasAllergy, ingredientTotals, itemAllergens, itemName, menuPortions } from '../domain/menu';
@@ -48,7 +49,7 @@ export function ReportsView() {
           <table className="list"><thead><tr><th>Zeit</th><th>Name</th><th>P</th><th>Tisch</th><th>Hinweise</th><th>Status</th></tr></thead>
             <tbody>{rs.map(r => <tr key={r.id}><td>{r.time}</td><td>{r.vip ? '★ ' : ''}{r.name}</td><td>{r.adults}{r.children ? `+${r.children} Ki.` : ''}</td>
               <td>{tableNames(d, r.tableIds) || '–'}</td><td>{hasAllergy(r) && <>⚠ <b>{allergyText(r)}</b> </>}{r.occasion && `🎉 ${r.occasion} `}{r.highchair && 'Kinderstuhl '}{r.notes}</td>
-              <td>{t(r.status)}</td></tr>)}</tbody></table></div>
+              <td>{statusInfo(d.venue, r).label}</td></tr>)}</tbody></table></div>
       );
     })}</>;
   } else if (type === 'kueche' && svc) {

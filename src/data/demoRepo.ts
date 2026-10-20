@@ -8,7 +8,7 @@ import { MAX_ROOMS_PER_TABLE } from '../domain/constants';
 import { occupies, tableConflicts, resEnd, resStart } from '../domain/logic';
 import { canPlanDept } from '../domain/roster';
 import { shiftsOverlap, weekStart } from '../domain/rosterPlan';
-import type { Branding, Member, MenuChoice, ModuleKey, OnDuty, PublicRoster, Reservation, Role, RosterSettings, Shift, Stay, VenueData } from '../domain/types';
+import type { Branding, Member, MenuChoice, ModuleKey, OnDuty, PublicRoster, Reservation, Role, RosterSettings, Shift, StatusConfig, Stay, VenueData } from '../domain/types';
 import { buildGuestMenu, cleanCounts, newQrToken } from '../domain/guestMenu';
 import { addDays, today } from '../lib/time';
 import { ROSTER_KEYS, RepoError, type AuthUser, type ChangeEvent, type EntityKey, type EntityMap, type LiveState, type Membership, type Repo } from './repo';
@@ -240,7 +240,7 @@ export class DemoRepo implements Repo {
     const d = this.read().data[venueId];
     return items.map(it => structuredClone(d.reservations.find(r => r.id === it.id)!));
   }
-  async setStatus(venueId: string, id: string, patch: Pick<Reservation, 'status' | 'seatedAt' | 'finishedAt'>) {
+  async setStatus(venueId: string, id: string, patch: Pick<Reservation, 'status' | 'subStatus' | 'seatedAt' | 'finishedAt'>) {
     this.guard(venueId, this.user()?.role === 'service' ? 'status' : 'reservations');
     let events: ChangeEvent[] = [];
     const updatedAt = this.mutate(venueId, d => {
@@ -344,6 +344,12 @@ export class DemoRepo implements Repo {
     this.mutate(venueId, d => { d.venue.branding = { ...branding }; name = d.venue.name; });
     this.emit([{ kind: 'venue', type: 'upsert', name, branding }]);
   }
+  async setStatusConfig(venueId: string, cfg: StatusConfig) {
+    this.guard(venueId, 'venue');
+    let name = '';
+    this.mutate(venueId, d => { d.venue.statusConfig = structuredClone(cfg); name = d.venue.name; });
+    this.emit([{ kind: 'venue', type: 'upsert', name, statusConfig: cfg }]);
+  }
 
   /* ---------- Gäste-Speisekarte (ohne Anmeldung, wie guest_menu / guest_menu_save in der DB) ---------- */
   private guestVenue(token: string): VenueData | undefined {
@@ -353,7 +359,7 @@ export class DemoRepo implements Repo {
     const d = this.guestVenue(token);
     return d ? buildGuestMenu(normalizeVenueData(d), token, today()) : null;
   }
-  async guestSave(token: string, menuId: string, stayId: string, counts: Record<string, number>) {
+  async guestSave(token: string, menuId: string, stayId: string, counts: Record<string, number>, note = '') {
     const found = this.guestVenue(token);
     if (!found) throw new RepoError('other', 'Unbekannter Tisch');
     const view = buildGuestMenu(normalizeVenueData(found), token, today())!;
@@ -363,11 +369,12 @@ export class DemoRepo implements Repo {
     if (!room) throw new RepoError('other', 'Zimmer sitzt nicht an diesem Tisch');
     const res = cleanCounts(m.items, room.persons, counts);
     if ('error' in res) throw new RepoError('other', res.error);
+    if (note.length > 500) throw new RepoError('other', 'Notiz zu lang');
     let row: MenuChoice | undefined;
     this.mutate(found.venue.id, d => {
       d.menuChoices ??= [];
       const ex = d.menuChoices.find(c => c.menuId === menuId && c.stayId === stayId);
-      row = { id: ex?.id ?? newId(), menuId, stayId, counts: res.counts, updatedAt: new Date().toISOString() };
+      row = { id: ex?.id ?? newId(), menuId, stayId, counts: res.counts, note: note.trim(), updatedAt: new Date().toISOString() };
       d.menuChoices = ex ? d.menuChoices.map(c => (c === ex ? row! : c)) : [...d.menuChoices, row];
     });
     this.emit([{ kind: 'menuChoices', type: 'upsert', row: row! }]);

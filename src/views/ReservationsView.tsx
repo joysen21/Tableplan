@@ -2,10 +2,10 @@
 import { useState } from 'react';
 import { allergyText, hasAllergy } from '../domain/menu';
 import { Download, Plus, SlidersHorizontal } from '../ui/icons';
-import { canEdit, RES_STATUS_COLOR, ALL_STATUS } from '../domain/constants';
+import { canEdit } from '../domain/constants';
+import { pickableStatuses, statusInfo } from '../domain/statuses';
 import { byId, checkReservation, occupies, persons, resEnd, resStart, tableNames } from '../domain/logic';
 import type { Reservation } from '../domain/types';
-import { t } from '../lib/i18n';
 import { addDays, fmtDate, fmtShort, fromMin } from '../lib/time';
 import { downloadCSV } from '../lib/download';
 import { useApp } from '../store/app';
@@ -25,13 +25,13 @@ export function ReservationsView() {
   const setF = (p: Partial<ResFilter>) => ui.set({ resFilter: { ...F, ...p } });
   const q = F.q.toLowerCase();
   const rows = d.reservations.filter(r => r.date >= F.from && r.date <= F.to && (!F.serviceId || r.serviceId === F.serviceId) &&
-    (F.status === 'alle' || (F.status === 'aktiv' ? occupies(r) : r.status === F.status)) && (!F.hotel || r.stayId) && (!F.unassigned || !r.tableIds.length) &&
+    (F.status === 'alle' || (F.status === 'aktiv' ? occupies(r) : r.status === F.status || r.subStatus === F.status)) && (!F.hotel || r.stayId) && (!F.unassigned || !r.tableIds.length) &&
     (!q || [r.name, r.phone, r.email, r.notes, allergyText(r)].join(' ').toLowerCase().includes(q)))
     .sort((a, b) => a.date.localeCompare(b.date) || resStart(a) - resStart(b));
   const exportCsv = () => downloadCSV('reservierungen.csv', [
     ['Datum', 'Zeit', 'Ende', 'Service', 'Name', 'Erw', 'Kinder', 'Tisch', 'Status', 'Quelle', 'Telefon', 'Allergien', 'Anlass', 'Notizen', 'Zimmer'],
     ...rows.map(r => [r.date, r.time, fromMin(resEnd(r)), byId(d.services, r.serviceId)?.name ?? '', r.name, r.adults, r.children, tableNames(d, r.tableIds),
-      t(r.status), r.source, r.phone, allergyText(r), r.occasion, r.notes, byId(d.stays, r.stayId)?.roomNo ?? ''])
+      statusInfo(d.venue, r).label, r.source, r.phone, allergyText(r), r.occasion, r.notes, byId(d.stays, r.stayId)?.roomNo ?? ''])
   ]);
   const open = (r: Reservation) => openDialog(canEdit(role) ? { type: 'reservation', r } : { type: 'resinfo', id: r.id });
   const activeFilters = [F.serviceId, F.status !== 'aktiv', F.hotel, F.unassigned].filter(Boolean).length;
@@ -42,7 +42,7 @@ export function ReservationsView() {
     <label>Bis<input type="date" value={F.to} onChange={e => setF({ to: e.target.value })} /></label>
     <label>Service<select value={F.serviceId} onChange={e => setF({ serviceId: e.target.value })}><option value="">alle</option>{d.services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
     <label>Status<select value={F.status} onChange={e => setF({ status: e.target.value })}>
-      <option value="aktiv">aktive</option><option value="alle">alle</option>{ALL_STATUS.map(s => <option key={s} value={s}>{t(s)}</option>)}</select></label>
+      <option value="aktiv">aktive</option><option value="alle">alle</option>{pickableStatuses(d.venue.statusConfig, F.status).map(o => <option key={o.key} value={o.key}>{o.custom ? '– ' : ''}{o.label}</option>)}</select></label>
   </>;
   const checks = <>
     <label className="chk" style={{ alignSelf: 'flex-end' }}><input type="checkbox" checked={F.hotel} onChange={e => setF({ hotel: e.target.checked })} /> nur Hotelgäste</label>
@@ -98,7 +98,7 @@ export function ReservationsView() {
                 <td>{persons(r)}</td>
                 <td>{r.tableIds.length ? tableNames(d, r.tableIds) : <b style={{ color: 'var(--danger)' }}>–</b>}</td>
                 <td>{byId(d.services, r.serviceId)?.name}</td>
-                <td><span className="badge st" style={{ background: RES_STATUS_COLOR[r.status] }}>{t(r.status)}</span></td>
+                <td><span className="badge st" style={{ background: statusInfo(d.venue, r).color }}>{statusInfo(d.venue, r).label}</span></td>
                 <td>{r.source}</td>
                 <td style={{ fontSize: 12 }}>{hasAllergy(r) && `⚠ ${allergyText(r)} `}{r.occasion && `🎉 ${r.occasion} `}{r.notes}
                   {issues.length > 0 && <div style={{ color: 'var(--danger)' }}>{issues.map(i => <div key={i.text}>{i.text}</div>)}</div>}</td>

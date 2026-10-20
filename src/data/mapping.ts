@@ -40,7 +40,7 @@ export const fromDb = {
   reservation: (r: Row): Reservation => ({
     id: r.id, date: r.date, serviceId: r.service_id, time: hhmm(r.time), duration: r.duration, adults: r.adults, children: r.children,
     name: r.name, phone: r.phone ?? '', email: r.email ?? '', occasion: r.occasion ?? '', allergies: r.allergies ?? '', allergens: r.allergens ?? [], notes: r.notes ?? '',
-    highchair: !!r.highchair, vip: !!r.vip, source: r.source ?? '', status: r.status, wishes: r.wishes ?? [], stayId: r.stay_id ?? null,
+    highchair: !!r.highchair, vip: !!r.vip, source: r.source ?? '', status: r.status, subStatus: r.sub_status ?? null, wishes: r.wishes ?? [], stayId: r.stay_id ?? null,
     manualTable: !!r.manual_table, seriesId: r.series_id ?? null, seatedAt: r.seated_at ?? null, finishedAt: r.finished_at ?? null,
     tableIds: Array.isArray(r.table_ids) ? r.table_ids : Array.isArray(r.reservation_tables) ? r.reservation_tables.map((x: Row) => x.table_id) : [],
     updatedAt: r.updated_at
@@ -55,9 +55,10 @@ export const fromDb = {
     items: (r.items ?? []).map((i: Row) => ({ course: i.course, dishId: i.dishId, share: i.share ?? null, name: i.name ?? '', allergens: i.allergens ?? [] })),
     ordering: r.ordering ?? 'aus'
   }),
-  menuChoices: (r: Row): MenuChoice => ({ id: r.id, menuId: r.menu_id, stayId: r.stay_id, counts: r.counts ?? {}, updatedAt: r.updated_at }),
+  menuChoices: (r: Row): MenuChoice => ({ id: r.id, menuId: r.menu_id, stayId: r.stay_id, counts: r.counts ?? {}, note: r.note ?? '', updatedAt: r.updated_at }),
   departments: (r: Row): Department => ({
-    id: r.id, name: r.name, color: r.color ?? '#4F7BD1', sort: r.sort ?? 0, leadIds: r.lead_ids ?? [], guestsPerStaff: r.guests_per_staff ?? null, minStaff: r.min_staff ?? 0
+    id: r.id, name: r.name, color: r.color ?? '#4F7BD1', sort: r.sort ?? 0, leadIds: r.lead_ids ?? [], guestsPerStaff: r.guests_per_staff ?? null, minStaff: r.min_staff ?? 0,
+    icon: r.icon ?? null
   }),
   positions: (r: Row): Position => ({ id: r.id, departmentId: r.department_id, name: r.name, sort: r.sort ?? 0 }),
   staff: (r: Row): Staff => ({
@@ -107,9 +108,10 @@ export const toDb = {
   menus: (x: Menu, v: string) => ({
     id: x.id, venue_id: v, date: x.date, service_id: x.serviceId, portions: x.portions, buffer_pct: x.bufferPct, notes: x.notes, items: x.items, ordering: x.ordering ?? 'aus'
   }),
-  menuChoices: (x: MenuChoice, v: string) => ({ id: x.id, venue_id: v, menu_id: x.menuId, stay_id: x.stayId, counts: x.counts }),
+  menuChoices: (x: MenuChoice, v: string) => ({ id: x.id, venue_id: v, menu_id: x.menuId, stay_id: x.stayId, counts: x.counts, note: (x.note ?? '').trim() }),
   departments: (x: Department, v: string) => ({
-    id: x.id, venue_id: v, name: x.name, color: x.color, sort: x.sort, lead_ids: x.leadIds, guests_per_staff: x.guestsPerStaff || null, min_staff: x.minStaff || 0
+    id: x.id, venue_id: v, name: x.name, color: x.color, sort: x.sort, lead_ids: x.leadIds, guests_per_staff: x.guestsPerStaff || null, min_staff: x.minStaff || 0,
+    ...(x.icon ? { icon: x.icon } : {}) // nur mitschicken, wenn gesetzt (vor Migration 20261020000000 fehlt die Spalte)
   }),
   positions: (x: Position, v: string) => ({ id: x.id, venue_id: v, department_id: x.departmentId, name: x.name, sort: x.sort }),
   staff: (x: Staff, v: string) => ({
@@ -137,7 +139,7 @@ export const toDb = {
   reservation: (x: Reservation) => ({
     id: x.id, date: x.date, service_id: x.serviceId, time: x.time, duration: x.duration, adults: x.adults, children: x.children, name: x.name,
     phone: x.phone, email: x.email, occasion: x.occasion, allergies: x.allergies, allergens: x.allergens, notes: x.notes, highchair: x.highchair, vip: x.vip,
-    source: x.source, status: x.status, wishes: x.wishes, stay_id: x.stayId, manual_table: x.manualTable, series_id: x.seriesId,
+    source: x.source, status: x.status, sub_status: x.subStatus ?? null, wishes: x.wishes, stay_id: x.stayId, manual_table: x.manualTable, series_id: x.seriesId,
     seated_at: x.seatedAt, finished_at: x.finishedAt, table_ids: x.tableIds,
     expected_updated_at: x.updatedAt ?? null // Stand beim Bearbeiten → Konfliktprüfung in save_reservations
   })
