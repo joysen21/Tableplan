@@ -4,6 +4,7 @@ import { allergyText, hasAllergy } from '../domain/menu';
 import { Download, Plus, SlidersHorizontal } from '../ui/icons';
 import { canEdit } from '../domain/constants';
 import { pickableStatuses, statusInfo } from '../domain/statuses';
+import { StatusIcon } from '../ui/StatusIcon';
 import { byId, checkReservation, occupies, persons, resEnd, resStart, tableNames } from '../domain/logic';
 import type { Reservation } from '../domain/types';
 import { addDays, fmtDate, fmtShort, fromMin } from '../lib/time';
@@ -98,7 +99,7 @@ export function ReservationsView() {
                 <td>{persons(r)}</td>
                 <td>{r.tableIds.length ? tableNames(d, r.tableIds) : <b style={{ color: 'var(--danger)' }}>–</b>}</td>
                 <td>{byId(d.services, r.serviceId)?.name}</td>
-                <td><span className="badge st" style={{ background: statusInfo(d.venue, r).color }}>{statusInfo(d.venue, r).label}</span></td>
+                <td><span className="badge st" style={{ background: statusInfo(d.venue, r).color }}><StatusIcon icon={statusInfo(d.venue, r).icon} />{statusInfo(d.venue, r).label}</span></td>
                 <td>{r.source}</td>
                 <td style={{ fontSize: 12 }}>{hasAllergy(r) && `⚠ ${allergyText(r)} `}{r.occasion && `🎉 ${r.occasion} `}{r.notes}
                   {issues.length > 0 && <div style={{ color: 'var(--danger)' }}>{issues.map(i => <div key={i.text}>{i.text}</div>)}</div>}</td>

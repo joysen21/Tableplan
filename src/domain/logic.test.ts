@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { demoVenueData, emptyVenueData, newId } from './demo';
 import {
-  checkReservation, freeMinutes, hasErrors, mergeEdits, occupies, planStay, resEnd, resStart, stayTableConflicts, suggestTables, tableBusy, tableConflicts, tableStatusAt, serviceTime, untilEnd
+  checkReservation, freeMinutes, hasErrors, mergeEdits, occupies, planStay, resEnd, resStart, stayTableConflicts, suggestTables, tableBusy, tableConflicts, tableStatusAt, serviceTime, sortTables, tableNames, untilEnd
 } from './logic';
 import type { Reservation, VenueData } from './types';
 import { addDays, today } from '../lib/time';
@@ -154,5 +154,16 @@ describe('Bearbeitungskonflikte', () => {
     const { merged, overlap } = mergeEdits(base, mine, theirs);
     expect(overlap).toEqual(['status']); // gleicher Tisch auf beiden Seiten ist kein Konflikt
     expect(merged.status).toBe('storniert');
+  });
+});
+
+describe('Tische sortieren', () => {
+  it('natürlich: Zahlen numerisch, dann alphanumerisch, ohne Groß-/Kleinschreibung', () => {
+    const names = ['T10', 'T2', 'S1', 'T1', 'Bar 3', 'bar 12', '20', '3', 'Terrasse'];
+    expect(sortTables(names.map(name => ({ name }))).map(x => x.name)).toEqual(['3', '20', 'Bar 3', 'bar 12', 'S1', 'T1', 'T2', 'T10', 'Terrasse']);
+  });
+  it('kombinierte Tische werden sortiert angezeigt', () => {
+    const { d, t1, t2 } = base();
+    expect(tableNames(d, [t2, t1])).toBe('T1+T2');
   });
 });

@@ -4,6 +4,7 @@ import { hasAllergy } from '../domain/menu';
 import { Plus } from '../ui/icons';
 import { canEdit } from '../domain/constants';
 import { statusInfo } from '../domain/statuses';
+import { StatusIcon } from '../ui/StatusIcon';
 import { byId, checkReservation, isBlocked, occupies, persons, resEnd, resStart } from '../domain/logic';
 import type { Reservation } from '../domain/types';
 import { fmtDate, fromMin, nowMin, overlaps as overlapsRange, snap, today, toMin } from '../lib/time';
@@ -146,7 +147,7 @@ export function TimelineView() {
       <div className={'g-bar' + (issues.length ? ' conflict' : '')} data-res={r.id} onPointerDown={e => onBarDown(e, r, tid)}
         title={`${r.name} · ${persons(r)}P · ${r.time}–${fromMin(resEnd(r))}${issues.length ? '\n' + issues.map(i => i.text).join('\n') : ''}`}
         style={{ left: x(resStart(r)), top: 4 + lane * LANE, width: Math.max(18, r.duration * PX - 2), background: statusInfo(d.venue, r).color }}>
-        {r.stayId ? '⌂ ' : ''}{r.vip ? '★ ' : ''}{r.name} · {persons(r)}P{hasAllergy(r) ? ' ⚠' : ''}{edit && <span className="rs" />}
+        <StatusIcon icon={statusInfo(d.venue, r).icon} size={12} />{r.stayId ? '⌂ ' : ''}{r.vip ? '★ ' : ''}{r.name} · {persons(r)}P{hasAllergy(r) ? ' ⚠' : ''}{edit && <span className="rs" />}
       </div>
     );
   };

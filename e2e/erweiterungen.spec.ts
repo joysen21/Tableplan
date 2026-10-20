@@ -24,7 +24,11 @@ test('Eigenen Status anlegen und einer Reservierung geben', async ({ page }) => 
   await goView(page, 'Einstellungen');
   await page.getByRole('button', { name: 'Eigener Status' }).click();
   await page.getByLabel('Bezeichnung eigener Status').fill('Aperitif');
+  // bestehende Status: Bezeichnung steht im Feld und ist direkt bearbeitbar, Symbol wählbar
+  await expect(page.getByLabel('Bezeichnung Platziert')).toHaveValue('Platziert');
   await page.getByLabel('Bezeichnung Rechnung').fill('Zahlt');
+  await page.getByRole('button', { name: 'Symbol Zahlt' }).click();
+  await page.getByRole('radiogroup', { name: 'Symbol für Zahlt' }).getByRole('radio', { name: 'Zahlt (Karte)' }).click();
   await page.getByRole('button', { name: 'Status speichern' }).click();
   await expect(page.locator('.toast')).toContainText('Status gespeichert');
 
@@ -39,8 +43,28 @@ test('Eigenen Status anlegen und einer Reservierung geben', async ({ page }) => 
   const confirm = page.getByRole('button', { name: 'Trotzdem speichern' });
   if (await confirm.isVisible({ timeout: 1000 }).catch(() => false)) await confirm.click();
   await expect(item.locator('.badge.st')).toHaveText('Aperitif');
-  const saved = (await demo(page)).reservations.find((x: any) => x.id === r.id);
+  await expect(item.locator('.badge.st svg.st-icon')).toHaveCount(1);
+  const v = await demo(page);
+  const saved = v.reservations.find((x: any) => x.id === r.id);
   expect([saved.status, typeof saved.subStatus]).toEqual(['platziert', 'string']);
+  expect(v.venue.statusConfig.builtIn.rechnung).toMatchObject({ label: 'Zahlt', icon: 'zahlen' });
+});
+
+test('Tische erscheinen in Auswahllisten immer natürlich sortiert', async ({ page }) => {
+  await loginDemo(page);
+  // Tische in umgekehrter Reihenfolge gespeichert
+  await page.evaluate(() => {
+    const db = JSON.parse(localStorage.getItem('tischplan.demo.v2')!);
+    const v = Object.values(db.data)[0] as any;
+    v.tables.reverse();
+    localStorage.setItem('tischplan.demo.v2', JSON.stringify(db));
+  });
+  await page.reload();
+  await page.getByRole('button', { name: 'Reservierung', exact: true }).click();
+  const opts = await page.locator('.modal select').filter({ hasText: 'Tisch manuell hinzufügen' }).locator('optgroup').first().locator('option').allTextContents();
+  const names = opts.map(o => o.split(' ')[0]);
+  expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b, 'de', { numeric: true })));
+  expect(names.indexOf('T2')).toBeLessThan(names.indexOf('T10'));
 });
 
 test('Gast schreibt per QR eine Notiz, das Personal sieht sie im Live-Plan', async ({ page }) => {

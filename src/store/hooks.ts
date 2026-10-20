@@ -1,13 +1,25 @@
 import { useEffect, useState } from 'react';
 import { viewsFor } from '../domain/constants';
 import { EDITION } from '../lib/edition';
-import { serviceForTime } from '../domain/logic';
+import { serviceForTime, sortTables } from '../domain/logic';
 import type { VenueData } from '../domain/types';
 import { useApp } from './app';
 import { useUi } from './ui';
 
-/** Datenstand des Betriebs (nur innerhalb der angemeldeten Oberfläche verwenden) */
-export const useData = (): VenueData => useApp(s => s.data)!;
+/** Tische natürlich sortiert (T2 vor T10) – je Datenstand nur einmal berechnet */
+const sortedCache = new WeakMap<VenueData, VenueData>();
+function withSortedTables(d: VenueData): VenueData {
+  let out = sortedCache.get(d);
+  if (!out) {
+    const tables = sortTables(d.tables);
+    out = tables.every((x, i) => x === d.tables[i]) ? d : { ...d, tables };
+    sortedCache.set(d, out);
+  }
+  return out;
+}
+
+/** Datenstand des Betriebs (nur innerhalb der angemeldeten Oberfläche verwenden); Tische immer nach Namen sortiert */
+export const useData = (): VenueData => withSortedTables(useApp(s => s.data)!);
 export const useRole = () => useApp(s => s.user?.role ?? null);
 export const useUserId = () => useApp(s => s.user?.id ?? null);
 

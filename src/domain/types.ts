@@ -21,9 +21,9 @@ export type ModuleKey = 'dienstplan';
 /** welcomeIt/welcomeEn optional – fehlt die Übersetzung, erscheint der deutsche Text */
 export interface Branding { title: string; welcome: string; welcomeIt?: string; welcomeEn?: string; color: string; logoUrl: string | null; coverUrl: string | null }
 /** Eigener Reservierungs-Status: verhält sich wie sein Grundstatus (base), hat aber eigene Bezeichnung und Farbe */
-export interface CustomStatus { id: string; label: string; color: string; base: ResStatus }
+export interface CustomStatus { id: string; label: string; color: string; base: ResStatus; icon?: string }
 /** Status-Einstellungen je Betrieb: Standard-Status umbenennen/umfärben/ausblenden, eigene Status ergänzen */
-export interface StatusConfig { builtIn?: Partial<Record<ResStatus, { label?: string; color?: string; hidden?: boolean }>>; custom?: CustomStatus[] }
+export interface StatusConfig { builtIn?: Partial<Record<ResStatus, { label?: string; color?: string; hidden?: boolean; icon?: string }>>; custom?: CustomStatus[] }
 export interface Venue { id: string; name: string; modules: ModuleKey[]; rosterSettings?: Partial<RosterSettings>; branding?: Branding; statusConfig?: StatusConfig }
 
 export interface Member { userId: string; role: Role; name: string; email: string }

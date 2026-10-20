@@ -6,6 +6,7 @@ import { Minus, Plus, PersonStanding } from '../ui/icons';
 import { newId } from '../domain/demo';
 import { canEdit, canStatus, SEATED_STATES } from '../domain/constants';
 import { pickableStatuses, statusInfo, statusKey } from '../domain/statuses';
+import { StatusIcon } from '../ui/StatusIcon';
 import { byId, capacity, freeMinutes, isBlocked, occupies, persons, resEnd, resStart, suggestTables, tableConflicts, tableNames, tableStatusAt, untilEnd } from '../domain/logic';
 import type { Reservation, ResStatus } from '../domain/types';
 import { t } from '../lib/i18n';
@@ -29,7 +30,7 @@ function StatusButtons({ r }: { r: Reservation }) {
   return (
     <div className="stbtns">{opts.map(o => (
       <button key={o.key} className="btn" aria-pressed={cur === o.key} style={{ borderLeft: `5px solid ${o.color}` }}
-        onClick={async () => { if (await setStatus(r, o.key)) closeDialog(); }}>{o.label}</button>
+        onClick={async () => { if (await setStatus(r, o.key)) closeDialog(); }}><StatusIcon icon={o.icon} size={16} />{o.label}</button>
     ))}</div>
   );
 }
@@ -119,7 +120,7 @@ export function TablePopup({ tableId }: { tableId: string }) {
       <h4 style={{ margin: '16px 0 6px' }}>{ui.date === today() ? 'Heute' : fmtDate(ui.date)} an diesem Tisch</h4>
       {dayRes.length ? dayRes.map(x => (
         <div key={x.id} className="row" style={{ fontSize: 13, padding: '3px 0' }}>
-          <b>{x.time}–{fromMin(resEnd(x))}</b> {x.name} · {persons(x)}P <span className="badge st" style={{ background: statusInfo(d.venue, x).color }}>{statusInfo(d.venue, x).label}</span>
+          <b>{x.time}–{fromMin(resEnd(x))}</b> {x.name} · {persons(x)}P <span className="badge st" style={{ background: statusInfo(d.venue, x).color }}><StatusIcon icon={statusInfo(d.venue, x).icon} />{statusInfo(d.venue, x).label}</span>
         </div>)) : <p className="muted">Keine Reservierungen.</p>}
     </Modal>
   );

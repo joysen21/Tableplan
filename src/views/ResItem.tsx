@@ -3,6 +3,7 @@ import { allergyText, hasAllergy } from '../domain/menu';
 import { chosenDishes, chosenText, menuChoiceFor } from '../domain/guestMenu';
 import { GripVertical } from '../ui/icons';
 import { statusInfo } from '../domain/statuses';
+import { StatusIcon } from '../ui/StatusIcon';
 import { checkReservation, occupies, persons, tableNames } from '../domain/logic';
 import type { Reservation, VenueData } from '../domain/types';
 import { fmtShort } from '../lib/time';
@@ -28,7 +29,7 @@ export function ResItem({ d, r, showDate, draggable, onPointerDown, onClick }: {
       </div>
       <div style={{ textAlign: 'right' }}>
         {r.stayId && <><span className="badge hotel">Hotel</span><br /></>}
-        <span className="badge st" style={{ background: st.color }}>{st.label}</span>
+        <span className="badge st" style={{ background: st.color }}><StatusIcon icon={st.icon} />{st.label}</span>
         {issues.length > 0 && <><br /><span className="badge warn" title={issues.map(i => i.text).join('\n')}>⚠ {issues.length}</span></>}
       </div>
     </div>

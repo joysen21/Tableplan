@@ -14,7 +14,11 @@ export const occupies = (r: Pick<Reservation, 'status'>) => r.status !== 'storni
 export const isCancelled = (r: Pick<Reservation, 'status'>) => r.status === 'storniert' || r.status === 'noshow';
 
 export const byId = <T extends { id: string }>(list: T[], id: string | null | undefined) => (id ? list.find(x => x.id === id) : undefined);
-export const tableNames = (d: VenueData, ids: string[] | undefined) => (ids || []).map(id => byId(d.tables, id)?.name ?? '?').join('+');
+/** Tische natürlich nach Namen sortiert: T2 vor T10, Zahlen vor Buchstaben, Groß-/Kleinschreibung egal */
+export const compareTableNames = (a: string, b: string) => a.localeCompare(b, 'de', { numeric: true, sensitivity: 'base' });
+export const sortTables = <T extends { name: string }>(list: T[]): T[] => [...list].sort((a, b) => compareTableNames(a.name, b.name));
+
+export const tableNames = (d: VenueData, ids: string[] | undefined) => (ids || []).map(id => byId(d.tables, id)?.name ?? '?').sort(compareTableNames).join('+');
 
 /** Feste Uhrzeit einer Reservierung: Beginn des Service (Hotelgäste: Hotel-Standardzeit) – die Uhrzeit wird nicht mehr einzeln eingegeben */
 export function serviceTime(d: VenueData, serviceId: string, hotel = false): string {

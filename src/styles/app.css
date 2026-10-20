@@ -651,6 +651,18 @@ table.pub-team tr.me td{background:var(--accent-soft)}
 .icon-palette{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
 .icon-opt{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:8px;background:var(--panel);cursor:pointer;padding:0}
 .icon-opt[aria-checked=true]{border-color:var(--hl);box-shadow:0 0 0 2px var(--hl) inset;background:var(--accent-soft)}
+.status-list{display:flex;flex-direction:column;gap:6px}
+.status-group{display:flex;flex-direction:column;gap:4px}
+.status-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.status-row>input:not([type]),.status-row>input[aria-label^="Bezeichnung"]{flex:1 1 160px;min-width:0;margin:0}
+.status-row>input[type=color]{width:40px;height:34px;padding:2px;flex:none}
+.status-row>select{width:auto;flex:none}
+.status-row.custom{padding-left:22px;position:relative}
+.status-row.custom::before{content:"↳";position:absolute;left:6px;color:var(--muted)}
+.status-row.is-hidden>input{opacity:.5}
+.st-icon-picker{position:relative;display:inline-flex;flex-wrap:wrap}
+.st-palette{flex-basis:100%;width:min(420px,80vw);position:absolute;top:100%;left:0;z-index:5;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px;box-shadow:var(--shadow)}
+.st-icon{flex:none;vertical-align:-2px;margin-right:3px}
 .menu-choice{color:var(--hotel)}
 .qr-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
 .qr-card{border:1px solid #d9d9d9;border-radius:14px;background:#fff;color:#1f2329;display:flex;flex-direction:column;align-items:center;gap:10px;padding:0 0 14px;overflow:hidden;break-inside:avoid;page-break-inside:avoid}

@@ -6,15 +6,20 @@ import { ALL_STATUS, RES_STATUS_COLOR } from './constants';
 import type { CustomStatus, Reservation, ResStatus, StatusConfig, Venue } from './types';
 import { t } from '../lib/i18n';
 
-export interface StatusOption { key: string; label: string; color: string; base: ResStatus; custom: boolean; hidden: boolean }
+export interface StatusOption { key: string; label: string; color: string; icon: string; base: ResStatus; custom: boolean; hidden: boolean }
+
+/** Standard-Symbol je Status (Schlüssel aus STATUS_ICONS in ui/StatusIcon) */
+export const DEFAULT_STATUS_ICON: Record<ResStatus, string> = {
+  angefragt: 'anfrage', bestaetigt: 'ok', eingetroffen: 'tuer', platziert: 'sessel', rechnung: 'rechnung', abgeschlossen: 'fertig', storniert: 'storno', noshow: 'noshow'
+};
 
 /** Alle Status in Reihenfolge: jeder Standard-Status, gefolgt von seinen eigenen Status */
 export function statusOptions(cfg: StatusConfig | undefined): StatusOption[] {
   const custom = cfg?.custom ?? [];
   return ALL_STATUS.flatMap(s => {
     const b = cfg?.builtIn?.[s] ?? {};
-    const own: StatusOption = { key: s, label: b.label?.trim() || t(s), color: b.color || RES_STATUS_COLOR[s], base: s, custom: false, hidden: !!b.hidden };
-    return [own, ...custom.filter(c => c.base === s).map(c => ({ key: c.id, label: c.label, color: c.color, base: c.base, custom: true, hidden: false }))];
+    const own: StatusOption = { key: s, label: b.label?.trim() || t(s), color: b.color || RES_STATUS_COLOR[s], icon: b.icon || DEFAULT_STATUS_ICON[s], base: s, custom: false, hidden: !!b.hidden };
+    return [own, ...custom.filter(c => c.base === s).map(c => ({ key: c.id, label: c.label, color: c.color, icon: c.icon || DEFAULT_STATUS_ICON[c.base], base: c.base, custom: true, hidden: false }))];
   });
 }
 
