@@ -488,7 +488,7 @@ table.list td .badge{margin-left:6px}
 .roster-palette>small{flex-basis:100%}
 .tpl-btn{cursor:grab}
 .tpl-btn .tpl-chip{margin-right:6px}
-.roster-grid{display:grid;grid-template-columns:minmax(150px,1.3fr) repeat(var(--days),minmax(92px,1fr)) 62px;border:1px solid var(--line);border-radius:10px;overflow:hidden;min-width:900px}
+.roster-grid{display:grid;grid-template-columns:minmax(150px,1.3fr) repeat(var(--days),minmax(92px,1fr)) 62px;border:1px solid var(--line);border-radius:10px;overflow:clip;min-width:900px}
 .roster-grid>div{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:4px 5px;min-width:0}
 .rg-head{background:var(--panel2);font-size:12px;display:flex;flex-direction:column;gap:2px;position:sticky;top:0;z-index:1}
 .rg-head.today,.rg-cell.today{background:var(--accent-soft)}
