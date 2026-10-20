@@ -480,6 +480,7 @@ table.list td .badge{margin-left:6px}
 .roster-tabs{flex-wrap:wrap}
 .roster-plan{padding:10px 14px}
 .roster-toolbar{margin-bottom:8px}
+.roster-actions{display:flex;gap:6px;align-items:center}
 .roster-title{min-width:150px;text-align:center}
 .roster-publish{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
 .pub-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 6px 4px 10px;border:1px dashed var(--line);border-radius:10px;font-size:13px;background:var(--panel2)}
@@ -602,6 +603,9 @@ table.pub-team tr.me td{background:var(--accent-soft)}
   .rg-name{font-size:12px}
   /* Kopfzeile (Tage) und Namensspalte bleiben stehen: das Raster scrollt in sich, nicht die ganze Seite */
   .roster-plan .table-scroll{max-height:calc(100dvh - 210px);overflow:auto;overscroll-behavior:contain}
+  .roster-actions{flex:1 1 100%}
+  .roster-actions .btn{flex:1 1 0;min-width:0;justify-content:center;padding:6px 8px;white-space:nowrap}
+  .roster-actions .lbl-long{display:none}
 }
 @media print{.roster-plan .table-scroll{max-height:none;overflow:visible}}
 /* ---------- Gäste-Speisekarte (QR): Gestaltung, Tischkarten, QR im Editor ---------- */

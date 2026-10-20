@@ -132,11 +132,14 @@ export function RosterPlan({ dept }: { dept: string }) {
         </div>
         <span className="spacer" />
         {mode === 'woche' && mine.length > 0 && <button className="btn small" onClick={copyPrev}><Copy />Vorwoche übernehmen</button>}
-        <button className="btn small" onClick={exportHours} title="Geplante Stunden des Monats als CSV (Excel)"><Download />Stunden {MONTHS[+date.slice(5, 7) - 1]}</button>
+        {/* Stunden, Drucken, Bearbeiten: am Handy gemeinsam auf einer Zeile */}
+        <div className="roster-actions">
+        <button className="btn small" onClick={exportHours} title={`Geplante Stunden ${MONTHS[+date.slice(5, 7) - 1]} als CSV (Excel)`}><Download />Stunden<span className="lbl-long"> {MONTHS[+date.slice(5, 7) - 1]}</span></button>
         <button className="btn small" onClick={() => window.print()}><Printer />Drucken</button>
         {mineAll.length > 0 && (editing
           ? <button className="btn small primary" onClick={() => { setEditing(false); ui.set({ rosterBrush: null }); }}><Check />Fertig</button>
           : <button className="btn small primary" onClick={() => setEditing(true)}><Pencil />Bearbeiten</button>)}
+        </div>
       </div>
 
       {mode === 'woche' && <div className="roster-publish no-print">
