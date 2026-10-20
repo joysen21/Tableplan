@@ -195,7 +195,7 @@ export function StayImport() {
       <textarea style={{ minHeight: 80, marginTop: 8 }} value={text} placeholder="…oder hier einfügen" onChange={e => { setResult(''); setText(e.target.value); }} />
       {parsed && plan && <>
         <p style={{ margin: '8px 0 0' }}><b>{parsed.format === 'asa' ? 'ASA-Zimmerliste' : 'Einfaches Format'}</b>: {parsed.stays.length} Aufenthalte gelesen
-          {parsed.cancelled ? `, ${parsed.cancelled} stornierte Zeilen übersprungen` : ''} · {plan.unchanged} unverändert</p>
+          {parsed.cancelled ? `, ${parsed.cancelled} stornierte Zeilen übersprungen` : ''}{parsed.emptyRooms ? `, ${parsed.emptyRooms} leere Zimmer` : ''} · {plan.unchanged} unverändert</p>
         {!boardInFile && plan.create.length > 0 && <label className="mt8">Verpflegung für neue Gäste (nicht in der Datei)
           <select value={defaultBoard} onChange={e => setDefaultBoard(e.target.value as Board)}>{BOARDS.map(b => <option key={b} value={b}>{t(b)}</option>)}</select></label>}
         <Section title="Neu" lines={plan.create.map(label)} />

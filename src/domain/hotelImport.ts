@@ -22,7 +22,11 @@ export interface ImportStay {
   allergies?: string; notes?: string;
 }
 
-export interface ParsedImport { format: ImportFormat; stays: ImportStay[]; errors: string[]; /** stornierte Zeilen, nicht übernommen */ cancelled: number }
+export interface ParsedImport {
+  format: ImportFormat; stays: ImportStay[]; errors: string[];
+  /** stornierte Zeilen, nicht übernommen */ cancelled: number;
+  /** leere Zimmer (nur Zimmernummer, sonst nichts) – werden still übersprungen */ emptyRooms: number;
+}
 
 /** CSV in Zeilen/Zellen zerlegen – Trennzeichen ; Tab oder , (aus der ersten Zeile), Anführungszeichen nach RFC 4180 */
 export function parseCsv(text: string): string[][] {
@@ -65,7 +69,7 @@ export function parseBoard(text: string): Board | undefined {
 /** Datei einlesen – erkennt das Format an der Kopfzeile */
 export function parseImport(text: string): ParsedImport {
   const rows = parseCsv(text);
-  if (rows.length < 2) return { format: 'einfach', stays: [], errors: ['Keine Daten'], cancelled: 0 };
+  if (rows.length < 2) return { format: 'einfach', stays: [], errors: ['Keine Daten'], cancelled: 0, emptyRooms: 0 };
   const head = rows[0].map(norm);
   const col = (...names: string[]) => head.findIndex(h => names.includes(h));
   const c = {
@@ -81,8 +85,10 @@ function parseAsa(rows: string[][], c: Record<'nr' | 'year' | 'pos' | 'room' | '
   const get = (r: string[], i: number) => (i >= 0 ? r[i] ?? '' : '');
   const groups = new Map<string, ImportStay & { firstPos: number }>();
   const errors: string[] = [];
-  let cancelled = 0;
+  let cancelled = 0, emptyRooms = 0;
   rows.slice(1).forEach((r, i) => {
+    // leeres Zimmer: ASA exportiert auch freie Zimmer, dann steht nur die Zimmernummer in der Zeile
+    if (get(r, c.room) && [c.nr, c.guest, c.name, c.arrival, c.departure].every(k => !get(r, k))) { emptyRooms++; return; }
     if (/storn|no.?show/i.test(get(r, c.status))) { cancelled++; return; }
     const nr = get(r, c.nr), roomNo = get(r, c.room);
     const arrival = parseDate(get(r, c.arrival)), departure = parseDate(get(r, c.departure));
@@ -108,18 +114,20 @@ function parseAsa(rows: string[][], c: Record<'nr' | 'year' | 'pos' | 'room' | '
     const [nr, year, room] = key.split('/');
     return { ...s, externalId: `ASA:${nr}/${year}/${firstPos || 'Zi' + room}` };
   });
-  return { format: 'asa', stays, errors, cancelled };
+  return { format: 'asa', stays, errors, cancelled, emptyRooms };
 }
 
 function parseSimple(rows: string[][]): ParsedImport {
   const stays: ImportStay[] = [], errors: string[] = [];
+  let emptyRooms = 0;
   rows.slice(1).forEach((c, i) => {
+    if (c[0] && !c[1] && !c[4] && !c[5]) { emptyRooms++; return; } // leeres Zimmer
     const arrival = parseDate(c[4] ?? ''), departure = parseDate(c[5] ?? ''), board = c[6] ? parseBoard(c[6]) : 'HP';
     if (!c[0] || !c[1] || !arrival || !departure || departure <= arrival || !board) { errors.push(`Zeile ${i + 2}: ungültig`); return; }
     stays.push({ externalId: null, roomNo: c[0], name: c[1], adults: +c[2] || 1, children: +c[3] || 0, arrival, departure, board,
       allergies: c[7] ?? '', notes: c[8] ?? '' });
   });
-  return { format: 'einfach', stays, errors, cancelled: 0 };
+  return { format: 'einfach', stays, errors, cancelled: 0, emptyRooms };
 }
 
 export interface ImportUpdate { before: Stay; stay: Stay; changes: string[] }

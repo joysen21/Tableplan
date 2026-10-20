@@ -93,6 +93,7 @@ function MenuChooser({ token, menu, lang, title, onSaved }: { token: string; men
   };
   const room = rooms.find(r => r.stayId === stayId);
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const courses = menuCourses(menu.items);
@@ -104,7 +105,7 @@ function MenuChooser({ token, menu, lang, title, onSaved }: { token: string; men
     const base = { ...room.counts };
     // nur ohne gespeicherte Auswahl vorbelegen – sonst würde ein bewusst abgewählter Gang wieder auftauchen
     if (!Object.keys(room.counts).length) for (const c of single) { const it = menu.items.find(i => i.course === c)!; base[it.dishId] = room.persons; }
-    setCounts(base); setMsg(null);
+    setCounts(base); setNote(room.note ?? ''); setMsg(null);
     // nur beim Zimmerwechsel neu setzen – nicht nach dem Senden (sonst verschwindet die Bestätigung)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stayId, menu.id]);
@@ -122,7 +123,7 @@ function MenuChooser({ token, menu, lang, title, onSaved }: { token: string; men
     if (!room) return;
     setBusy(true); setMsg(null);
     try {
-      await repo.guestSave(token, menu.id, room.stayId, Object.fromEntries(Object.entries(counts).filter(([, n]) => n > 0)));
+      await repo.guestSave(token, menu.id, room.stayId, Object.fromEntries(Object.entries(counts).filter(([, n]) => n > 0)), note.trim());
       setMsg({ ok: true, text: tr(lang, 'saved') });
       onSaved();
     } catch (e: any) { setMsg({ ok: false, text: `${tr(lang, 'error')}: ${e?.message || e}` }); }
@@ -184,7 +185,10 @@ function MenuChooser({ token, menu, lang, title, onSaved }: { token: string; men
         );
       })}
 
+      {room && !open && room.note && <p className="gm-hint" style={{ marginTop: 18 }}>{tr(lang, 'noteLabel')}: {room.note}</p>}
       {room && open && <>
+        <label className="gm-note-field">{tr(lang, 'noteLabel')}
+          <textarea value={note} maxLength={500} rows={2} placeholder={tr(lang, 'notePh')} onChange={e => { setNote(e.target.value); setMsg(null); }} /></label>
         {!complete && !msg && <p className="gm-hint" style={{ marginTop: 18 }}>{tr(lang, 'partial')}</p>}
         {msg && <p className={'gm-msg ' + (msg.ok ? 'ok' : 'err')}>{msg.text}{msg.ok && <><br /><small>{tr(lang, 'change')}</small></>}</p>}
         <div className="gm-send"><button className="gm-btn" disabled={busy} onClick={send}>{busy ? tr(lang, 'saving') : tr(lang, 'save')}</button></div>

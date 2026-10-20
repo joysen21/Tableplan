@@ -134,6 +134,7 @@ export function GuestChoicePanel({ m, ro, onOrdering }: { m: Menu; ro: boolean; 
       </div>
       {s.open.length > 0 && ord !== 'aus' && <p className="muted" style={{ fontSize: 12, margin: '6px 0 0' }}>Noch ohne Auswahl: {s.open.map(o => `Zi. ${o.roomNo} (${o.persons}P, ${o.tables.join('+') || (free ? 'freie Platzwahl' : 'ohne Tisch')})`).join(' · ')}</p>}
       {free && <p className="muted" style={{ fontSize: 12, margin: '6px 0 0' }}>Freie Platzwahl: Gäste wählen beim QR-Code (jeder Tisch) ihr Zimmer aus allen Zimmern mit dieser Mahlzeit.</p>}
+      {s.notes.length > 0 && <div className="infobox" style={{ fontSize: 13, marginTop: 6 }}>{s.notes.map(n => <div key={n.roomNo}>📝 <b>Zi. {n.roomNo}:</b> {n.note}</div>)}</div>}
       {ord === 'aus' && <p className="muted" style={{ fontSize: 12, margin: '6px 0 0' }}>Gewählte Gerichte zählen fest, nur der Rest wird nach den Anteilen geschätzt. Nur Menüs von heute und morgen erscheinen bei den Gästen.</p>}
     </div>
   );

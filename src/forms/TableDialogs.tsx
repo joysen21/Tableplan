@@ -1,7 +1,7 @@
 /** Tisch-Popup, Reservierungs-Info (Service), Walk-in, Tischsperre */
 import { useState } from 'react';
 import { allergyText, hasAllergy } from '../domain/menu';
-import { chosenDishes, chosenText } from '../domain/guestMenu';
+import { chosenDishes, chosenText, menuChoiceFor } from '../domain/guestMenu';
 import { Minus, Plus, PersonStanding } from '../ui/icons';
 import { newId } from '../domain/demo';
 import { canEdit, canStatus, SEATED_STATES } from '../domain/constants';
@@ -38,12 +38,14 @@ function ResDetails({ r }: { r: Reservation }) {
   const d = useData();
   const stay = byId(d.stays, r.stayId);
   const menu = chosenDishes(d, r);
+  const menuNote = menuChoiceFor(d, r).choice?.note;
   return (
     <div className="infobox">
       <b>{r.vip ? '★ ' : ''}{r.name}</b> · {persons(r)} P{r.children ? ` (${r.children} Kinder)` : ''} · {r.time}–{fromMin(resEnd(r))}
       {stay && <><br />Hotelgast Zi. {stay.roomNo} · {t(stay.board)} · bis {fmtShort(stay.departure)}</>}
       {hasAllergy(r) && <><br />⚠ <b>{allergyText(r)}</b></>}
       {menu.length > 0 && <><br />🍽 Menü: <b>{chosenText(menu)}</b></>}
+      {menuNote && <><br />📝 Notiz zum Menü: <b>{menuNote}</b></>}
       {r.stayId && !menu.length && d.menus.some(m => m.date === r.date && m.serviceId === r.serviceId && m.ordering && m.ordering !== 'aus') && <><br /><span className="muted">🍽 Noch kein Menü gewählt</span></>}
       {r.occasion && <><br />🎉 {r.occasion}</>}
       {r.highchair && <><br />Kinderstuhl</>}

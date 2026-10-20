@@ -1,6 +1,6 @@
 import type { PointerEvent as RPE } from 'react';
 import { allergyText, hasAllergy } from '../domain/menu';
-import { chosenDishes, chosenText } from '../domain/guestMenu';
+import { chosenDishes, chosenText, menuChoiceFor } from '../domain/guestMenu';
 import { GripVertical } from '../ui/icons';
 import { statusInfo } from '../domain/statuses';
 import { checkReservation, occupies, persons, tableNames } from '../domain/logic';
@@ -14,6 +14,7 @@ export function ResItem({ d, r, showDate, draggable, onPointerDown, onClick }: {
   const unassigned = occupies(r) && !r.tableIds.length;
   const issues = checkReservation(d, r);
   const menu = chosenText(chosenDishes(d, r));
+  const note = menuChoiceFor(d, r).choice?.note;
   const st = statusInfo(d.venue, r);
   return (
     <div className={'ritem' + (unassigned ? ' unassigned' : '') + (occupies(r) || r.status === 'abgeschlossen' ? '' : ' cancel') + (onClick ? ' clickable' : '')} data-res={r.id} onPointerDown={onPointerDown} onClick={onClick}>
@@ -23,7 +24,7 @@ export function ResItem({ d, r, showDate, draggable, onPointerDown, onClick }: {
         <div className="name">{r.vip ? '★ ' : ''}{r.name}</div>
         <div className="sub">{persons(r)} P{r.children ? ` (${r.children} Ki.)` : ''} · {r.tableIds.length ? 'Tisch ' + tableNames(d, r.tableIds) : <b style={{ color: 'var(--danger)' }}>ohne Tisch</b>}
           {hasAllergy(r) ? ' · ⚠ ' + allergyText(r) : ''}{r.occasion ? ' · 🎉 ' + r.occasion : ''}</div>
-        {menu && <div className="sub menu-choice" title="Per QR gewähltes Menü">🍽 {menu}</div>}
+        {(menu || note) && <div className="sub menu-choice" title="Per QR gewähltes Menü">{menu && <>🍽 {menu}</>}{note && <> · 📝 {note}</>}</div>}
       </div>
       <div style={{ textAlign: 'right' }}>
         {r.stayId && <><span className="badge hotel">Hotel</span><br /></>}

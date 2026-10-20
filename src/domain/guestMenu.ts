@@ -24,7 +24,7 @@ export const guestUrl = (origin: string, token: string, demo = false) => `${orig
 
 /* ---------- Was der Gast sieht ---------- */
 export interface GuestDish { course: Course; dishId: string; name: string; nameIt: string; nameEn: string; diet: Diet[]; allergens: Allergen[] }
-export interface GuestRoom { stayId: string; roomNo: string; persons: number; counts: Record<string, number> }
+export interface GuestRoom { stayId: string; roomNo: string; persons: number; counts: Record<string, number>; note?: string }
 /** pick = freie Platzwahl: rooms enthält alle Zimmer mit dieser Mahlzeit, der Gast wählt sein Zimmer aus */
 export interface GuestMenu { id: string; date: string; service: string; kind: string; state: MenuOrdering; pick: boolean; items: GuestDish[]; rooms: GuestRoom[] }
 export interface GuestMenuData { venue: { name: string; branding: Branding }; table: { name: string }; menus: GuestMenu[] }
@@ -66,7 +66,7 @@ export function buildGuestMenu(d: VenueData, token: string, day0: string): Guest
           const dish = byId(d.dishes, it.dishId);
           return { course: it.course, dishId: it.dishId, name: dish?.name ?? it.name, nameIt: dish?.nameIt ?? '', nameEn: dish?.nameEn ?? '', diet: dish?.diet ?? [], allergens: it.allergens };
         }),
-        rooms: menuRooms(d, m, tb.id).map(x => ({ stayId: x.stay.id, roomNo: x.stay.roomNo, persons: x.persons, counts: x.choice?.counts ?? {} }))
+        rooms: menuRooms(d, m, tb.id).map(x => ({ stayId: x.stay.id, roomNo: x.stay.roomNo, persons: x.persons, counts: x.choice?.counts ?? {}, note: x.choice?.note ?? '' }))
       };
     });
   return { venue: { name: d.venue.name, branding: brandingOf(d.venue) }, table: { name: tb.name }, menus };
@@ -94,11 +94,16 @@ export function cleanCounts(items: Pick<MenuItem, 'course' | 'dishId'>[], person
 /** Gänge eines Menüs in Reihenfolge */
 export const menuCourses = (items: Pick<MenuItem, 'course'>[]) => COURSES.filter(c => items.some(i => i.course === c));
 
-/** Gewähltes Menü eines Hotelzimmers zu einer Reservierung (gleiches Datum + Service), in Gang-Reihenfolge – für Live-Plan und Service */
+/** Menü und Auswahl eines Hotelzimmers zu einer Reservierung (gleiches Datum + Service) */
+export function menuChoiceFor(d: VenueData, r: Pick<Reservation, 'date' | 'serviceId' | 'stayId'>): { menu?: Menu; choice?: MenuChoice } {
+  if (!r.stayId) return {};
+  const menu = d.menus.find(x => x.date === r.date && x.serviceId === r.serviceId);
+  return { menu, choice: menu && (d.menuChoices ?? []).find(x => x.menuId === menu.id && x.stayId === r.stayId) };
+}
+
+/** Gewähltes Menü eines Hotelzimmers zu einer Reservierung, in Gang-Reihenfolge – für Live-Plan und Service */
 export function chosenDishes(d: VenueData, r: Pick<Reservation, 'date' | 'serviceId' | 'stayId'>): { course: Course; name: string; n: number }[] {
-  if (!r.stayId) return [];
-  const m = d.menus.find(x => x.date === r.date && x.serviceId === r.serviceId);
-  const c = m && (d.menuChoices ?? []).find(x => x.menuId === m.id && x.stayId === r.stayId);
+  const { menu: m, choice: c } = menuChoiceFor(d, r);
   if (!m || !c) return [];
   return COURSES.flatMap(course => m.items.filter(it => it.course === course && (c.counts[it.dishId] ?? 0) > 0)
     .map(it => ({ course, name: byId(d.dishes, it.dishId)?.name ?? it.name, n: c.counts[it.dishId] })));
@@ -113,6 +118,8 @@ export interface ChoiceSummary {
   counts: Record<string, number>;
   /** Zimmer ohne Auswahl */
   open: { roomNo: string; persons: number; tables: string[] }[];
+  /** Notizen der Gäste zur Auswahl */
+  notes: { roomNo: string; note: string }[];
 }
 export function choiceSummary(d: VenueData, m: Menu): ChoiceSummary {
   const rooms = menuRooms(d, m);
@@ -122,6 +129,7 @@ export function choiceSummary(d: VenueData, m: Menu): ChoiceSummary {
   return {
     rooms: rooms.length, chosenRooms: chosen.length,
     persons: rooms.reduce((a, x) => a + x.persons, 0), chosenPersons: chosen.reduce((a, x) => a + x.persons, 0), counts,
+    notes: rooms.filter(x => x.choice?.note).map(x => ({ roomNo: x.stay.roomNo, note: x.choice!.note! })),
     open: rooms.filter(x => !chosen.includes(x)).map(x => ({ roomNo: x.stay.roomNo, persons: x.persons, tables: (x.res?.tableIds ?? []).map(id => byId(d.tables, id)?.name ?? '?') }))
   };
 }

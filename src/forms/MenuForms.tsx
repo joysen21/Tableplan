@@ -49,10 +49,14 @@ export function MenuEditor({ date, serviceId }: { date: string; serviceId: strin
   const used = new Set(m.items.map(i => i.dishId));
   const courses = COURSES.filter(c => m.items.some(i => i.course === c));
 
-  function addDish(id: string) {
-    const dish = byId(d.dishes, id); if (!dish) return;
-    upd({ items: snapshotItems(d, [...m.items, { course: dish.course, dishId: dish.id, share: null, name: dish.name, allergens: [] }]) });
+  /** Mehrfachauswahl: angekreuzte Gerichte (null = Liste zu) */
+  const [pick, setPick] = useState<string[] | null>(null);
+  function addDishes(ids: string[]) {
+    const add = ids.map(id => byId(d.dishes, id)).filter(x => !!x && !used.has(x.id))
+      .map(dish => ({ course: dish!.course, dishId: dish!.id, share: null, name: dish!.name, allergens: [] }));
+    if (add.length) upd({ items: snapshotItems(d, [...m.items, ...add]) });
   }
+  const addDish = (id: string) => addDishes([id]);
   async function save() {
     if (!m.items.length) return toast('Bitte mindestens ein Gericht wählen', 'err');
     setBusy(true);
@@ -108,6 +112,19 @@ export function MenuEditor({ date, serviceId }: { date: string; serviceId: strin
             <option value="">＋ Gericht hinzufügen…</option>
             {COURSES.map(c => { const list = d.dishes.filter(x => x.course === c && !used.has(x.id)); return list.length ? <optgroup key={c} label={t(c)}>{list.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</optgroup> : null; })}
           </select>
+          <button type="button" className="btn small" aria-expanded={!!pick} onClick={() => setPick(pick ? null : [])}>Mehrere auswählen…</button>
+        </div>}
+        {!ro && pick && <div className="dish-pick mt8" role="group" aria-label="Mehrere Gerichte auswählen">
+          {COURSES.map(c => {
+            const list = d.dishes.filter(x => x.course === c && !used.has(x.id)).sort((a, b) => a.name.localeCompare(b.name, 'de'));
+            return list.length ? <div key={c}><b>{t(c)}</b><div className="dish-pick-list">{list.map(x => (
+              <label key={x.id} className="chk"><input type="checkbox" checked={pick.includes(x.id)}
+                onChange={e => setPick(e.target.checked ? [...pick, x.id] : pick.filter(y => y !== x.id))} /> {x.name}</label>))}</div></div> : null;
+          })}
+          <div className="row mt8">
+            <button type="button" className="btn small primary" disabled={!pick.length} onClick={() => { addDishes(pick); setPick(null); }}>{pick.length || ''} Gerichte hinzufügen</button>
+            <button type="button" className="btn small" onClick={() => setPick(null)}>Abbrechen</button>
+          </div>
         </div>}
         {!ro && <p className="muted" style={{ fontSize: 12, margin: '4px 0 0' }}>Fehlt ein Gericht? Im Reiter „Gerichte“ anlegen.</p>}
         <label className="mt8">Notiz für die Küche<textarea value={m.notes} onChange={e => upd({ notes: e.target.value })} /></label>

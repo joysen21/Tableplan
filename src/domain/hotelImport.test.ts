@@ -118,3 +118,14 @@ describe('Abgleich mit dem Bestand', () => {
     expect(plan.create[0]).toMatchObject({ roomNo: '201', adults: 2, children: 1, board: 'VP', externalId: null });
   });
 });
+
+describe('Leere Zimmer im Export', () => {
+  it('Zeilen mit nur der Zimmernummer werden übersprungen, nicht als Fehler gemeldet', () => {
+    const empty = 'Nein;;;;301;;;;;;;;;;;;;;;;';
+    const p = parseImport([HEAD, row('3613', '2026', 1, '103', 'Muster Max', 'Muster Max', '14.10.2026', '23.10.2026'), empty, ';;;;302;;;;;;;;;;;;;;;;'].join('\r\n'));
+    expect(p).toMatchObject({ errors: [], emptyRooms: 2 });
+    expect(p.stays.map(s => s.roomNo)).toEqual(['103']);
+    const simple = parseImport('Zimmer;Name;Erwachsene;Kinder;Anreise;Abreise;Verpflegung\n201;;;;;;\n202;Gast;2;0;15.10.2026;18.10.2026;HP');
+    expect(simple).toMatchObject({ errors: [], emptyRooms: 1 });
+  });
+});

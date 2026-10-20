@@ -17,6 +17,7 @@ const T: Record<Lang, Dict> = {
     allergens: 'Allergene', allergenInfo: 'Allergene nach EU-Verordnung 1169/2011', veg: 'vegetarisch', vegan: 'vegan', partial: 'Noch nicht alle Personen haben gewählt – Sie können trotzdem senden.',
     loading: 'Speisekarte wird geladen…',
     freeSeating: 'Freie Platzwahl – bitte wählen Sie Ihr Zimmer.', pickRoom: 'Zimmer auswählen',
+    noteLabel: 'Notiz an die Küche', notePh: 'z. B. Fleisch medium, ohne Zwiebeln, Dessert später',
     noRoomFree: 'Für dieses Menü ist kein Hotelzimmer eingetragen. Bitte wenden Sie sich an unser Team.'
   },
   it: {
@@ -30,6 +31,7 @@ const T: Record<Lang, Dict> = {
     allergens: 'Allergeni', allergenInfo: 'Allergeni secondo il Regolamento UE 1169/2011', veg: 'vegetariano', vegan: 'vegano', partial: 'Non tutte le persone hanno scelto – può comunque inviare.',
     loading: 'Caricamento del menù…',
     freeSeating: 'Posto libero – selezioni la Sua camera.', pickRoom: 'Selezionare la camera',
+    noteLabel: 'Nota per la cucina', notePh: 'p. es. carne media, senza cipolla, dessert più tardi',
     noRoomFree: 'Per questo menù non risulta nessuna camera. Si rivolga al nostro personale.'
   },
   en: {
@@ -43,6 +45,7 @@ const T: Record<Lang, Dict> = {
     allergens: 'Allergens', allergenInfo: 'Allergens according to EU Regulation 1169/2011', veg: 'vegetarian', vegan: 'vegan', partial: 'Not everyone has chosen yet – you can still send.',
     loading: 'Loading menu…',
     freeSeating: 'Free seating – please select your room.', pickRoom: 'Select room',
+    noteLabel: 'Note for the kitchen', notePh: 'e.g. meat medium, no onions, dessert later',
     noRoomFree: 'No hotel room is registered for this menu. Please ask our team.'
   }
 };

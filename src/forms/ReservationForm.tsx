@@ -1,5 +1,5 @@
 /** Reservierung anlegen / bearbeiten */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Trash2, X } from '../ui/icons';
 import { newId } from '../domain/demo';
 import { guessAllergens } from '../domain/menu';
@@ -15,6 +15,8 @@ import { useUi } from '../store/ui';
 import { closeDialog } from '../store/dialogs';
 import { confirmDialog, toast } from '../ui/notify';
 import { Modal } from '../ui/Modal';
+import { cleanCounts, menuChoiceFor } from '../domain/guestMenu';
+import { MenuChoiceEditor, type ChoiceDraft } from './MenuChoiceEditor';
 
 /** Feldnamen für die Rückfrage bei Bearbeitungskonflikten */
 const FIELD_LABEL: Partial<Record<keyof Reservation, string>> = {
@@ -43,6 +45,9 @@ export function ReservationForm({ r, preset }: { r?: Reservation; preset?: Parti
   });
   const [repeat, setRepeat] = useState(0);
   const [busy, setBusy] = useState(false);
+  // Menüauswahl des Hotelzimmers (null = unverändert); bei anderem Tag/Service/Zimmer verwerfen
+  const [mc, setMc] = useState<ChoiceDraft | null>(null);
+  useEffect(() => setMc(null), [draft.date, draft.serviceId, draft.stayId]);
 
   // Uhrzeit und Dauer werden nicht eingegeben: Beginn des Service (Hotelgäste: Hotel-Standardzeit) bis zum festen Service-Ende
   function withServiceTime(x: Reservation): Reservation {
@@ -91,6 +96,14 @@ export function ReservationForm({ r, preset }: { r?: Reservation; preset?: Parti
     const next = { ...mine, name: mine.name.trim() };
     if (r?.stayId && JSON.stringify(r.tableIds) !== JSON.stringify(next.tableIds)) next.manualTable = true;
     const items = [next];
+    // Menüauswahl vorab prüfen, damit nicht nur die Hälfte gespeichert wird
+    const { menu, choice } = menuChoiceFor(d, next);
+    let choiceRow = null;
+    if (mc && menu && next.stayId) {
+      const res = cleanCounts(menu.items, persons(next), mc.counts);
+      if ('error' in res) return toast(res.error, 'err');
+      choiceRow = { id: choice?.id ?? newId(), menuId: menu.id, stayId: next.stayId, counts: res.counts, note: mc.note.trim() };
+    }
     let skipped = 0;
     if (isNew && repeat > 0) {
       next.seriesId = next.id;
@@ -103,6 +116,7 @@ export function ReservationForm({ r, preset }: { r?: Reservation; preset?: Parti
     setBusy(true);
     const ok = await store.saveReservations(items, [], [isNew ? 'Reservierung angelegt' : 'Reservierung geändert',
       `${next.name} ${next.date} ${next.time} ${persons(next)}P${repeat ? ` (+${repeat} Wiederholungen)` : ''}`]);
+    if (ok && choiceRow) await store.upsert('menuChoices', [choiceRow], ['Menüauswahl geändert', `${next.name}`]);
     setBusy(false);
     if (ok) { toast(skipped ? `Gespeichert – ${skipped} Wiederholung(en) ohne Tisch (belegt)` : 'Gespeichert'); closeDialog(); }
   }
@@ -143,6 +157,7 @@ export function ReservationForm({ r, preset }: { r?: Reservation; preset?: Parti
           <option value="">– kein Hotelgast –</option>
           {inHouse.map(s => <option key={s.id} value={s.id}>Zi. {s.roomNo} · {s.name} ({s.adults + s.children}P, {s.board})</option>)}
         </select></label>
+      {draft.stayId && <><h4 style={{ margin: '14px 0 6px' }}>Menü</h4><MenuChoiceEditor d={d} r={draft} value={mc} onChange={setMc} /></>}
       <label className="mt8">Weitere Unverträglichkeiten / Notiz<input value={draft.allergies} placeholder="z. B. vegetarisch, keine Zwiebeln" onChange={e => upd({ allergies: e.target.value })} /></label>
       <label className="mt8">Notizen<textarea value={draft.notes} onChange={e => upd({ notes: e.target.value })} /></label>
       <div className="row mt8">
