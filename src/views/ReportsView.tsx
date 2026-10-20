@@ -1,6 +1,6 @@
-/** Berichte: Tagesübersicht, Küchenvorschau, Allergien, Hotel-Tischliste, Tischplan – druckbar */
+/** Berichte, nach Abteilung gruppiert (Service, Küche, Hotel, Dienstplan) – alle druckbar */
 import { useState, type ReactNode } from 'react';
-import { Printer } from '../ui/icons';
+import { BedDouble, CalendarClock, ChefHat, Printer, Utensils, type LucideIcon } from '../ui/icons';
 import { byId, isBlocked, isCancelled, isInHouse, needsTable, persons, resStart, tableNames, tableStatusAt } from '../domain/logic';
 import { statusInfo } from '../domain/statuses';
 import type { Menu, Reservation, VenueData } from '../domain/types';
@@ -9,13 +9,21 @@ import { allergenWarnings, allergyText, dishAllergens, dishPlans, findMenu, hasA
 import { IngredientTable, WarningList } from '../forms/MenuForms';
 import { AllergenNos } from '../ui/AllergenPicker';
 import { t } from '../lib/i18n';
-import { fmtDate, fmtShort, fromMin, toMin } from '../lib/time';
+import { fmtDate, fmtShort, fromMin } from '../lib/time';
 import { useApp } from '../store/app';
-import { useData, useServiceId } from '../store/hooks';
+import { useData, useServiceId, useViews } from '../store/hooks';
 import { useUi } from '../store/ui';
 import { FloorPlan, Legend } from '../ui/FloorPlan';
+import { RosterPlan } from './RosterPlan';
+import { sortDepartments } from '../domain/roster';
 
-const TYPES: [string, string][] = [['tag', 'Tagesübersicht'], ['kueche', 'Küchenvorschau / Briefing'], ['zutaten', 'Zutatenliste'], ['allergene', 'Allergen-Übersicht'], ['allergie', 'Allergie-Liste'], ['hotel', 'Hotel-Tischliste'], ['plan', 'Tischplan drucken']];
+/** Berichte je Abteilung, die sie braucht */
+const GROUPS: { key: string; label: string; icon: LucideIcon; reports: [string, string][] }[] = [
+  { key: 'service', label: 'Service', icon: Utensils, reports: [['tag', 'Tagesübersicht'], ['allergie', 'Allergie-Liste'], ['plan', 'Tischplan']] },
+  { key: 'kueche', label: 'Küche', icon: ChefHat, reports: [['kueche', 'Küchenvorschau / Briefing'], ['zutaten', 'Zutatenliste'], ['allergene', 'Allergen-Übersicht']] },
+  { key: 'hotel', label: 'Hotel', icon: BedDouble, reports: [['hotel', 'Hotel-Tischliste']] },
+  { key: 'dienst', label: 'Dienstplan', icon: CalendarClock, reports: [['dienst', 'Dienstplan']] }
+];
 
 function AllergyTable({ d, rs, withSvc }: { d: VenueData; rs: Reservation[]; withSvc?: boolean }) {
   const list = rs.filter(hasAllergy);
@@ -32,7 +40,16 @@ export function ReportsView() {
   const role = useApp(s => s.user!.role);
   const ui = useUi();
   const serviceId = useServiceId();
-  const type = ui.report || (role === 'kueche' ? 'kueche' : 'tag');
+  const views = useViews();
+  // Dienstplan-Bericht nur mit Dienstplan-Modul und Zugriff auf den Dienstplan
+  const groups = GROUPS.filter(g => g.key !== 'dienst' || views.includes('dienst'));
+  const known = groups.flatMap(g => g.reports.map(r => r[0]));
+  const type = known.includes(ui.report) ? ui.report : (role === 'kueche' ? 'kueche' : 'tag');
+  const group = groups.find(g => g.reports.some(r => r[0] === type)) ?? groups[0];
+  // Tischplan: alle Räume oder ein einzelner Raum; Dienstplan: Bereich
+  const [planRoom, setPlanRoom] = useState('');
+  const [rosterDept, setRosterDept] = useState('');
+  const printRoom = (id: string) => { setPlanRoom(id); setTimeout(() => window.print(), 50); };
   const svc = byId(d.services, serviceId);
   const D = ui.date;
   const [zScope, setZScope] = useState<'service' | 'tag'>('service');
@@ -54,12 +71,8 @@ export function ReportsView() {
     })}</>;
   } else if (type === 'kueche' && svc) {
     const rs = d.reservations.filter(r => r.date === D && r.serviceId === svc.id && !isCancelled(r)).sort((a, b) => resStart(a) - resStart(b));
-    const slots: { m: number; c: number }[] = [];
-    for (let m = toMin(svc.start); m <= toMin(svc.end); m += 15) slots.push({ m, c: rs.filter(r => Math.floor(resStart(r) / 15) * 15 === m).reduce((a, r) => a + persons(r), 0) });
-    const max = Math.max(1, ...slots.map(s => s.c));
     const tot = rs.reduce((a, r) => a + persons(r), 0), hotel = rs.filter(r => r.stayId).reduce((a, r) => a + persons(r), 0);
     const big = rs.filter(r => persons(r) >= 6), unas = rs.filter(r => !r.tableIds.length), blocked = d.tables.filter(x => isBlocked(d, x.id, D, svc.id));
-    const peak = slots.reduce((a, s) => (s.c > a.c ? s : a), slots[0] ?? { m: 0, c: 0 });
     body = <>{head('Küchenvorschau & Briefing', svc.name)}
       <div className="kpis" style={{ padding: 0, border: 0 }}>
         <div className="kpi"><b>{tot}</b><small>Gäste gesamt</small></div><div className="kpi"><b>{hotel}</b><small>Hotelgäste</small></div>
@@ -67,9 +80,6 @@ export function ReportsView() {
         <div className="kpi"><b>{rs.filter(hasAllergy).length}</b><small>mit Allergien</small></div>
       </div>
       <MenuBrief d={d} menu={findMenu(d, D, svc.id)} />
-      <h4>Ankünfte pro 15 Minuten</h4>
-      <div className="slotbar">{slots.map(s => <div key={s.m} style={{ height: `${(s.c / max) * 100}%` }}><span>{s.c || ''}</span></div>)}</div>
-      <div className="slotlbl">{slots.map(s => <span key={s.m}>{s.m % 60 ? '' : fromMin(s.m)}</span>)}</div>
       <h4>Allergien & Unverträglichkeiten</h4><AllergyTable d={d} rs={rs} />
       <h4>Anlässe & VIPs</h4>{rs.filter(r => r.occasion || r.vip).map(r => <div key={r.id}>{r.time} · {r.name} · Tisch {tableNames(d, r.tableIds) || '–'} · {r.vip ? '★ VIP ' : ''}{r.occasion}</div>)}
       {!rs.some(r => r.occasion || r.vip) && <p className="muted">Keine.</p>}
@@ -77,8 +87,7 @@ export function ReportsView() {
         {big.length > 0 && <li>Große Gruppen: {big.map(r => `${r.name} (${persons(r)}P, ${r.time})`).join(', ')}</li>}
         {unas.length > 0 && <li><b>{unas.length} Reservierungen noch ohne Tisch</b></li>}
         {blocked.length > 0 && <li>Gesperrte Tische: {blocked.map(x => x.name).join(', ')}</li>}
-        <li>Kinderstühle: {rs.filter(r => r.highchair).length}</li>
-        <li>Größter Ankunfts-Slot: {fromMin(peak.m)} ({peak.c} Gäste)</li></ul></>;
+        <li>Kinderstühle: {rs.filter(r => r.highchair).length}</li></ul></>;
   } else if (type === 'allergie') {
     const rs = d.reservations.filter(r => r.date === D && !isCancelled(r) && hasAllergy(r)).sort((a, b) => a.serviceId.localeCompare(b.serviceId) || resStart(a) - resStart(b));
     body = <>{head('Allergie-Liste')}<AllergyTable d={d} rs={rs} withSvc /></>;
@@ -126,16 +135,39 @@ export function ReportsView() {
         <p className="muted" style={{ fontSize: 12 }}>● enthalten · ○ kann Spuren enthalten · {ALLERGENS.map(a => `${allergenNo(a)} ${t(a)}`).join(' · ')}</p>
         <p className="muted" style={{ fontSize: 12 }}>Angaben nach VO (EU) 1169/2011, abgeleitet aus den hinterlegten Zutaten.</p></>}</>;
   } else if (type === 'plan' && svc) {
-    body = <>{head('Tischplan', `${svc.name}, Stand ${fromMin(ui.time)}`)}
-      {d.rooms.map(room => <div key={room.id}><h4>{room.name}</h4><FloorPlan data={d} room={room} mode="live" status={tb => tableStatusAt(d, tb, D, svc.id, ui.time)} /></div>)}
-      <Legend /></>;
+    const rooms = planRoom ? d.rooms.filter(r => r.id === planRoom) : d.rooms;
+    body = <>
+      <div className="row no-print mb8 room-print" role="group" aria-label="Räume">
+        <span className="muted">Raum:</span>
+        <button className="btn small" aria-pressed={!planRoom} onClick={() => setPlanRoom('')}>Alle Räume</button>
+        {d.rooms.map(r => <span key={r.id} className="room-chip">
+          <button className="btn small" aria-pressed={planRoom === r.id} onClick={() => setPlanRoom(r.id)}>{r.name}</button>
+          <button className="btn small icon" aria-label={`${r.name} drucken`} title={`Nur ${r.name} drucken`} onClick={() => printRoom(r.id)}><Printer /></button></span>)}
+      </div>
+      {rooms.map(room => <div key={room.id} className="print-room">
+        {head(`Tischplan · ${room.name}`, `${svc.name}, Stand ${fromMin(ui.time)}`)}
+        <FloorPlan data={d} room={room} mode="live" status={tb => tableStatusAt(d, tb, D, svc.id, ui.time)} />
+        <Legend /></div>)}</>;
+  } else if (type === 'dienst') {
+    const depts = sortDepartments(d.departments);
+    body = <>
+      <div className="row no-print mb8"><label className="row" style={{ gap: 6 }}>Bereich
+        <select aria-label="Bereich Dienstplan" value={rosterDept} onChange={e => setRosterDept(e.target.value)} style={{ width: 'auto' }}>
+          <option value="">Alle Bereiche</option>{depts.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label></div>
+      <RosterPlan dept={rosterDept} viewOnly /></>;
   }
 
   return (
     <div className="panel">
-      <div className="row" style={{ padding: '10px 14px', borderBottom: '1px solid var(--line)' }}>
-        {TYPES.map(([k, l]) => <button key={k} className="btn small" aria-pressed={type === k} onClick={() => ui.set({ report: k })}>{l}</button>)}
-        <span className="spacer" /><button className="btn primary" onClick={() => window.print()}><Printer />Drucken / PDF</button>
+      <div className="report-nav no-print">
+        <div className="seg report-groups" role="tablist" aria-label="Abteilung">
+          {groups.map(g => { const I = g.icon; return (
+            <button key={g.key} role="tab" className="btn" aria-selected={g === group} aria-pressed={g === group} onClick={() => ui.set({ report: g.reports[0][0] })}><I />{g.label}</button>); })}
+        </div>
+        <div className="row report-types">
+          {group.reports.length > 1 && group.reports.map(([k, l]) => <button key={k} className="btn small" aria-pressed={type === k} onClick={() => ui.set({ report: k })}>{l}</button>)}
+          <span className="spacer" /><button className="btn primary" onClick={() => window.print()}><Printer />Drucken / PDF</button>
+        </div>
       </div>
       <div className="body report print-area">{body}</div>
     </div>

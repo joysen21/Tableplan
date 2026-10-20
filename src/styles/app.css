@@ -83,10 +83,12 @@ label>input,label>select,label>textarea{margin-top:3px}
 /* ---------- Layout ---------- */
 header{display:flex;align-items:center;gap:12px;padding:8px 14px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;flex-wrap:wrap}
 /* PC: Seitenmenü links, ein-/ausklappbar (nur Icons) */
-.shell{display:grid;grid-template-columns:var(--side-w,220px) minmax(0,1fr);min-height:100vh}
-.shell.nav-collapsed{--side-w:64px}
+/* Seitenmenü: „automatisch“ = schmal (nur Icons), klappt beim Darüberfahren über dem Inhalt auf; „fixiert“ = immer offen */
+.shell{--side-w:220px;padding-left:var(--side-w);min-height:100vh}
+.shell.nav-auto{--side-w:64px}
 .shell-main{min-width:0}
-.sidenav{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:6px;padding:12px 10px;background:var(--panel);border-right:1px solid var(--line);overflow:hidden auto;z-index:21}
+.sidenav{position:fixed;top:0;left:0;bottom:0;width:var(--side-w);display:flex;flex-direction:column;gap:6px;padding:12px 10px;background:var(--panel);border-right:1px solid var(--line);overflow:hidden auto;z-index:40;transition:width .15s ease .25s,box-shadow .15s ease .25s}
+.nav-auto .sidenav:hover,.nav-auto .sidenav:has(:focus-visible){width:220px;box-shadow:4px 0 18px rgba(15,35,71,.18);transition-delay:.12s}
 .sidenav .brand{display:flex;align-items:center;gap:8px;font-weight:800;font-size:16px;letter-spacing:-.01em;padding:2px 7px 12px;min-width:0}
 .sidenav .brand img{width:30px;height:30px;flex:none}
 .sidenav .brand .venue{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -97,9 +99,8 @@ header{display:flex;align-items:center;gap:12px;padding:8px 14px;background:var(
 .side-toggle{display:flex;align-items:center;gap:10px;border:0;background:none;color:var(--muted);padding:9px 10px;border-radius:8px;cursor:pointer;font:inherit;min-height:40px}
 .side-toggle:hover{background:var(--btn-bg);color:var(--text)}
 .side-toggle svg{width:20px;height:20px;flex:none}
-.nav-collapsed .sidenav .lbl{display:none}
-.nav-collapsed .sidenav .brand{padding:2px 7px 12px}
-.nav-collapsed .topnav a,.nav-collapsed .side-toggle{justify-content:center;padding:9px 0}
+.nav-auto .sidenav:not(:hover):not(:has(:focus-visible)) .lbl{display:none}
+.nav-auto .sidenav:not(:hover):not(:has(:focus-visible)) :is(.topnav a,.side-toggle){justify-content:center;padding:9px 0}
 header .pagetitle{flex:1;margin:0;font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 header .sync{margin-left:auto}
 .ctx{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -173,6 +174,14 @@ table.list tr.clickable:hover td{background:var(--panel2)}
 /* ---------- Hotel ---------- */
 .hotel{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
 /* Einstellungen: thematische Gruppen (aufklappbar), zwei Spalten am PC */
+/* Berichte: Abteilungen als Reiter, darunter die Berichte der Abteilung */
+.report-nav{padding:10px 14px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.report-groups .btn{gap:6px}
+.report-groups .btn svg{width:18px;height:18px}
+.report-types{min-height:34px}
+.room-chip{display:inline-flex;gap:2px}
+@media print{.print-room+.print-room{break-before:page}}
+@media (max-width:760px){.report-groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr))}}
 .settings-toolbar{display:flex;justify-content:flex-end;margin-bottom:10px}
 @media (max-width:760px){.settings-toolbar{display:none}}
 .settings{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
@@ -241,11 +250,6 @@ table.list tr.clickable:hover td{background:var(--panel2)}
 .report h2{margin:0 0 4px}
 @media screen{.report{overflow-x:auto}}
 .report h4{margin:16px 0 6px}
-.slotbar{display:flex;align-items:flex-end;gap:3px;height:120px;border-bottom:1px solid var(--line);margin:6px 0 2px}
-.slotbar div{flex:1;background:var(--hl);border-radius:3px 3px 0 0;position:relative;min-height:1px}
-.slotbar div span{position:absolute;top:-16px;left:0;right:0;text-align:center;font-size:10px;color:var(--muted)}
-.slotlbl{display:flex;gap:3px;font-size:10px;color:var(--muted)}
-.slotlbl span{flex:1;text-align:center}
 
 @media print{
   html,body{background:#fff !important}
@@ -323,7 +327,7 @@ table.list tr.clickable:hover td{background:var(--panel2)}
 /* ---------- Handy-Layout: kompakte Kopfzeile + Leiste unten ---------- */
 @media (max-width:760px){
   header{flex-wrap:nowrap;gap:6px;padding:6px 8px;padding-top:max(6px,env(safe-area-inset-top))}
-  .shell{display:block}
+  .shell{padding-left:0}
   .sidenav{display:none}
   header .pagetitle{display:block;flex:1;margin:0 4px;font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .ctx{flex:1;flex-wrap:nowrap;gap:4px;min-width:0}

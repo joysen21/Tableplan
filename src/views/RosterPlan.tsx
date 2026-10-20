@@ -25,7 +25,8 @@ const dmy = (s: string) => s.split('-').reverse().join('.');
 const shiftLabel = (d: VenueData, s: Shift) => d.shiftTemplates.find(x => x.id === s.templateId)?.short || `${s.start}–${s.end}`;
 const shiftColor = (d: VenueData, s: Shift) => d.shiftTemplates.find(x => x.id === s.templateId)?.color ?? d.departments.find(x => x.id === s.departmentId)?.color ?? '#4F7BD1';
 
-export function RosterPlan({ dept }: { dept: string }) {
+/** viewOnly = nur ansehen/drucken (Berichte): ohne Bearbeiten, Veröffentlichen und Stunden-Export */
+export function RosterPlan({ dept, viewOnly }: { dept: string; viewOnly?: boolean }) {
   const d = useData();
   const ui = useUi();
   const store = useApp();
@@ -36,7 +37,7 @@ export function RosterPlan({ dept }: { dept: string }) {
   const scope = dept ? d.departments.filter(x => x.id === dept) : sortDepartments(d.departments);
   // Ansicht (Standard) und Bearbeiten getrennt: geplant wird erst nach „Bearbeiten“
   const [editing, setEditing] = useState(false);
-  const mineAll = plannableDepartments(role, d.departments, userId).filter(x => scope.some(s => s.id === x.id));
+  const mineAll = viewOnly ? [] : plannableDepartments(role, d.departments, userId).filter(x => scope.some(s => s.id === x.id));
   const mine = editing ? mineAll : [];
   const canPlan = (depId: string) => editing && canPlanDept(role, d.departments, userId, depId);
   const days = mode === 'monat' ? monthDays(date) : mode === 'tag' ? [date] : weekDays(date);

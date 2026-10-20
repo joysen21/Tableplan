@@ -144,22 +144,38 @@ test('Rollen: Küche sieht Berichte und Menü (+ Dienstplan als Küchenleitung),
   await expect(page.getByRole('button', { name: 'Reservierung', exact: true })).toHaveCount(0);
 });
 
-test('Seitenmenü am PC ein- und ausklappen (wird gemerkt), Einstellungen in Gruppen', async ({ page }) => {
+test('Seitenmenü am PC: klappt beim Darüberfahren auf und wieder zu, lässt sich fixieren (wird gemerkt); Einstellungen in Gruppen', async ({ page }) => {
   await loginDemo(page);
   const side = page.locator('aside.sidenav');
+  const width = async () => (await side.boundingBox())!.width;
   await expect(side).toBeVisible();
-  const wide = (await side.boundingBox())!.width;
+  // Standard: schmal (nur Icons)
+  await page.mouse.move(700, 400);
+  await expect.poll(width).toBeLessThan(80);
+  await page.screenshot({ path: 'test-results/seitenmenue-zu.png' });
+  // Maus drüber → klappt über dem Inhalt auf, Inhalt verschiebt sich nicht
+  const mainX = (await page.locator('main').boundingBox())!.x;
+  await side.hover();
+  await expect.poll(width).toBeGreaterThan(200);
+  expect((await page.locator('main').boundingBox())!.x).toBe(mainX);
   await page.screenshot({ path: 'test-results/seitenmenue-offen.png' });
-  await page.getByRole('button', { name: 'Menü einklappen' }).click();
-  await expect.poll(async () => (await side.boundingBox())!.width).toBeLessThan(80);
-  // eingeklappt: nur Icons, Ansichten weiter erreichbar
+  // Maus weg → wieder schmal
+  await page.mouse.move(700, 400);
+  await expect.poll(width).toBeLessThan(80);
+  // eingeklappt: Ansichten weiter erreichbar
   await page.getByRole('link', { name: 'Hotelgäste' }).click();
   await expect(page).toHaveURL(/hotel/);
+  // fixieren: bleibt offen, auch nach Neuladen
+  await side.hover();
+  await page.getByRole('button', { name: 'Menü fixieren' }).click();
+  await page.mouse.move(700, 400);
+  await expect.poll(width).toBeGreaterThan(200);
   await page.reload();
-  await expect.poll(async () => (await side.boundingBox())!.width).toBeLessThan(80);
-  await page.screenshot({ path: 'test-results/seitenmenue-zu.png' });
-  await page.getByRole('button', { name: 'Menü ausklappen' }).click();
-  await expect.poll(async () => (await side.boundingBox())!.width).toBe(wide);
+  await page.mouse.move(700, 400);
+  await expect.poll(width).toBeGreaterThan(200);
+  await page.getByRole('button', { name: 'Menü automatisch einklappen' }).click();
+  await page.mouse.move(700, 400);
+  await expect.poll(width).toBeLessThan(80);
 
   await page.getByRole('link', { name: 'Einstellungen' }).click();
   const groups = page.locator('details.settings-group');
@@ -181,4 +197,31 @@ test('Einstellungen am PC: alle Gruppen mit einem Knopf ein- und ausklappen', as
   await groups.first().locator('summary').click();
   await page.getByRole('button', { name: 'Alle Einstellungen einklappen' }).click();
   for (const g of await groups.all()) await expect(g).not.toHaveAttribute('open', '');
+});
+
+test('Berichte nach Abteilung; Tischplan je Raum; Dienstplan druckbar; ohne Ankünfte pro 15 Minuten', async ({ page }) => {
+  await loginDemo(page);
+  await page.getByRole('link', { name: 'Berichte' }).click();
+  const tabs = page.getByRole('tablist', { name: 'Abteilung' });
+  await expect(tabs.getByRole('tab')).toHaveText(['Service', 'Küche', 'Hotel', 'Dienstplan']);
+  await tabs.getByRole('tab', { name: 'Küche' }).click();
+  await expect(page.locator('.report h2')).toHaveText('Küchenvorschau & Briefing');
+  await expect(page.locator('.report')).not.toContainText('Ankünfte pro 15 Minuten');
+  await expect(page.locator('.report')).not.toContainText('Ankunfts-Slot');
+
+  // Tischplan: einzelner Raum
+  await tabs.getByRole('tab', { name: 'Service' }).click();
+  await page.getByRole('button', { name: 'Tischplan', exact: true }).click();
+  await expect(page.locator('.print-room')).toHaveCount(2);
+  await page.getByRole('group', { name: 'Räume' }).getByRole('button', { name: 'Stube', exact: true }).click();
+  await expect(page.locator('.print-room')).toHaveCount(1);
+  await expect(page.locator('.print-room h2')).toHaveText('Tischplan · Stube');
+  await page.screenshot({ path: 'test-results/berichte-tischplan.png' });
+
+  // Dienstplan als Bericht: nur ansehen/drucken
+  await tabs.getByRole('tab', { name: 'Dienstplan' }).click();
+  await expect(page.locator('.report .roster-grid')).toBeVisible();
+  await expect(page.locator('.report').getByRole('button', { name: 'Bearbeiten' })).toHaveCount(0);
+  await page.getByLabel('Bereich Dienstplan').selectOption({ label: 'Küche' });
+  await expect(page.locator('.report .roster-grid')).toContainText('Lukas Mair');
 });

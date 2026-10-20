@@ -66,6 +66,7 @@ test('Gast-Allergen erscheint als Warnung in der Küchenvorschau', async ({ page
 
   await goView(page, 'Berichte');
   await page.locator('header').getByLabel('Service').selectOption({ label: 'Abendessen' });
+  await page.getByRole('tab', { name: 'Küche' }).click();
   await page.getByRole('button', { name: 'Küchenvorschau / Briefing' }).click();
   // Demo-Abendmenü heute enthält den Apfelstrudel (Haselnüsse) und als Alternative das Sorbet
   await expect(page.locator('.allergen-warnings')).toContainText('E2E Allergie');
