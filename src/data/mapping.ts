@@ -111,7 +111,7 @@ export const toDb = {
   menuChoices: (x: MenuChoice, v: string) => ({ id: x.id, venue_id: v, menu_id: x.menuId, stay_id: x.stayId, counts: x.counts, note: (x.note ?? '').trim() }),
   departments: (x: Department, v: string) => ({
     id: x.id, venue_id: v, name: x.name, color: x.color, sort: x.sort, lead_ids: x.leadIds, guests_per_staff: x.guestsPerStaff || null, min_staff: x.minStaff || 0,
-    ...(x.icon ? { icon: x.icon } : {}) // nur mitschicken, wenn gesetzt (vor Migration 20261020000000 fehlt die Spalte)
+    icon: x.icon ?? null
   }),
   positions: (x: Position, v: string) => ({ id: x.id, venue_id: v, department_id: x.departmentId, name: x.name, sort: x.sort }),
   staff: (x: Staff, v: string) => ({

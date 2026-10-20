@@ -170,8 +170,8 @@ export function demoVenueData(venueId: string, name: string): VenueData {
 /** Demo-Dienstplan: Bereiche mit Positionen, Mitarbeitende (inkl. Saisonkräfte) und Schichtvorlagen.
  *  Bereichsleitungen (Benutzer) setzt das Demo-Repo, weil die Benutzer-IDs nur dort bekannt sind. */
 export function demoRoster(d: VenueData) {
-  const dep = (name: string, color: string, sort: number, guestsPerStaff: number | null, minStaff: number) => ({ id: newId(), name, color, sort, leadIds: [] as string[], guestsPerStaff, minStaff });
-  const kueche = dep('Küche', '#e36209', 0, 40, 2), service = dep('Service', '#4F7BD1', 1, 25, 2), bar = dep('Bar', '#a371f7', 2, null, 1), rez = dep('Rezeption', '#2da44e', 3, null, 1);
+  const dep = (name: string, color: string, sort: number, guestsPerStaff: number | null, minStaff: number, icon: string) => ({ id: newId(), name, color, sort, leadIds: [] as string[], guestsPerStaff, minStaff, icon });
+  const kueche = dep('Küche', '#e36209', 0, 40, 2, 'kueche'), service = dep('Service', '#4F7BD1', 1, 25, 2, 'service'), bar = dep('Bar', '#a371f7', 2, null, 1, 'bar'), rez = dep('Rezeption', '#2da44e', 3, null, 1, 'rezeption');
   d.departments = [kueche, service, bar, rez];
   const P: Record<string, string> = {};
   const pos = (departmentId: string, names: string[]) => names.forEach((name, sort) => { const id = newId(); P[name] = id; d.positions.push({ id, departmentId, name, sort }); });

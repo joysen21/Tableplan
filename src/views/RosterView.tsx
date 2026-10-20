@@ -14,6 +14,7 @@ import { openDialog } from '../store/dialogs';
 import { confirmDialog, toast } from '../ui/notify';
 import { RosterPlan } from './RosterPlan';
 import { ABSENCE_LABEL, vacationUsed } from '../domain/rosterPlan';
+import { DeptIcon, StaffMark } from '../ui/DeptIcon';
 
 /** "JJJJ-MM-TT" → "TT.MM.JJJJ" */
 const dmy = (s: string) => s.split('-').reverse().join('.');
@@ -79,7 +80,7 @@ function AbsenceList({ dept }: { dept: string }) {
         <tbody>{staff.map(s => {
           const used = vacationUsed(d, s.id, year), rest = s.vacationDays - used;
           return <tr key={s.id} className="clickable" onClick={() => openDialog({ type: 'staff', staff: s })}>
-            <td><Dot color={s.color} /><b>{s.name}</b></td><td>{s.vacationDays.toLocaleString('de-DE')}</td><td>{used}</td>
+            <td><StaffMark dep={d.departments.find(x => x.id === s.departmentId)} color={s.color} /><b>{s.name}</b></td><td>{s.vacationDays.toLocaleString('de-DE')}</td><td>{used}</td>
             <td style={{ color: rest < 0 ? 'var(--danger)' : undefined, fontWeight: 600 }}>{rest.toLocaleString('de-DE')}</td><td>{sick(s.id) || '–'}</td></tr>;
         })}</tbody></table></div>
       <p className="muted" style={{ fontSize: 12 }}>Gezählt werden Urlaubstage ohne Sonntage und Feiertage (Italien, Pfingstmontag Südtirol). Anspruch im Mitarbeiter-Dialog eintragen.</p>
@@ -122,7 +123,7 @@ function StaffList({ dept }: { dept: string }) {
           const expired = s.active && !contractActive(s, t0);
           return (
             <tr key={s.id} className={'clickable' + (s.active ? '' : ' inactive')} onClick={() => openDialog({ type: 'staff', staff: s })}>
-              <td><Dot color={s.color} /><b>{s.name}</b> {s.short && <span className="badge">{s.short}</span>}{!s.active && <span className="badge">ausgeschieden</span>}</td>
+              <td><StaffMark dep={d.departments.find(x => x.id === s.departmentId)} color={s.color} /><b>{s.name}</b> {s.short && <span className="badge">{s.short}</span>}{!s.active && <span className="badge">ausgeschieden</span>}</td>
               <td>{deptName(s.departmentId)}{guest && <span className="badge" title="Stammbereich ist ein anderer, aber einsetzbar">einsetzbar</span>}</td>
               <td style={{ fontSize: 13 }}>{s.positionIds.map(p => d.positions.find(x => x.id === p)?.name).filter(Boolean).join(', ') || <span className="muted">–</span>}</td>
               <td style={{ fontSize: 13 }}>{t(s.contract)}
@@ -155,7 +156,7 @@ function PositionCard({ dep }: { dep: Department }) {
   }
   return (
     <div className="panel roster-dept">
-      <h3><Dot color={dep.color} />{dep.name}</h3>
+      <h3><DeptIcon dep={dep} />{dep.name}</h3>
       <div className="body">
         {!list.length && <p className="muted" style={{ margin: 0 }}>Noch keine Positionen.</p>}
         {list.map(p => <PositionRow key={p.id} id={p.id} name={p.name} edit={edit} dep={dep} exists={exists} />)}
@@ -208,7 +209,7 @@ function TemplateList({ depts }: { depts: Department[] }) {
         const edit = canPlanDept(role, d.departments, userId, dep.id);
         return (
           <section key={dep.id} className="roster-tpl-group">
-            <div className="row"><h4><Dot color={dep.color} />{dep.name}</h4><span className="spacer" />
+            <div className="row"><h4><DeptIcon dep={dep} />{dep.name}</h4><span className="spacer" />
               {edit && <button className="btn small" onClick={() => openDialog({ type: 'shifttemplate', departmentId: dep.id })}><Plus />Vorlage</button>}</div>
             {list.length ? <div className="table-scroll"><table className="list"><thead><tr><th>Vorlage</th><th>Zeiten</th><th>Pause</th><th>Arbeitszeit</th><th>Position</th></tr></thead>
               <tbody>{list.map(x => (

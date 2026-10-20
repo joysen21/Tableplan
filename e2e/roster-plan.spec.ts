@@ -13,6 +13,11 @@ const cell = (page: Page, name: string, col: number) => grid(page).getByRole('gr
 test('Küchenleitung plant per Vorlagen-Pinsel und Drag & Drop, Doppelbelegung wird verhindert', async ({ page }) => {
   await loginDemo(page, 'Karl (Küche)');
   await goView(page, 'Dienstplan');
+  // Standard ist die reine Ansicht: keine Vorlagen, kein Eintragen – erst nach „Bearbeiten“
+  await expect(page.getByRole('group', { name: 'Vorlagen' })).toHaveCount(0);
+  await expect(page.locator('.cell-add')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Bearbeiten' }).click();
+  await expect(page.getByRole('button', { name: 'Fertig' })).toBeVisible();
   await page.getByLabel('Bereichsfilter').selectOption({ label: 'Küche' });
   await page.getByRole('button', { name: 'Weiter' }).click(); // nächste Woche
   await expect(grid(page)).toContainText('Lukas Mair');
@@ -57,6 +62,7 @@ test('Küchenleitung plant per Vorlagen-Pinsel und Drag & Drop, Doppelbelegung w
 test('Prüfhinweise: Dienst trotz Krankmeldung, Pause fehlt', async ({ page }) => {
   await loginDemo(page, 'Karl (Küche)');
   await goView(page, 'Dienstplan');
+  await page.getByRole('button', { name: 'Bearbeiten' }).click();
   await page.getByLabel('Bereichsfilter').selectOption({ label: 'Küche' });
   // Jonas ist heute krank (Demo) → Dienst eintragen meldet einen Konflikt
   const today = page.locator('.rg-head.today');
@@ -94,6 +100,7 @@ test('Abwesenheit mit Urlaubskonto, Veröffentlichen und Mitarbeiter-Link (DE/IT
 
   // Service der aktuellen Woche ist veröffentlicht → erneut veröffentlichen geht
   await tabs.getByRole('button', { name: 'Dienstplan' }).click();
+  await page.getByRole('button', { name: 'Bearbeiten' }).click();
   await page.getByLabel('Bereichsfilter').selectOption({ label: 'Bar' });
   await expect(page.locator('.pub-chip')).toContainText('Entwurf');
   await page.locator('.pub-chip').getByRole('button', { name: 'Veröffentlichen' }).click();
@@ -133,6 +140,7 @@ test('Live-Plan zeigt „Heute im Dienst“, Prüfregeln sind einstellbar', asyn
 test('Teildienst zeigt beide Zeiten; Druckansicht ist auch im Dunkelmodus lesbar', async ({ page }) => {
   await loginDemo(page, 'Karl (Küche)', 'dark');
   await goView(page, 'Dienstplan');
+  await page.getByRole('button', { name: 'Bearbeiten' }).click();
   await page.getByLabel('Bereichsfilter').selectOption({ label: 'Küche' });
   await page.getByRole('button', { name: 'Weiter' }).click();
   const openMon = cell(page, 'Offene Schichten', 0);

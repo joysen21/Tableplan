@@ -11,7 +11,7 @@ import { useApp } from '../store/app';
 import { EDITION } from '../lib/edition';
 import { useData } from '../store/hooks';
 import { confirmDialog, toast } from '../ui/notify';
-import { Dot } from './RosterView';
+import { DeptIcon, DeptIconPicker } from '../ui/DeptIcon';
 
 export function ModulesPanel() {
   const d = useData();
@@ -106,13 +106,15 @@ function DepartmentRow({ dep, members }: { dep: Department; members: Member[] })
   return (
     <div className="panel dept-card">
       <div className="row">
-        <Dot color={dep.color} />
+        <DeptIcon dep={dep} />
         <input aria-label={`Name Bereich ${dep.name}`} value={nm} onChange={e => setNm(e.target.value)} style={{ flex: 1 }}
           onBlur={() => { const n = nm.trim(); if (n && n !== dep.name) save({ name: n }, `umbenannt in ${n}`); else setNm(dep.name); }}
           onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} />
         <input type="color" aria-label={`Farbe Bereich ${dep.name}`} value={dep.color} onChange={e => save({ color: e.target.value }, 'Farbe')} className="color-input" />
         <button className="btn small icon ghost danger" aria-label={`Bereich ${dep.name} löschen`} title="Bereich löschen" onClick={remove}><Trash2 /></button>
       </div>
+      <div className="mt8"><small className="muted">Icon (wird vor Bereich und Mitarbeitenden angezeigt):</small>
+        <DeptIconPicker value={dep.icon} color={dep.color} onChange={icon => save({ icon }, icon ? `Icon ${icon}` : 'Icon entfernt')} /></div>
       <div className="row mt8 dept-staffing">
         <label>1 Kraft je … Gäste<input type="number" min={0} placeholder="aus" aria-label={`Besetzungsschlüssel ${dep.name}`} key={'g' + dep.guestsPerStaff} defaultValue={dep.guestsPerStaff ?? ''}
           onBlur={e => { const v = +e.target.value > 0 ? Math.round(+e.target.value) : null; if (v !== dep.guestsPerStaff) save({ guestsPerStaff: v }, 'Besetzungsschlüssel'); }} /></label>

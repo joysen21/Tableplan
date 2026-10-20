@@ -1,7 +1,7 @@
 /** Dienstplan: Woche (Raster Mitarbeitende × Tage), Tag (Zeitstrahl), Monat (Übersicht).
  *  Planen per Vorlagen-„Pinsel“ (antippen/klicken) oder Drag & Drop; Prüfhinweise; Veröffentlichen je Bereich und Woche. */
-import { useMemo, type DragEvent } from 'react';
-import { ChevronLeft, ChevronRight, Copy, Download, Printer, TriangleAlert } from '../ui/icons';
+import { useMemo, useState, type DragEvent } from 'react';
+import { Check, ChevronLeft, ChevronRight, Copy, Download, Pencil, Printer, TriangleAlert } from '../ui/icons';
 import { newId } from '../domain/demo';
 import { canPlanDept, fmtHours, plannableDepartments, sortDepartments, templateTimes } from '../domain/roster';
 import {
@@ -18,7 +18,7 @@ import { useData, useRole, useUserId } from '../store/hooks';
 import { useUi } from '../store/ui';
 import { openDialog } from '../store/dialogs';
 import { confirmDialog, toast } from '../ui/notify';
-import { Dot } from './RosterView';
+import { DeptIcon, StaffMark } from '../ui/DeptIcon';
 
 const MONTHS = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
 const dmy = (s: string) => s.split('-').reverse().join('.');
@@ -34,8 +34,11 @@ export function RosterPlan({ dept }: { dept: string }) {
   const date = ui.rosterDate, mode = ui.rosterMode;
   const settings = rosterSettings(d.venue);
   const scope = dept ? d.departments.filter(x => x.id === dept) : sortDepartments(d.departments);
-  const mine = plannableDepartments(role, d.departments, userId).filter(x => scope.some(s => s.id === x.id));
-  const canPlan = (depId: string) => canPlanDept(role, d.departments, userId, depId);
+  // Ansicht (Standard) und Bearbeiten getrennt: geplant wird erst nach „Bearbeiten“
+  const [editing, setEditing] = useState(false);
+  const mineAll = plannableDepartments(role, d.departments, userId).filter(x => scope.some(s => s.id === x.id));
+  const mine = editing ? mineAll : [];
+  const canPlan = (depId: string) => editing && canPlanDept(role, d.departments, userId, depId);
   const days = mode === 'monat' ? monthDays(date) : mode === 'tag' ? [date] : weekDays(date);
   const from = days[0], to = days[days.length - 1];
   const warnings = useMemo(() => (mode === 'monat' ? [] : rosterWarnings(d, date, settings)
@@ -131,6 +134,9 @@ export function RosterPlan({ dept }: { dept: string }) {
         {mode === 'woche' && mine.length > 0 && <button className="btn small" onClick={copyPrev}><Copy />Vorwoche übernehmen</button>}
         <button className="btn small" onClick={exportHours} title="Geplante Stunden des Monats als CSV (Excel)"><Download />Stunden {MONTHS[+date.slice(5, 7) - 1]}</button>
         <button className="btn small" onClick={() => window.print()}><Printer />Drucken</button>
+        {mineAll.length > 0 && (editing
+          ? <button className="btn small primary" onClick={() => { setEditing(false); ui.set({ rosterBrush: null }); }}><Check />Fertig</button>
+          : <button className="btn small primary" onClick={() => setEditing(true)}><Pencil />Bearbeiten</button>)}
       </div>
 
       {mode === 'woche' && <div className="roster-publish no-print">
@@ -138,7 +144,7 @@ export function RosterPlan({ dept }: { dept: string }) {
           const pub = publicationFor(d, dep.id, date), changed = changedSince(d, dep.id, date), edit = canPlan(dep.id);
           return (
             <span key={dep.id} className={'pub-chip' + (pub ? ' on' : '')}>
-              <Dot color={dep.color} /><b>{dep.name}</b>
+              <DeptIcon dep={dep} /><b>{dep.name}</b>
               <span className="muted">{pub ? `veröffentlicht ${new Date(pub.publishedAt).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : 'Entwurf'}</span>
               {changed > 0 && <span className="badge warn" title="Seit dem Veröffentlichen geändert">{changed} geändert</span>}
               {edit && <button className="btn small" onClick={() => publish(dep.id)}>{pub ? (changed ? 'Erneut veröffentlichen' : 'Neu veröffentlichen') : 'Veröffentlichen'}</button>}
@@ -199,7 +205,7 @@ function WeekGrid({ days, rows, open, scope, dept, warnings, canPlan, onCell, dr
           return (
             <button key={s.id} className={'shift-chip' + (other ? ' other' : '') + (warnIds.has(s.id) ? ' warn' : '')} style={{ '--c': shiftColor(d, s) } as React.CSSProperties}
               draggable={canPlan(s.departmentId)} onDragStart={e => e.dataTransfer.setData('text/plain', 'shift:' + s.id)}
-              onClick={e => { e.stopPropagation(); openDialog({ type: 'shift', shift: s }); }}
+              onClick={e => { e.stopPropagation(); if (canPlan(s.departmentId)) openDialog({ type: 'shift', shift: s }); }}
               title={`${d.departments.find(x => x.id === s.departmentId)?.name}: ${templateTimes(s)}${s.breakMin ? `, ${s.breakMin} Min. Pause` : ''}${s.note ? ' · ' + s.note : ''}`}>
               {warnIds.has(s.id) && <TriangleAlert className="w" aria-label="Hinweis" />}
               <b>{shiftLabel(d, s)}</b>{d.shiftTemplates.some(x => x.id === s.templateId) && <small>{s.start}–{s.end}</small>}
@@ -208,7 +214,7 @@ function WeekGrid({ days, rows, open, scope, dept, warnings, canPlan, onCell, dr
             </button>
           );
         })}
-        <button className="cell-add no-print" onClick={() => onCell(staffId, day)} aria-label={`Dienst ${fmtShort(day)} eintragen`}>+</button>
+        {scope.some(canPlan) && <button className="cell-add no-print" onClick={() => onCell(staffId, day)} aria-label={`Dienst ${fmtShort(day)} eintragen`}>+</button>}
       </div>
     );
   };
@@ -225,7 +231,7 @@ function WeekGrid({ days, rows, open, scope, dept, warnings, canPlan, onCell, dr
               const dep = d.departments.find(x => x.id === depId)!, need = staffNeeded(dep, g.peak.guests), have = plannedCount(d, depId, day);
               if (need === null && !have) return null;
               return <small key={depId} className={'staffing' + (need !== null && have < need ? ' low' : '')} title={need !== null ? `${dep.name}: ${have} eingeplant, Vorschlag ${need}` : `${dep.name}: ${have} eingeplant`}>
-                <Dot color={dep.color} />{have}{need !== null ? `/${need}` : ''}</small>;
+                <DeptIcon dep={dep} />{have}{need !== null ? `/${need}` : ''}</small>;
             })}
           </div>
         );
@@ -235,7 +241,7 @@ function WeekGrid({ days, rows, open, scope, dept, warnings, canPlan, onCell, dr
         const min = staffMinutes(d, s.id, days[0], days[6]);
         const cls = min > settings.maxWeekHours * 60 ? ' danger' : min > s.weeklyHours * 60 ? ' over' : '';
         return [
-          <div key={s.id + 'n'} className={'rg-name' + (s.active ? '' : ' inactive')}><Dot color={s.color} /><span>{s.name}</span>
+          <div key={s.id + 'n'} className={'rg-name' + (s.active ? '' : ' inactive')}><StaffMark dep={d.departments.find(x => x.id === s.departmentId)} color={s.color} /><span>{s.name}</span>
             {dept && s.departmentId !== dept && <small className="muted"> {d.departments.find(x => x.id === s.departmentId)?.name ?? ''}</small>}</div>,
           ...days.map(day => cell(s.id, day, d.shifts.filter(x => x.staffId === s.id && x.date === day))),
           <div key={s.id + 's'} className={'rg-sum' + cls} title={`Soll ${s.weeklyHours.toLocaleString('de-DE')} h`}>{fmtHours(min).replace(' h', '')}<small>/{s.weeklyHours.toLocaleString('de-DE')}</small></div>
@@ -264,10 +270,10 @@ function DayView({ date, rows, open, scope, canPlan, onCell }: { date: string; r
   const line = (key: string, name: string, list: Shift[], staffId: string | null, extra?: string) => (
     <div key={key} className="rd-row">
       <div className="rd-name">{name}{extra && <small className="muted"> {extra}</small>}</div>
-      <div className="rd-track" onClick={() => onCell(staffId, date)}>
+      <div className="rd-track" onClick={() => scope.some(canPlan) && onCell(staffId, date)}>
         {list.flatMap(s => bars(s).map(([a, b], i) => (
           <button key={s.id + i} className={'rd-bar' + (scope.includes(s.departmentId) ? '' : ' other')} style={{ left: pct(a), width: `calc(${pct(b)} - ${pct(a)})`, background: shiftColor(d, s) }}
-            onClick={e => { e.stopPropagation(); openDialog({ type: 'shift', shift: s }); }} draggable={false} title={`${templateTimes(s)}`}>
+            onClick={e => { e.stopPropagation(); if (canPlan(s.departmentId)) openDialog({ type: 'shift', shift: s }); }} draggable={false} title={`${templateTimes(s)}`}>
             {i === 0 ? `${shiftLabel(d, s)} ${s.start}–${s.end}` : `${s.start2}–${s.end2}`}</button>
         )))}
       </div>
@@ -296,7 +302,7 @@ function MonthGrid({ days, rows }: { days: string[]; rows: Staff[] }) {
       <thead><tr><th>Mitarbeiter/in</th>{days.map(day => <th key={day} className={(day === t0 ? 'today ' : '') + (holidayName(day) ? 'holiday' : '')} title={holidayName(day)}>{+day.slice(8)}<br /><small>{fmtShort(day).slice(0, 2)}</small></th>)}<th>Std.</th></tr></thead>
       <tbody>{rows.map(s => (
         <tr key={s.id}>
-          <td className="nm"><Dot color={s.color} />{s.name}</td>
+          <td className="nm"><StaffMark dep={d.departments.find(x => x.id === s.departmentId)} color={s.color} />{s.name}</td>
           {days.map(day => {
             const list = d.shifts.filter(x => x.staffId === s.id && x.date === day), ab = absenceOn(d, s.id, day);
             return <td key={day} className={'mc' + (day === t0 ? ' today' : '') + (ab ? ' abs ' + ab.kind : '')} onClick={() => ui.set({ rosterMode: 'woche', rosterDate: day })}
