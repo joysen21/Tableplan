@@ -1,6 +1,6 @@
 /** Einstellungen (Admin): Betrieb, Services, Benutzer & Rollen, Daten, Protokoll */
 import { useEffect, useState, type ReactNode } from 'react';
-import { Building2, CalendarClock, CalendarDays, ChevronDown, Database, Download, History, Plus, QrCode, Upload, Users, X, type LucideIcon } from '../ui/icons';
+import { Building2, CalendarClock, CalendarDays, ChevronDown, ChevronsDownUp, ChevronsUpDown, Database, Download, History, Plus, QrCode, Upload, Users, X, type LucideIcon } from '../ui/icons';
 import { MOBILE } from '../ui/media';
 import { repo } from '../data';
 import { demoVenueData, newId } from '../domain/demo';
@@ -91,8 +91,14 @@ function Members() {
 }
 
 /** Thematische Gruppe: am PC aufgeklappt, am Handy eingeklappt (antippen öffnet) */
-function Group({ title, hint, icon: I, children }: { title: string; hint: string; icon: LucideIcon; children: ReactNode }) {
+/** „Alle ein-/ausklappen“: Befehl an alle Gruppen (n zählt hoch, damit derselbe Befehl erneut wirkt) */
+type FoldCmd = { open: boolean; n: number };
+
+function Group({ title, hint, icon: I, children, cmd, onOpenChange }: { title: string; hint: string; icon: LucideIcon; children: ReactNode;
+  cmd: FoldCmd | null; onOpenChange: (title: string, open: boolean) => void }) {
   const [open, setOpen] = useState(() => !window.matchMedia(MOBILE).matches);
+  useEffect(() => { if (cmd) setOpen(cmd.open); }, [cmd]);
+  useEffect(() => { onOpenChange(title, open); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <details className="panel settings-group" open={open} onToggle={e => setOpen(e.currentTarget.open)}>
       <summary><I className="sg-icon" aria-hidden="true" /><span><b>{title}</b><small className="muted">{hint}</small></span><ChevronDown className="sg-chev" aria-hidden="true" /></summary>
@@ -110,10 +116,21 @@ export function SettingsView() {
   };
   // Dienstplan-App: keine Services; Daten ersetzen hieße auch Tischplan-Daten der gemeinsamen DB überschreiben
   const roster = EDITION === 'dienstplan';
+  // Ein-/Ausklappen aller Gruppen (PC)
+  const [cmd, setCmd] = useState<FoldCmd | null>(null);
+  const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
+  const onOpenChange = (title: string, open: boolean) => setOpenMap(m => (m[title] === open ? m : { ...m, [title]: open }));
+  const anyOpen = Object.values(openMap).some(Boolean);
+  const g = { cmd, onOpenChange };
   return (
+    <>
+    <div className="settings-toolbar">
+      <button className="btn small" onClick={() => setCmd(c => ({ open: !anyOpen, n: (c?.n ?? 0) + 1 }))} aria-label={anyOpen ? 'Alle Einstellungen einklappen' : 'Alle Einstellungen ausklappen'}>
+        {anyOpen ? <ChevronsDownUp /> : <ChevronsUpDown />}{anyOpen ? 'Alle einklappen' : 'Alle ausklappen'}</button>
+    </div>
     <div className="settings">
       <div className="settings-col">
-      <Group title={roster ? 'Betrieb' : 'Betrieb & Services'} hint={roster ? 'Name des Betriebs' : 'Name, Frühstück/Mittag/Abend mit Beginn und Ende'} icon={Building2}><div className="body">
+      <Group {...g} title={roster ? 'Betrieb' : 'Betrieb & Services'} hint={roster ? 'Name des Betriebs' : 'Name, Frühstück/Mittag/Abend mit Beginn und Ende'} icon={Building2}><div className="body">
         <Field label="Name des Betriebs" value={d.venue.name} onCommit={v => v.trim() && store.renameVenue(v.trim())} />
         {!roster && <>
         <p className="muted" style={{ fontSize: 12 }}>Reservierungen beginnen zum Beginn des Service (Hotelgäste zur Hotel-Standardzeit) und enden fest zum Ende – so erscheinen sie in der Zeitleiste, z. B. 18:00–20:00.</p>
@@ -122,13 +139,13 @@ export function SettingsView() {
           turnTimes: [{ maxP: 2, min: 90 }, { maxP: 99, min: 120 }], seatings: [], sort: d.services.length }])}><Plus />Service</button>
         </>}
       </div></Group>
-      {!roster && <Group title="Reservierungen" hint="Status umbenennen, eigene Status anlegen" icon={CalendarDays}><StatusPanel /></Group>}
-      {!roster && <Group title="Gäste-Speisekarte (QR)" hint="Logo, Titelbild, Farbe, Begrüßung" icon={QrCode}><BrandingPanel /></Group>}
-      <Group title={roster ? 'Dienstplan' : 'Module & Dienstplan'} hint="Bereiche mit Icon und Leitung, Prüfregeln" icon={CalendarClock}><ModulesPanel /></Group>
+      {!roster && <Group {...g} title="Reservierungen" hint="Status umbenennen, eigene Status anlegen" icon={CalendarDays}><StatusPanel /></Group>}
+      {!roster && <Group {...g} title="Gäste-Speisekarte (QR)" hint="Logo, Titelbild, Farbe, Begrüßung" icon={QrCode}><BrandingPanel /></Group>}
+      <Group {...g} title={roster ? 'Dienstplan' : 'Module & Dienstplan'} hint="Bereiche mit Icon und Leitung, Prüfregeln" icon={CalendarClock}><ModulesPanel /></Group>
       </div>
       <div className="settings-col">
-        <Group title="Benutzer & Rollen" hint="Zugänge und Rechte" icon={Users}><div className="body"><Members /></div></Group>
-        <Group title="Daten & Sicherung" hint="Sicherung exportieren/einspielen, Demo-Daten" icon={Database}><div className="body">
+        <Group {...g} title="Benutzer & Rollen" hint="Zugänge und Rechte" icon={Users}><div className="body"><Members /></div></Group>
+        <Group {...g} title="Daten & Sicherung" hint="Sicherung exportieren/einspielen, Demo-Daten" icon={Database}><div className="body">
           <div className="row">
             <button className="btn" onClick={() => downloadBlob(`${APP_NAME.toLowerCase()}-sicherung-${today()}.json`, new Blob([JSON.stringify({ format: 'tischplan', version: 2, data: d }, null, 1)], { type: 'application/json' }))}><Download />Sicherung exportieren (JSON)</button>
             {!roster && <><label className="btn"><Upload />Sicherung importieren<input type="file" accept=".json" className="hidden" onChange={async e => {
@@ -144,12 +161,13 @@ export function SettingsView() {
           </div>
           <p className="muted" style={{ fontSize: 12 }}>{repo.mode === 'cloud' ? 'Speicherort: Supabase-Datenbank. Geladen werden Reservierungen der letzten 120 Tage und alle künftigen.' : 'Demo-Modus: Daten nur in diesem Browser.'}</p>
         </div></Group>
-        <Group title="Protokoll" hint="Letzte Änderungen" icon={History}>
+        <Group {...g} title="Protokoll" hint="Letzte Änderungen" icon={History}>
           <div style={{ maxHeight: 420, overflow: 'auto' }}><table className="list"><thead><tr><th>Zeit</th><th>Benutzer</th><th>Aktion</th><th>Details</th></tr></thead>
             <tbody>{d.audit.slice(0, 150).map(a => <tr key={a.id}><td style={{ whiteSpace: 'nowrap', fontSize: 12 }}>{new Date(a.ts).toLocaleString('de-DE')}</td><td>{a.userName}</td><td>{a.action}</td><td style={{ fontSize: 12 }}>{a.details}</td></tr>)}</tbody>
           </table></div>
         </Group>
       </div>
     </div>
+    </>
   );
 }

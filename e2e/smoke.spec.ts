@@ -167,3 +167,18 @@ test('Seitenmenü am PC ein- und ausklappen (wird gemerkt), Einstellungen in Gru
   await expect(groups.first()).toHaveAttribute('open', '');
   await page.screenshot({ path: 'test-results/einstellungen-pc.png' });
 });
+
+test('Einstellungen am PC: alle Gruppen mit einem Knopf ein- und ausklappen', async ({ page }) => {
+  await loginDemo(page);
+  await page.getByRole('link', { name: 'Einstellungen' }).click();
+  const groups = page.locator('details.settings-group');
+  await expect(groups).toHaveCount(7);
+  await page.getByRole('button', { name: 'Alle Einstellungen einklappen' }).click();
+  for (const g of await groups.all()) await expect(g).not.toHaveAttribute('open', '');
+  await page.getByRole('button', { name: 'Alle Einstellungen ausklappen' }).click();
+  for (const g of await groups.all()) await expect(g).toHaveAttribute('open', '');
+  // eine Gruppe von Hand zu, die anderen offen → Knopf klappt alle ein
+  await groups.first().locator('summary').click();
+  await page.getByRole('button', { name: 'Alle Einstellungen einklappen' }).click();
+  for (const g of await groups.all()) await expect(g).not.toHaveAttribute('open', '');
+});
