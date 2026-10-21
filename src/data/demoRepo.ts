@@ -10,7 +10,7 @@ import { canPlanDept } from '../domain/roster';
 import { shiftsOverlap, weekStart } from '../domain/rosterPlan';
 import type { Branding, Member, MenuChoice, ModuleKey, OnDuty, PublicRoster, QrWindow, Reservation, Role, RosterSettings, Shift, StatusConfig, Stay, VenueData } from '../domain/types';
 import { buildGuestMenu, cleanCounts, newQrToken, partyKey } from '../domain/guestMenu';
-import { moduleAllowed } from '../domain/orders';
+import { moduleAllowed } from '../domain/modules';
 import { addDays, today } from '../lib/time';
 import { ORDER_KEYS, ROSTER_KEYS, RepoError, type AuthUser, type ChangeEvent, type EntityKey, type EntityMap, type LiveState, type Membership, type Repo } from './repo';
 
@@ -80,6 +80,12 @@ export class DemoRepo implements Repo {
       if (!moduleAllowed(db.data[venueId].venue, 'bestellliste', m.role)) throw new RepoError('forbidden', 'Keine Berechtigung für die Bestellliste.');
       return;
     }
+    if (what === 'passCalls') {
+      if (!moduleAllowed(db.data[venueId].venue, 'pass', m.role)) throw new RepoError('forbidden', 'Keine Berechtigung für den Pass.');
+      return;
+    }
+    // am Pass trägt der Service die Menüauswahl ein (wie can_write() in der DB)
+    if (what === 'menuChoices' && m.role === 'service' && moduleAllowed(db.data[venueId].venue, 'pass', m.role)) return;
     const w = WRITE[m.role];
     if (!w.includes('*') && !w.includes(what)) throw new RepoError('forbidden', 'Keine Berechtigung für diese Änderung.');
   }

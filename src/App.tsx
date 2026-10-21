@@ -18,6 +18,7 @@ import { SettingsView } from './views/SettingsView';
 import { MenuView } from './views/MenuView';
 import { RosterView } from './views/RosterView';
 import { OrdersView } from './views/OrdersView';
+import { ChefView, PassView } from './views/PassView';
 import { PublicRoster } from './views/PublicRoster';
 
 /** Öffentlicher Lesezugang /p/<token> läuft ohne Anmeldung, alles andere über die angemeldete App */
@@ -43,7 +44,7 @@ function MainApp() {
   if (phase !== 'ready' || !role || !data) return <><Gate /><Feedback /></>;
   const views = viewsFor(role, data.venue, data.departments, user.id, EDITION);
   if (!views.length) return <><NoAccess /><Feedback /></>;
-  const el = { live: <LiveView />, zeit: <TimelineView />, res: <ReservationsView />, hotel: <HotelView />, menue: <MenuView />, dienst: <RosterView />, bestell: <OrdersView />, berichte: <ReportsView />, editor: <EditorView />, settings: <SettingsView /> };
+  const el = { live: <LiveView />, zeit: <TimelineView />, res: <ReservationsView />, hotel: <HotelView />, menue: <MenuView />, dienst: <RosterView />, pass: <PassView />, chef: <ChefView />, bestell: <OrdersView />, berichte: <ReportsView />, editor: <EditorView />, settings: <SettingsView /> };
   return (
     <>
       <Routes>

@@ -4,6 +4,7 @@ import { guessAllergens, snapshotItems } from './menu';
 import { shiftFromTemplate, weekStart } from './rosterPlan';
 import { menuCourses, menuRooms, newQrToken } from './guestMenu';
 import { seedSuppliers } from './orders';
+import { newCall, passProgress, passReservations } from './pass';
 import { planStay, resEnd, resStart, serviceTime, stayTableConflicts, suggestTables, tableBusy, untilEnd } from './logic';
 import type { Allergen, Course, Dish, DiningTable, Ingredient, Menu, MenuItem, Reservation, Service, ShiftTemplate, Staff, Stay, TableFeature, TableShape, Unit, VenueData } from './types';
 import { addDays, nowMin, today } from '../lib/time';
@@ -28,14 +29,14 @@ export function emptyVenueData(venueId: string, name: string): VenueData {
     rooms: [{ id: newId(), name: 'Restaurant', width: 1000, height: 650, backgroundUrl: null, sort: 0 }],
     stations: [], tables: [], decor: [], combos: [], layouts: [], services: defaultServices(), blocks: [], stays: [], reservations: [], audit: [],
     ingredients: [], dishes: [], menus: [], menuChoices: [], departments: [], positions: [], staff: [], shiftTemplates: [], shifts: [], absences: [], publications: [],
-    suppliers: [], supplierProducts: [], supplierOrders: []
+    suppliers: [], supplierProducts: [], supplierOrders: [], passCalls: []
   };
 }
 
 /** Fehlende Listen/Felder ergänzen (ältere Sicherungen, Demo-Daten aus früheren Versionen) */
 export function normalizeVenueData(d: VenueData): VenueData {
   const L = ['rooms', 'stations', 'tables', 'decor', 'combos', 'layouts', 'services', 'blocks', 'stays', 'reservations', 'audit', 'ingredients', 'dishes', 'menus', 'menuChoices',
-    'departments', 'positions', 'staff', 'shiftTemplates', 'shifts', 'absences', 'publications', 'suppliers', 'supplierProducts', 'supplierOrders'] as const;
+    'departments', 'positions', 'staff', 'shiftTemplates', 'shifts', 'absences', 'publications', 'suppliers', 'supplierProducts', 'supplierOrders', 'passCalls'] as const;
   const out = { ...d } as VenueData;
   for (const k of L) (out as any)[k] = (d as any)[k] ?? [];
   out.venue = { ...d.venue, modules: d.venue?.modules ?? [], qrToken: d.venue?.qrToken || newQrToken() };
@@ -55,7 +56,7 @@ export function demoVenueData(venueId: string, name: string): VenueData {
   const pick = <T,>(a: T[]): T => a[Math.floor(rnd() * a.length)];
   const r1 = newId(), r2 = newId(), sA = newId(), sB = newId(), sC = newId();
   const d: VenueData = {
-    venue: { id: venueId, name, modules: ['dienstplan', 'bestellliste'], qrToken: newQrToken(), branding: { title: 'Hotel Sonnenhof', welcome: 'Herzlich willkommen! Wählen Sie hier Ihr Menü – unsere Küche bereitet es frisch für Sie zu.', welcomeIt: 'Benvenuti! Scegliete qui il vostro menù – la nostra cucina lo prepara fresco per voi.', welcomeEn: 'Welcome! Choose your menu here – our kitchen prepares it fresh for you.', color: '#0F2347', logoUrl: null, coverUrl: null } },
+    venue: { id: venueId, name, modules: ['dienstplan', 'bestellliste', 'pass'], qrToken: newQrToken(), branding: { title: 'Hotel Sonnenhof', welcome: 'Herzlich willkommen! Wählen Sie hier Ihr Menü – unsere Küche bereitet es frisch für Sie zu.', welcomeIt: 'Benvenuti! Scegliete qui il vostro menù – la nostra cucina lo prepara fresco per voi.', welcomeEn: 'Welcome! Choose your menu here – our kitchen prepares it fresh for you.', color: '#0F2347', logoUrl: null, coverUrl: null } },
     rooms: [
       { id: r1, name: 'Restaurant', width: 1000, height: 650, backgroundUrl: null, sort: 0 },
       { id: r2, name: 'Stube', width: 720, height: 500, backgroundUrl: null, sort: 1 }
@@ -63,7 +64,7 @@ export function demoVenueData(venueId: string, name: string): VenueData {
     stations: [{ id: sA, name: 'Revier A', color: '#1f6feb' }, { id: sB, name: 'Revier B', color: '#e36209' }, { id: sC, name: 'Revier Stube', color: '#1a7f37' }],
     tables: [], decor: [], combos: [], layouts: [], services: defaultServices(), blocks: [], stays: [], reservations: [], audit: [],
     ingredients: [], dishes: [], menus: [], menuChoices: [], departments: [], positions: [], staff: [], shiftTemplates: [], shifts: [], absences: [], publications: [],
-    suppliers: [], supplierProducts: [], supplierOrders: []
+    suppliers: [], supplierProducts: [], supplierOrders: [], passCalls: []
   };
   const T = (roomId: string, nm: string, shape: TableShape, x: number, y: number, w: number, h: number, min: number, max: number, stationId: string, features: TableFeature[] = []) =>
     d.tables.push({ id: newId(), roomId, name: nm, shape, x, y, width: w, height: h, rotation: 0, minPersons: min, maxPersons: max, stationId, features, chairs: true, qrToken: newQrToken() } as DiningTable);
@@ -166,6 +167,7 @@ export function demoVenueData(venueId: string, name: string): VenueData {
   d.reservations.forEach(r => { r.updatedAt = now; });
   demoKitchen(d);
   demoGuestChoices(d);
+  demoPass(d);
   // Bestellliste: Agostini und Vinothek Mairhofer mit ihren Artikeln
   const orderSeed = seedSuppliers(newId);
   d.suppliers = orderSeed.suppliers; d.supplierProducts = orderSeed.products;
@@ -297,6 +299,23 @@ export function demoKitchen(d: VenueData) {
 }
 
 /** Gäste-Speisekarte (QR): Menüs von heute und morgen sind für Gäste offen, rund die Hälfte der Zimmer hat heute schon gewählt */
+/** Pass: am heutigen Abend sind ein paar Gänge schon abgerufen, fertig oder serviert */
+function demoPass(d: VenueData) {
+  const svc = d.services.find(s => s.kind === 'abend');
+  if (!svc) return;
+  const list = passReservations(d, today(), svc.id).map(r => ({ r, p: passProgress(d, r) })).filter(x => x.p.hasChoice).slice(0, 3);
+  const at = (min: number) => new Date(Date.now() - min * 60000).toISOString();
+  const user = { id: '', name: 'Toni (Service)' };
+  list.forEach(({ r, p }, i) => {
+    const first = newCall(p, r, user, newId);
+    if (!first) return;
+    first.calledAt = at(25 - i * 8);
+    if (i === 0) { first.state = 'serviert'; first.readyAt = at(15); first.servedAt = at(12); }
+    if (i === 1) { first.state = 'fertig'; first.readyAt = at(2); }
+    d.passCalls.push(first);
+  });
+}
+
 export function demoGuestChoices(d: VenueData) {
   const t0 = today();
   d.menuChoices = [];

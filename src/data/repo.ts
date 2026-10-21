@@ -4,7 +4,7 @@
  */
 import type {
   Absence, AuditEntry, Branding, Decor, Department, DiningTable, Dish, Ingredient, Layout, Member, Menu, MenuChoice, ModuleKey, OnDuty, Position, Publication,
-  PublicRoster, Reservation, Role, Room, RosterSettings, Service, Shift, ShiftTemplate, Staff, Station, StatusConfig, QrWindow, Stay, Supplier, SupplierOrder, SupplierProduct, TableBlock, TableCombo, VenueData
+  PublicRoster, Reservation, Role, Room, RosterSettings, Service, Shift, ShiftTemplate, Staff, Station, StatusConfig, QrWindow, Stay, PassCall, Supplier, SupplierOrder, SupplierProduct, TableBlock, TableCombo, VenueData
 } from '../domain/types';
 import type { GuestMenuData } from '../domain/guestMenu';
 
@@ -17,6 +17,8 @@ export interface EntityMap {
   shifts: Shift; absences: Absence; publications: Publication;
   /** Modul Bestellliste */
   suppliers: Supplier; supplierProducts: SupplierProduct; supplierOrders: SupplierOrder;
+  /** Modul Pass + Chef (nicht in ENTITY_KEYS: Abrufe werden beim Einspielen einer Sicherung nicht übernommen) */
+  passCalls: PassCall;
 }
 export type EntityKey = keyof EntityMap;
 export const ENTITY_KEYS: EntityKey[] = ['services', 'rooms', 'stations', 'tables', 'decor', 'combos', 'layouts', 'blocks', 'ingredients', 'dishes', 'menus',

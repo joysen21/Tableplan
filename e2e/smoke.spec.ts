@@ -136,11 +136,11 @@ test('Editor: Tisch verschieben wird gespeichert', async ({ page }) => {
 
 test('Rollen: Küche sieht Berichte und Menü (+ Dienstplan als Küchenleitung), Service ändert nur Status', async ({ page }) => {
   await loginDemo(page, 'Karl (Küche)');
-  await expect(page.locator('.topnav a')).toHaveText(['Berichte', 'Menü', 'Dienstplan', 'Bestellliste']);
+  await expect(page.locator('.topnav a')).toHaveText(['Berichte', 'Menü', 'Dienstplan', 'Chef', 'Bestellliste']);
   await page.getByRole('button', { name: /Karl/ }).click();
   await page.getByRole('menuitem', { name: 'Abmelden' }).click();
   await page.getByRole('button', { name: /Toni/ }).click();
-  await expect(page.locator('.topnav a')).toHaveCount(5); // inkl. Dienstplan (Serviceleitung)
+  await expect(page.locator('.topnav a')).toHaveCount(6); // inkl. Dienstplan (Serviceleitung) und Pass
   await expect(page.getByRole('button', { name: 'Reservierung', exact: true })).toHaveCount(0);
 });
 

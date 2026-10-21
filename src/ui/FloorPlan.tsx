@@ -2,7 +2,7 @@
 import type { PointerEvent as RPE, Ref } from 'react';
 import { hasAllergy } from '../domain/menu';
 import { byId, persons, type TableStatus } from '../domain/logic';
-import { PLAN_BASES, pickableStatuses, tableLook } from '../domain/statuses';
+import { PLAN_BASES, pickableStatuses, tableLook, type TableLook } from '../domain/statuses';
 import { roomNosAt } from '../domain/guestMenu';
 import { useData } from '../store/hooks';
 import { StatusIcon } from './StatusIcon';
@@ -11,6 +11,8 @@ import type { Decor, DiningTable, Room, VenueData } from '../domain/types';
 interface Props {
   data: VenueData; room: Room; mode: 'live' | 'edit' | 'assign';
   status?: (tb: DiningTable) => TableStatus;
+  /** eigene Einfärbung statt des Reservierungs-Status (z. B. Gang-Stand im Pass-Plan) */
+  look?: (tb: DiningTable) => TableLook;
   sel?: string | null; highlight?: Set<string>; showStations?: boolean;
   onTableDown?: (e: RPE, tb: DiningTable) => void;
   onDecorDown?: (e: RPE, d: Decor) => void;
@@ -84,7 +86,7 @@ export function FloorPlan(p: Props) {
       {tables.map(tb => {
         const s = st(tb);
         // Farbe und Bezeichnung = Reservierungs-Status aus den Einstellungen (wie in der Legende)
-        const look = tableLook(data.venue, s);
+        const look = p.look ? p.look(tb) : tableLook(data.venue, s);
         const fill = look.fill, light = s.st === 'frei' || look.faded;
         const station = byId(data.stations, tb.stationId);
         const sel = p.sel === tb.id, hl = p.highlight?.has(tb.id);

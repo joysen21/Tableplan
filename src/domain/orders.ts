@@ -1,15 +1,8 @@
 /** Bestellliste (Modul): Artikel je Lieferant, Bestellung als WhatsApp-Nachricht, Historie und Auswertung je Monat */
 import { SEED_PHONE, SUPPLIER_SEED } from './orderSeed';
-import type { ModuleKey, OrderLine, Role, Supplier, SupplierOrder, SupplierProduct, Venue } from './types';
+import type { OrderLine, Supplier, SupplierOrder, SupplierProduct } from './types';
 
-/** Standard-Rollen je Modul, solange in den Einstellungen nichts zugewiesen ist (Admin sieht immer alles) */
-export const DEFAULT_MODULE_ROLES: Partial<Record<ModuleKey, Role[]>> = { bestellliste: ['kueche'] };
-
-/** Darf diese Rolle das Modul sehen? (Modul eingeschaltet + Admin oder zugewiesene Rolle) – gleiche Regel wie module_allowed() in der DB */
-export function moduleAllowed(venue: Pick<Venue, 'modules' | 'moduleRoles'>, mod: ModuleKey, role: Role): boolean {
-  if (!venue.modules.includes(mod)) return false;
-  return role === 'admin' || (venue.moduleRoles?.[mod] ?? DEFAULT_MODULE_ROLES[mod] ?? []).includes(role);
-}
+export { DEFAULT_MODULE_ROLES, moduleAllowed } from './modules';
 
 /** Telefonnummer für wa.me: nur Ziffern mit Ländervorwahl; italienische Nummern ohne Vorwahl bekommen +39 */
 export function waNumber(phone: string): string {

@@ -1,7 +1,7 @@
 /** Rahmen der angemeldeten App: am PC Seitenmenü links (ein-/ausklappbar), Kopfzeile mit Datum/Service, Status; Benutzermenü;
  *  am Handy statt Seitenmenü die Navigationsleiste unten (Hauptansichten + „Mehr“); Dialoge */
 import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react';
-import { BedDouble, CalendarClock, CalendarDays, ChartColumn, ChartGantt, ChefHat, ChevronDown, ChevronLeft, ChevronRight, Ellipsis, LogOut, Moon, PencilRuler, Pin, PinOff, Settings, ShoppingCart, Sun, Utensils, type LucideIcon } from '../ui/icons';
+import { BedDouble, CalendarClock, CalendarDays, ChartColumn, ChartGantt, ChefHat, ChevronDown, ChevronLeft, ChevronRight, Ellipsis, LogOut, Moon, PencilRuler, Pin, PinOff, Settings, ShoppingCart, ConciergeBell, CookingPot, Sun, Utensils, type LucideIcon } from '../ui/icons';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { repo } from '../data';
 import type { ViewKey } from '../domain/constants';
@@ -18,7 +18,7 @@ import { Dialogs } from '../forms/Dialogs';
 import { ErrorBoundary } from '../ui/ErrorBoundary';
 
 const VIEW_ICON: Record<ViewKey, LucideIcon> = {
-  live: Utensils, zeit: ChartGantt, res: CalendarDays, hotel: BedDouble, menue: ChefHat, dienst: CalendarClock, bestell: ShoppingCart, berichte: ChartColumn, editor: PencilRuler, settings: Settings
+  live: Utensils, zeit: ChartGantt, res: CalendarDays, hotel: BedDouble, menue: ChefHat, dienst: CalendarClock, pass: ConciergeBell, chef: CookingPot, bestell: ShoppingCart, berichte: ChartColumn, editor: PencilRuler, settings: Settings
 };
 /** So viele Ansichten passen in die Leiste unten (plus „Mehr“) */
 const BOTTOM_MAX = 4;
@@ -74,7 +74,7 @@ export function Shell() {
     const at = { top: b.bottom + 6, right: Math.max(14, window.innerWidth - b.right) };
     setMenu(m => (m === null ? at : null));
   };
-  const showCtx = [PATHS.live, PATHS.zeit, PATHS.res, PATHS.berichte].includes(loc.pathname);
+  const showCtx = [PATHS.live, PATHS.zeit, PATHS.res, PATHS.pass, PATHS.chef, PATHS.berichte].includes(loc.pathname);
   const views = useViews();
   const current = views.find(v => PATHS[v] === loc.pathname);
   // Leiste unten nur bei mehreren Ansichten; was nicht hineinpasst, steht im „Mehr“-Menü

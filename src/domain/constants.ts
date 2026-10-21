@@ -1,5 +1,5 @@
 import type { Allergen, Board, ContractType, Course, Department, Diet, ResStatus, Role, ServiceKind, TableFeature, Unit, Venue } from './types';
-import { moduleAllowed } from './orders';
+import { moduleAllowed } from './modules';
 
 export const RES_STATUS_COLOR: Record<ResStatus, string> = {
   angefragt: '#8A97B0', bestaetigt: '#4F7BD1', eingetroffen: '#a371f7', platziert: '#2da44e',
@@ -26,7 +26,7 @@ export const DISH_COURSES: Course[] = COURSES.filter(c => c !== 'zwischengang' &
 export const UNITS: Unit[] = ['g', 'ml', 'stk'];
 export const DIETS: Diet[] = ['vegetarisch', 'vegan'];
 export const ROLES: Role[] = ['admin', 'empfang', 'service', 'kueche'];
-export type ViewKey = 'live' | 'zeit' | 'res' | 'hotel' | 'menue' | 'dienst' | 'bestell' | 'berichte' | 'editor' | 'settings';
+export type ViewKey = 'live' | 'zeit' | 'res' | 'hotel' | 'menue' | 'dienst' | 'pass' | 'chef' | 'bestell' | 'berichte' | 'editor' | 'settings';
 export const ROLE_VIEWS: Record<Role, ViewKey[]> = {
   admin: ['live', 'zeit', 'res', 'hotel', 'menue', 'berichte', 'editor', 'settings'],
   empfang: ['live', 'zeit', 'res', 'hotel', 'menue', 'berichte'],
@@ -45,10 +45,10 @@ export function viewsFor(role: Role, venue: Venue, departments: Department[], us
     views.splice(i > 0 ? i : views.length, 0, 'dienst');
   }
   // Module mit Rollen-Zuweisung (Einstellungen → Module)
-  if (moduleAllowed(venue, 'bestellliste', role)) {
-    const i = views.indexOf('berichte');
-    views.splice(i > 0 ? i : views.length, 0, 'bestell');
-  }
+  const add = (v: ViewKey) => { const i = views.indexOf('berichte'); views.splice(i > 0 ? i : views.length, 0, v); };
+  // Pass für den Service, Chef für die Küche – Admin sieht beides
+  if (moduleAllowed(venue, 'pass', role)) { if (role !== 'kueche') add('pass'); if (role === 'kueche' || role === 'admin') add('chef'); }
+  if (moduleAllowed(venue, 'bestellliste', role)) add('bestell');
   return views;
 }
 export const CONTRACTS: ContractType[] = ['unbefristet', 'befristet', 'saison', 'lehrling', 'aushilfe'];

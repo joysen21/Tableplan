@@ -15,7 +15,7 @@ export type Course = 'vorspeise' | 'suppe' | 'zwischengang' | 'hauptgang' | 'bei
 export type Diet = 'vegetarisch' | 'vegan';
 export type TableState = 'frei' | 'reserviert' | 'bald' | 'platziert' | 'rechnung' | 'ueberfaellig' | 'ueberzogen' | 'gesperrt';
 
-export type ModuleKey = 'dienstplan' | 'bestellliste';
+export type ModuleKey = 'dienstplan' | 'bestellliste' | 'pass';
 /** modules: zugeschaltete Zusatzmodule des Betriebs */
 /** Erscheinungsbild der Gäste-Speisekarte (QR): Logo, Titelbild, Akzentfarbe, Titel und Begrüßung */
 /** welcomeIt/welcomeEn optional – fehlt die Übersetzung, erscheint der deutsche Text */
@@ -37,6 +37,18 @@ export interface SupplierProduct { id: string; supplierId: string; name: string;
 export interface OrderLine { productId: string; name: string; unit: string; qty: number }
 /** Gesendete Bestellung (Historie) */
 export interface SupplierOrder { id: string; supplierId: string; createdAt: string; createdBy: string; items: OrderLine[]; note: string }
+
+/* ---------- Modul Pass + Chef ---------- */
+/** Stand eines Abrufs: Service ruft ab → Küche meldet fertig → Service serviert */
+export type PassState = 'abgerufen' | 'fertig' | 'serviert';
+/** Abruf eines Gangs (oder einzelner Gerichte) für eine Reservierung; counts/cancelled: dishId → Anzahl */
+export interface PassCall {
+  id: string; reservationId: string; menuId: string; course: Course;
+  counts: Record<string, number>; cancelled: Record<string, number>; state: PassState;
+  /** Kellner, der abgerufen hat (Benutzer-ID und Name) */
+  calledBy: string; calledByName: string;
+  calledAt: string; readyAt: string | null; servedAt: string | null; updatedAt?: string;
+}
 
 export interface Member { userId: string; role: Role; name: string; email: string }
 
@@ -169,6 +181,7 @@ export interface VenueData {
   departments: Department[]; positions: Position[]; staff: Staff[]; shiftTemplates: ShiftTemplate[];
   shifts: Shift[]; absences: Absence[]; publications: Publication[];
   suppliers: Supplier[]; supplierProducts: SupplierProduct[]; supplierOrders: SupplierOrder[];
+  passCalls: PassCall[];
 }
 
 export interface SessionUser { id: string; name: string; email: string; role: Role }
