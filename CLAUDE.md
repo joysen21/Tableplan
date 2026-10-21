@@ -23,6 +23,7 @@ Dieselben Prüfungen laufen in GitHub Actions (`.github/workflows/ci.yml`) bei j
 - `src/store/app.ts` – Datenstand + Schreiboperationen + Realtime-Ereignisse; `ui.ts` Bedienzustand; `dialogs.ts` globale Dialoge.
 - `src/views/` Seiten, `src/forms/` Dialoge, `src/ui/` Bausteine (Raumplan-SVG, Modal, Drag & Drop).
 - `supabase/migrations/` – Datenbankschema. **Schemaänderungen immer als neue Migrationsdatei** (z. B. `20261101000000_beschreibung.sql`), bestehende nicht ändern. Der Nutzer führt sie im Supabase SQL Editor aus – darauf hinweisen.
+- **Neue Tabellen:** in derselben Migration ausdrücklich `grant select, insert, update, delete on public.<tabelle> to authenticated;` (Seit 30.10.2026 vergibt Supabase für neue Tabellen keine Rechte mehr automatisch.) Gäste ohne Anmeldung (`anon`) nur über `security definer`-Funktionen, nie direkt auf Tabellen.
 
 ## Wichtige Regeln
 - Doppelbuchungsschutz liegt in der DB (Exclusion Constraint `reservation_tables_no_overlap` für externe Reservierungen, Trigger `reservation_tables_shared` für Hotelgäste). Einzige Ausnahme: bis zu 3 Hotelzimmer dürfen sich gleichzeitig einen Tisch teilen (`MAX_ROOMS_PER_TABLE`, Fachlogik `tableConflicts` in `logic.ts`). Nicht weiter aufweichen.
