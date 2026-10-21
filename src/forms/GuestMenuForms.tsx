@@ -5,14 +5,15 @@ import { Printer, Upload, X } from '../ui/icons';
 import { repo } from '../data';
 import { brandingOf, choiceSummary, guestUrl, newQrToken, orderingOf } from '../domain/guestMenu';
 import { byId } from '../domain/logic';
-import type { Branding, DiningTable, Menu, MenuOrdering } from '../domain/types';
+import type { Branding, Menu, MenuOrdering } from '../domain/types';
 import { useApp } from '../store/app';
 import { useData } from '../store/hooks';
 import { closeDialog, openDialog } from '../store/dialogs';
 import { Modal } from '../ui/Modal';
 import { confirmDialog, toast } from '../ui/notify';
 
-const linkFor = (tb: DiningTable) => guestUrl(location.origin, tb.qrToken ?? '', repo.mode === 'demo');
+/** Adresse im QR-Code des Betriebs – ein Code für alle Tische */
+const venueLink = (token: string | undefined) => guestUrl(location.origin, token ?? '', repo.mode === 'demo');
 
 /** QR-Code als SVG (wird im Browser erzeugt, keine externen Dienste) */
 export function QrSvg({ text, size = 160 }: { text: string; size?: number }) {
@@ -35,10 +36,9 @@ export function BrandingPanel() {
     try { upd({ [key]: await repo.uploadBackground(d.venue.id, f) }); } catch (e: any) { toast(e.message, 'err'); }
     setBusy(false);
   }
-  const first = d.tables.find(x => x.qrToken);
   return (
     <div className="panel mt12"><h3>Gäste-Speisekarte (QR)</h3><div className="body">
-      <p className="muted" style={{ marginTop: 0, fontSize: 13 }}>Hotelgäste scannen den QR-Code auf ihrem Tisch und wählen je Gang ihr Gericht – die Küche sieht die Portionen sofort.
+      <p className="muted" style={{ marginTop: 0, fontSize: 13 }}>Ein QR-Code für alle Tische: Gäste scannen ihn, wählen ihr Zimmer bzw. ihren Tisch und je Gang ihr Gericht – die Küche sieht die Portionen sofort.
         So sieht die Seite für Ihre Gäste aus:</p>
       <div className="grid2">
         <label>Titel<input value={b.title} placeholder={d.venue.name} onChange={e => upd({ title: e.target.value })} /></label>
@@ -59,57 +59,45 @@ export function BrandingPanel() {
       </div>
       <div className="row mt12">
         <button className="btn primary" disabled={!dirty || busy} onClick={async () => { if (await store.setBranding(b)) toast('Gespeichert'); }}>Speichern</button>
-        <button className="btn" onClick={() => openDialog({ type: 'qrprint' })}><Printer />QR-Codes drucken</button>
-        {first && <a className="btn" href={linkFor(first)} target="_blank" rel="noreferrer">Vorschau (Tisch {first.name})</a>}
+        <button className="btn" onClick={() => openDialog({ type: 'qrprint' })}><Printer />QR-Code drucken</button>
+        {d.venue.qrToken && <a className="btn" href={venueLink(d.venue.qrToken)} target="_blank" rel="noreferrer">Vorschau für Gäste</a>}
       </div>
       <p className="muted" style={{ fontSize: 12 }}>Ob Gäste ein Menü sehen und wählen dürfen, legt die Küche je Menü fest (Menü → „Gäste-Auswahl“).</p>
     </div></div>
   );
 }
 
-/* ---------------------------------------------------------------- QR-Codes drucken */
+/* ---------------------------------------------------------------- QR-Code drucken (einer für alle Tische) */
 export function QrPrint() {
   const d = useData();
-  const [roomId, setRoomId] = useState<string>('');
+  const store = useApp();
+  const [copies, setCopies] = useState(6);
   const b = brandingOf(d.venue);
-  const tables = d.tables.filter(x => x.qrToken && (!roomId || x.roomId === roomId))
-    .sort((a, c) => a.name.localeCompare(c.name, 'de', { numeric: true }));
+  const link = venueLink(d.venue.qrToken);
+  async function renew() {
+    if (await confirmDialog('QR-Code erneuern?', ['Der bisherige QR-Code funktioniert danach nicht mehr – alle Karten müssen neu gedruckt werden.'], 'Erneuern', true))
+      if (await store.setQrToken(newQrToken())) toast('Neuer QR-Code erstellt');
+  }
   return (
-    <Modal title="QR-Codes für die Tische" onClose={closeDialog} width={900}
-      footer={<><span className="spacer" /><button className="btn" onClick={closeDialog}>Schließen</button><button className="btn primary" onClick={() => window.print()}><Printer />Drucken / PDF</button></>}>
+    <Modal title="QR-Code der Gäste-Speisekarte" onClose={closeDialog} width={900}
+      footer={<><button className="btn danger" onClick={renew}>QR-Code erneuern</button><span className="spacer" /><button className="btn" onClick={closeDialog}>Schließen</button>
+        <button className="btn primary" disabled={!d.venue.qrToken} onClick={() => window.print()}><Printer />Drucken / PDF</button></>}>
       <div className="row no-print mb8">
-        <label>Raum<select value={roomId} onChange={e => setRoomId(e.target.value)} style={{ width: 'auto' }}>
-          <option value="">alle Räume</option>{d.rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}</select></label>
-        <span className="muted" style={{ fontSize: 12 }}>{tables.length} Karten · auf A4 drucken, ausschneiden und als Tischaufsteller verwenden.</span>
+        <label>Anzahl Karten<input type="number" min={1} max={60} value={copies} onChange={e => setCopies(Math.min(60, Math.max(1, +e.target.value || 1)))} style={{ width: 90 }} /></label>
+        <span className="muted" style={{ fontSize: 12 }}>Ein Code für alle Tische · auf A4 drucken, ausschneiden und auf die Tische stellen.
+          {' '}<a href={link} target="_blank" rel="noreferrer">Gäste-Seite öffnen</a></span>
       </div>
+      {!d.venue.qrToken ? <p className="warnbox">Noch kein QR-Code vorhanden – bitte die Datenbank-Migration 20261022000000 ausführen.</p> :
       <div className="qr-cards print-area" style={{ '--brand': b.color } as React.CSSProperties}>
-        {tables.map(tb => (
-          <div key={tb.id} className="qr-card">
+        {Array.from({ length: copies }, (_, i) => (
+          <div key={i} className="qr-card">
             <div className="qr-card-head">{b.logoUrl ? <img src={b.logoUrl} alt="" /> : <b>{b.title}</b>}</div>
-            <QrSvg text={linkFor(tb)} size={150} />
+            <QrSvg text={link} size={150} />
             <div className="qr-card-text"><b>Menü wählen</b><span>Scegli il menù · Choose your menu</span></div>
-            <div className="qr-card-table">Tisch {tb.name}</div>
           </div>
         ))}
-      </div>
+      </div>}
     </Modal>
-  );
-}
-
-/** Raumplan-Editor: QR-Code eines Tisches anzeigen / erneuern (z. B. wenn eine Karte verloren ging) */
-export function TableQr({ tb, onRenew }: { tb: DiningTable; onRenew: (token: string) => void }) {
-  if (!tb.qrToken) return null;
-  return (
-    <div className="table-qr mt8">
-      <QrSvg text={linkFor(tb)} size={72} />
-      <div>
-        <a href={linkFor(tb)} target="_blank" rel="noreferrer" style={{ fontSize: 12 }}>Gäste-Speisekarte öffnen</a>
-        <button className="btn small mt8" onClick={async () => {
-          if (await confirmDialog('QR-Code erneuern?', ['Der bisherige QR-Code dieses Tisches funktioniert danach nicht mehr – die Karte muss neu gedruckt werden.'], 'Erneuern'))
-            onRenew(newQrToken());
-        }}>QR-Code erneuern</button>
-      </div>
-    </div>
   );
 }
 

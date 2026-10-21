@@ -41,6 +41,7 @@ interface AppState {
   /** Erscheinungsbild der Gäste-Speisekarte (QR) speichern */
   setBranding(branding: Branding): Promise<boolean>;
   setStatusConfig(cfg: StatusConfig): Promise<boolean>;
+  setQrToken(token: string): Promise<boolean>;
   replaceAll(data: VenueData, logText: string): Promise<boolean>;
   log(action: string, details?: string): void;
 }
@@ -264,6 +265,13 @@ export const useApp = create<AppState>((set, get) => {
       if (!ok) return false;
       set(s => (s.data ? { data: { ...s.data, venue: { ...s.data.venue, rosterSettings: settings } } } : {}));
       get().log('Prüfregeln Dienstplan geändert');
+      return true;
+    },
+    async setQrToken(token) {
+      const ok = await write(async () => { await repo.setQrToken(venueId(), token); return true; });
+      if (!ok) return false;
+      set(s => (s.data ? { data: { ...s.data, venue: { ...s.data.venue, qrToken: token } } } : {}));
+      get().log('QR-Code der Gäste-Speisekarte erneuert', '');
       return true;
     },
     async setStatusConfig(cfg) {

@@ -88,6 +88,8 @@ export interface Repo {
   setBranding(venueId: string, branding: Branding): Promise<void>;
   /** Eigene Reservierungs-Status (nur Admin) */
   setStatusConfig(venueId: string, cfg: StatusConfig): Promise<void>;
+  /** QR-Code der Gäste-Speisekarte erneuern (nur Admin) – der alte Code gilt danach nicht mehr */
+  setQrToken(venueId: string, token: string): Promise<void>;
   // Gäste-Speisekarte per QR – ohne Anmeldung, nur mit dem Tisch-Schlüssel
   guestMenu(token: string): Promise<GuestMenuData | null>;
   /** party = Hotelzimmer (stayId) oder externe Reservierung am Tisch (resId) */

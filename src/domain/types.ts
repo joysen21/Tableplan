@@ -24,7 +24,8 @@ export interface Branding { title: string; welcome: string; welcomeIt?: string; 
 export interface CustomStatus { id: string; label: string; color: string; base: ResStatus; icon?: string }
 /** Status-Einstellungen je Betrieb: Standard-Status umbenennen/umfärben/ausblenden, eigene Status ergänzen */
 export interface StatusConfig { builtIn?: Partial<Record<ResStatus, { label?: string; color?: string; hidden?: boolean; icon?: string }>>; custom?: CustomStatus[] }
-export interface Venue { id: string; name: string; modules: ModuleKey[]; rosterSettings?: Partial<RosterSettings>; branding?: Branding; statusConfig?: StatusConfig }
+/** qrToken = Schlüssel im QR-Code der Gäste-Speisekarte (ein Code für alle Tische) */
+export interface Venue { id: string; name: string; modules: ModuleKey[]; rosterSettings?: Partial<RosterSettings>; branding?: Branding; statusConfig?: StatusConfig; qrToken?: string }
 
 export interface Member { userId: string; role: Role; name: string; email: string }
 

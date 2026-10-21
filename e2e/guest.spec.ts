@@ -152,3 +152,49 @@ test('Live-Plan zeigt das per QR gewählte Menü des Zimmers', async ({ page }) 
   await expect(item.locator('.menu-choice')).toContainText(expected.dish);
   await page.screenshot({ path: 'test-results/live-menu.png' });
 });
+
+test('Ein QR-Code für alle Tische: Gast wählt Zimmer oder Tisch aus der Liste; Personal druckt einen Code', async ({ page }) => {
+  await loginDemo(page);
+  const t = await page.evaluate(() => {
+    const v = Object.values(JSON.parse(localStorage.getItem('tischplan.demo.v2')!).data)[0] as any;
+    const day = new Date().toLocaleDateString('sv-SE');
+    const svc = v.services.find((s: any) => s.kind === 'abend');
+    const menu = v.menus.find((m: any) => m.date === day && m.serviceId === svc.id);
+    const ext = v.reservations.find((x: any) => x.date === day && x.serviceId === svc.id && !x.stayId && x.tableIds.length && !['storniert', 'noshow'].includes(x.status)
+      && !v.reservations.some((o: any) => o.id !== x.id && o.date === day && o.serviceId === svc.id && !o.stayId && o.tableIds[0] === x.tableIds[0]));
+    const names = ext.tableIds.map((id: string) => v.tables.find((tb: any) => tb.id === id).name).sort().join('+');
+    return { token: v.venue.qrToken, menuId: menu.id, resId: ext.id, extName: ext.name, table: names };
+  });
+  expect(t.token).toBeTruthy();
+
+  await page.goto(`/m/${t.token}?demo`);
+  await expect(page.locator('.gm-table')).toHaveCount(0); // kein fester Tisch
+  await page.getByRole('tab', { name: /Heute.*Abendessen/ }).click();
+  await expect(page.getByText('Bitte wählen Sie Ihr Zimmer bzw. Ihren Tisch.')).toBeVisible();
+  const pick = page.getByRole('combobox', { name: 'Zimmer / Tisch auswählen' });
+  const opts = await pick.locator('option').allTextContents();
+  expect(opts.some(o => o.startsWith('Zimmer '))).toBe(true);
+  expect(opts.some(o => o.startsWith(`Tisch ${t.table} ·`))).toBe(true);
+  expect(opts.join(' ')).not.toContain(t.extName); // externe Gäste ohne Namen
+  await pick.selectOption('r:' + t.resId);
+  await page.locator('.gm-step button[aria-label="+"]:not([disabled])').first().click();
+  await page.getByRole('button', { name: 'Auswahl senden' }).click();
+  await expect(page.getByText('Danke! Ihre Auswahl ist bei der Küche angekommen.')).toBeVisible();
+  const saved = await page.evaluate(x => {
+    const v = Object.values(JSON.parse(localStorage.getItem('tischplan.demo.v2')!).data)[0] as any;
+    return v.menuChoices.find((c: any) => c.menuId === x.menuId && c.reservationId === x.resId);
+  }, t);
+  expect(saved).toBeTruthy();
+
+  // Personal: ein Code, mehrfach gedruckt; Editor ohne Tisch-QR
+  await page.goto('/?demo');
+  await goView(page, 'Einstellungen');
+  await page.getByRole('button', { name: 'QR-Code drucken' }).click();
+  const cards = page.locator('.modal .qr-card');
+  await expect(cards).toHaveCount(6);
+  await page.locator('.modal').getByLabel('Anzahl Karten').fill('3');
+  await expect(cards).toHaveCount(3);
+  const svgs = await cards.locator('.qr-svg').evaluateAll(els => els.map(e => e.innerHTML));
+  expect(new Set(svgs).size).toBe(1); // überall derselbe Code
+  await expect(page.locator('.modal')).not.toContainText('Tisch T');
+});

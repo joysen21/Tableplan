@@ -45,7 +45,10 @@ export class DemoRepo implements Repo {
         const db: DemoDb = JSON.parse(raw);
         // ältere Demo-Daten: QR-Schlüssel der Tische einmalig vergeben und speichern (müssen stabil bleiben)
         let added = false;
-        for (const d of Object.values(db.data)) for (const t of d.tables ?? []) if (!t.qrToken) { t.qrToken = newQrToken(); added = true; }
+        for (const d of Object.values(db.data)) {
+          if (d.venue && !d.venue.qrToken) { d.venue.qrToken = newQrToken(); added = true; }
+          for (const t of d.tables ?? []) if (!t.qrToken) { t.qrToken = newQrToken(); added = true; }
+        }
         if (added) this.write(db);
         return db;
       }
@@ -344,6 +347,10 @@ export class DemoRepo implements Repo {
     this.mutate(venueId, d => { d.venue.branding = { ...branding }; name = d.venue.name; });
     this.emit([{ kind: 'venue', type: 'upsert', name, branding }]);
   }
+  async setQrToken(venueId: string, token: string) {
+    this.guard(venueId, 'venue');
+    this.mutate(venueId, d => { d.venue.qrToken = token; });
+  }
   async setStatusConfig(venueId: string, cfg: StatusConfig) {
     this.guard(venueId, 'venue');
     let name = '';
@@ -353,7 +360,8 @@ export class DemoRepo implements Repo {
 
   /* ---------- Gäste-Speisekarte (ohne Anmeldung, wie guest_menu / guest_menu_save in der DB) ---------- */
   private guestVenue(token: string): VenueData | undefined {
-    return Object.values(this.read().data).find(d => d.tables?.some(t => t.qrToken === token));
+    // QR-Code des Betriebs (für alle Tische) oder ein älterer Tisch-QR-Code
+    return Object.values(this.read().data).find(d => d.venue?.qrToken === token || d.tables?.some(t => t.qrToken === token));
   }
   async guestMenu(token: string) {
     const d = this.guestVenue(token);

@@ -37,7 +37,7 @@ describe('Gäste-Speisekarte (QR)', () => {
   it('zeigt für den Tisch-Schlüssel nur die Zimmer an diesem Tisch und nur freigegebene Menüs', () => {
     const { d, t1, t2, menu, s101, s102 } = setup();
     const v = buildGuestMenu(d, t1.qrToken, DAY)!;
-    expect(v.table.name).toBe('T1');
+    expect(v.table?.name).toBe('T1');
     expect(v.menus.map(m => m.id)).toEqual([menu.id]);
     expect(v.menus[0].rooms.map(r => [r.stayId, r.persons])).toEqual([[s101.id, 2], [s102.id, 3]]);
     expect(v.menus[0].items[0].nameIt).toBe('Rind IT');
@@ -90,6 +90,20 @@ describe('Gäste-Speisekarte (QR)', () => {
     d.menuChoices.push({ id: newId(), menuId: menu.id, stayId: s102.id, counts: { [strudel.id]: 3, [fisch.id]: 2, [rind.id]: 1 } });
     expect(chosenText(chosenDishes(d, r))).toBe('1× Rind, 2× Fisch, 3× Strudel');
     expect(chosenDishes(d, { ...r, stayId: null })).toEqual([]); // externe Gäste wählen nicht
+  });
+
+  it('ein QR-Code für alle Tische: alle Gäste des Menüs, externe nur mit Tisch und ohne Namen', () => {
+    const { d, menu, s101, s102 } = setup();
+    d.venue.qrToken = newQrToken();
+    const v = buildGuestMenu(d, d.venue.qrToken, DAY)!;
+    expect(v.table).toBeNull();
+    const m = v.menus.find(x => x.id === menu.id)!;
+    expect(m.pick).toBe(true);
+    expect(m.rooms.map(r => r.stayId ?? r.tableName)).toEqual([s101.id, s102.id, 'T2']);
+    expect(JSON.stringify(m.rooms)).not.toContain('"name"');
+    // externe Reservierung ohne Tisch ist nicht auswählbar
+    d.reservations.find(r => !r.stayId)!.tableIds = [];
+    expect(buildGuestMenu(d, d.venue.qrToken, DAY)!.menus[0].rooms).toHaveLength(2);
   });
 
   it('prüft die Auswahl: nur Gerichte des Menüs, je Gang höchstens so viele wie Personen', () => {

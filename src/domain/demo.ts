@@ -23,7 +23,7 @@ export function defaultServices(): Service[] {
 /** Leerer Betrieb mit Grundeinstellungen */
 export function emptyVenueData(venueId: string, name: string): VenueData {
   return {
-    venue: { id: venueId, name, modules: [] },
+    venue: { id: venueId, name, modules: [], qrToken: newQrToken() },
     rooms: [{ id: newId(), name: 'Restaurant', width: 1000, height: 650, backgroundUrl: null, sort: 0 }],
     stations: [], tables: [], decor: [], combos: [], layouts: [], services: defaultServices(), blocks: [], stays: [], reservations: [], audit: [],
     ingredients: [], dishes: [], menus: [], menuChoices: [], departments: [], positions: [], staff: [], shiftTemplates: [], shifts: [], absences: [], publications: []
@@ -36,7 +36,7 @@ export function normalizeVenueData(d: VenueData): VenueData {
     'departments', 'positions', 'staff', 'shiftTemplates', 'shifts', 'absences', 'publications'] as const;
   const out = { ...d } as VenueData;
   for (const k of L) (out as any)[k] = (d as any)[k] ?? [];
-  out.venue = { ...d.venue, modules: d.venue?.modules ?? [] };
+  out.venue = { ...d.venue, modules: d.venue?.modules ?? [], qrToken: d.venue?.qrToken || newQrToken() };
   out.departments = out.departments.map(x => ({ ...x, guestsPerStaff: x.guestsPerStaff ?? null, minStaff: x.minStaff ?? 0 }));
   out.staff = out.staff.map(x => ({ ...x, vacationDays: x.vacationDays ?? 0, shareToken: x.shareToken || newId() }));
   out.shifts = out.shifts.map(x => ({ ...x, note: x.note ?? '', breakMin: x.breakMin ?? 0 }));
@@ -53,7 +53,7 @@ export function demoVenueData(venueId: string, name: string): VenueData {
   const pick = <T,>(a: T[]): T => a[Math.floor(rnd() * a.length)];
   const r1 = newId(), r2 = newId(), sA = newId(), sB = newId(), sC = newId();
   const d: VenueData = {
-    venue: { id: venueId, name, modules: ['dienstplan'], branding: { title: 'Hotel Sonnenhof', welcome: 'Herzlich willkommen! Wählen Sie hier Ihr Menü – unsere Küche bereitet es frisch für Sie zu.', welcomeIt: 'Benvenuti! Scegliete qui il vostro menù – la nostra cucina lo prepara fresco per voi.', welcomeEn: 'Welcome! Choose your menu here – our kitchen prepares it fresh for you.', color: '#0F2347', logoUrl: null, coverUrl: null } },
+    venue: { id: venueId, name, modules: ['dienstplan'], qrToken: newQrToken(), branding: { title: 'Hotel Sonnenhof', welcome: 'Herzlich willkommen! Wählen Sie hier Ihr Menü – unsere Küche bereitet es frisch für Sie zu.', welcomeIt: 'Benvenuti! Scegliete qui il vostro menù – la nostra cucina lo prepara fresco per voi.', welcomeEn: 'Welcome! Choose your menu here – our kitchen prepares it fresh for you.', color: '#0F2347', logoUrl: null, coverUrl: null } },
     rooms: [
       { id: r1, name: 'Restaurant', width: 1000, height: 650, backgroundUrl: null, sort: 0 },
       { id: r2, name: 'Stube', width: 720, height: 500, backgroundUrl: null, sort: 1 }

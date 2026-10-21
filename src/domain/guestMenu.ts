@@ -25,12 +25,14 @@ export const guestUrl = (origin: string, token: string, demo = false) => `${orig
 /* ---------- Was der Gast sieht ---------- */
 export interface GuestDish { course: Course; dishId: string; name: string; nameIt: string; nameEn: string; diet: Diet[]; allergens: Allergen[] }
 /** Wer per QR wählt: ein Hotelzimmer (stayId) oder eine externe Reservierung am Tisch (resId, roomNo leer) */
-export interface GuestRoom { stayId: string | null; resId?: string | null; roomNo: string; persons: number; counts: Record<string, number>; note?: string }
+export interface GuestRoom { stayId: string | null; resId?: string | null; roomNo: string; persons: number; counts: Record<string, number>; note?: string;
+  /** externe Reservierung: Tisch(e), an dem der Gast sitzt (statt Namen) */ tableName?: string }
 /** Schlüssel einer Auswahl-Partei (Zimmer oder Reservierung) */
 export const partyKey = (x: { stayId?: string | null; resId?: string | null }) => x.stayId || 'r:' + (x.resId ?? '');
 /** pick = freie Platzwahl: rooms enthält alle Zimmer mit dieser Mahlzeit, der Gast wählt sein Zimmer aus */
 export interface GuestMenu { id: string; date: string; service: string; kind: string; state: MenuOrdering; pick: boolean; items: GuestDish[]; rooms: GuestRoom[] }
-export interface GuestMenuData { venue: { name: string; branding: Branding }; table: { name: string }; menus: GuestMenu[] }
+/** table = null: QR-Code des Betriebs (ein Code für alle Tische) – der Gast wählt Zimmer bzw. Tisch selbst */
+export interface GuestMenuData { venue: { name: string; branding: Branding }; table: { name: string } | null; menus: GuestMenu[] }
 
 /** Isst der Aufenthalt bei dieser Mahlzeit mit? Frühstück am Morgen nach jeder Nacht (bis zum Abreisetag), sonst an jedem Tag bis vor der Abreise.
  *  Gleiche Regel in der DB-Funktion stay_eats (Migration 20261017000000_fruehstueck_freie_platzwahl.sql). */
@@ -63,10 +65,13 @@ export function menuRooms(d: VenueData, m: Pick<Menu, 'id' | 'date' | 'serviceId
     (a.stay?.roomNo ?? a.label).localeCompare(b.stay?.roomNo ?? b.label, 'de', { numeric: true }));
 }
 
-/** Gäste-Ansicht für einen Tisch-Schlüssel (heute und morgen, nur freigegebene Menüs) – im Demo-Modus statt der DB-Funktion */
+/** Gäste-Ansicht für einen QR-Schlüssel (heute und morgen, nur freigegebene Menüs) – im Demo-Modus statt der DB-Funktion.
+ *  Schlüssel des Betriebs → alle Gäste zur Auswahl; älterer Tisch-Schlüssel → nur die Gäste an diesem Tisch */
 export function buildGuestMenu(d: VenueData, token: string, day0: string): GuestMenuData | null {
-  const tb = token.length >= 16 ? d.tables.find(x => x.qrToken === token) : undefined;
-  if (!tb) return null;
+  if (token.length < 16) return null;
+  const whole = d.venue.qrToken === token;
+  const tb = whole ? undefined : d.tables.find(x => x.qrToken === token);
+  if (!whole && !tb) return null;
   const svcIdx = (id: string) => d.services.findIndex(s => s.id === id);
   const menus = d.menus
     .filter(m => (m.date === day0 || m.date === addDays(day0, 1)) && orderingOf(m) !== 'aus')
@@ -74,17 +79,18 @@ export function buildGuestMenu(d: VenueData, token: string, day0: string): Guest
     .map((m): GuestMenu => {
       const svc = byId(d.services, m.serviceId);
       return {
-        id: m.id, date: m.date, service: svc?.name ?? '', kind: svc?.kind ?? '', state: orderingOf(m), pick: !!svc?.freeSeating,
+        id: m.id, date: m.date, service: svc?.name ?? '', kind: svc?.kind ?? '', state: orderingOf(m), pick: !!svc?.freeSeating || whole,
         items: m.items.map(it => {
           const dish = byId(d.dishes, it.dishId);
           return { course: it.course, dishId: it.dishId, name: dish?.name ?? it.name, nameIt: dish?.nameIt ?? '', nameEn: dish?.nameEn ?? '', diet: dish?.diet ?? [], allergens: it.allergens };
         }),
-        // externe Gäste ohne Namen (Datenschutz) – sie erscheinen als „Tisch …“
-        rooms: menuRooms(d, m, tb.id).map(x => ({ stayId: x.stay?.id ?? null, resId: x.stay ? null : x.res!.id, roomNo: x.stay?.roomNo ?? '', persons: x.persons,
-          counts: x.choice?.counts ?? {}, note: x.choice?.note ?? '' }))
+        // externe Gäste ohne Namen (Datenschutz) – sie erscheinen als „Tisch …“; ohne Tisch nicht auffindbar
+        rooms: menuRooms(d, m, tb?.id).filter(x => x.stay || x.res?.tableIds.length).map(x => ({ stayId: x.stay?.id ?? null, resId: x.stay ? null : x.res!.id,
+          roomNo: x.stay?.roomNo ?? '', persons: x.persons, counts: x.choice?.counts ?? {}, note: x.choice?.note ?? '',
+          ...(x.stay ? {} : { tableName: tableNames(d, x.res!.tableIds) }) }))
       };
     });
-  return { venue: { name: d.venue.name, branding: brandingOf(d.venue) }, table: { name: tb.name }, menus };
+  return { venue: { name: d.venue.name, branding: brandingOf(d.venue) }, table: tb ? { name: tb.name } : null, menus };
 }
 
 /**

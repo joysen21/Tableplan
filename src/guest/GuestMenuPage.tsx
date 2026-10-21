@@ -51,7 +51,7 @@ export function GuestMenuPage({ token }: { token: string }) {
           {b?.logoUrl && <img className="gm-logo" src={b.logoUrl} alt="" />}
           <h1>{b?.title || data?.venue.name || ''}</h1>
           {welcome && <p className="gm-welcome">{welcome}</p>}
-          {data && <span className="gm-table">{tr(lang, 'table')} {data.table.name}</span>}
+          {data?.table && <span className="gm-table">{tr(lang, 'table')} {data.table.name}</span>}
         </div>
       </header>
 
@@ -68,7 +68,7 @@ export function GuestMenuPage({ token }: { token: string }) {
             ))}
           </div>
         )}
-        {menu && <MenuChooser key={menu.id} token={token} menu={menu} tableName={data!.table.name} lang={lang} title={`${dayLabel(menu)} · ${serviceName(lang, menu.kind, menu.service)}`} onSaved={load} />}
+        {menu && <MenuChooser key={menu.id} token={token} menu={menu} tableName={data!.table?.name ?? ''} lang={lang} title={`${dayLabel(menu)} · ${serviceName(lang, menu.kind, menu.service)}`} onSaved={load} />}
         {menu && <AllergenLegend lang={lang} items={menu.items} />}
       </main>
 
@@ -93,8 +93,11 @@ function MenuChooser({ token, menu, tableName, lang, title, onSaved }: { token: 
   };
   const room = rooms.find(r => partyKey(r) === stayId);
   // externe Gäste (ohne Zimmer) erscheinen als „Tisch …“, bei mehreren durchnummeriert
-  const ext = rooms.filter(r => !r.roomNo);
-  const label = (r: GuestRoom) => r.roomNo ? `${tr(lang, 'room')} ${r.roomNo}` : `${tr(lang, 'table')} ${tableName}${ext.length > 1 ? ` (${ext.indexOf(r) + 1})` : ''}`;
+  // mehrere externe Reservierungen am selben Tisch werden durchnummeriert
+  const tableOf = (r: GuestRoom) => r.tableName || tableName;
+  const same = (r: GuestRoom) => rooms.filter(x => !x.roomNo && tableOf(x) === tableOf(r));
+  const label = (r: GuestRoom) => r.roomNo ? `${tr(lang, 'room')} ${r.roomNo}`
+    : `${tr(lang, 'table')} ${tableOf(r)}${same(r).length > 1 ? ` (${same(r).indexOf(r) + 1})` : ''}`;
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
@@ -140,9 +143,10 @@ function MenuChooser({ token, menu, tableName, lang, title, onSaved }: { token: 
       {!rooms.length ? <p className="gm-note">{tr(lang, menu.pick ? 'noRoomFree' : 'noRoom')}</p> : menu.pick && rooms.length > 1 ? (
         // Freie Platzwahl: Zimmer aus allen Zimmern mit dieser Mahlzeit auswählen
         <div className="gm-rooms">
-          <p>{tr(lang, 'freeSeating')}</p>
-          <select className="gm-roompick" aria-label={tr(lang, 'pickRoom')} value={stayId ?? ''} onChange={e => setStayId(e.target.value || null)}>
-            <option value="">{tr(lang, 'pickRoom')}</option>
+          {/* ein QR-Code für alle Tische: Zimmer oder Tisch wählen; bei freier Platzwahl (Tisch-QR) nur Zimmer */}
+          <p>{tr(lang, tableName ? 'freeSeating' : 'pickWho')}</p>
+          <select className="gm-roompick" aria-label={tr(lang, tableName ? 'pickRoom' : 'pickParty')} value={stayId ?? ''} onChange={e => setStayId(e.target.value || null)}>
+            <option value="">{tr(lang, tableName ? 'pickRoom' : 'pickParty')}</option>
             {rooms.map(r => <option key={partyKey(r)} value={partyKey(r)}>{label(r)} · {r.persons} {tr(lang, 'persons')}{Object.keys(r.counts).length ? ' ✓' : ''}</option>)}
           </select>
         </div>

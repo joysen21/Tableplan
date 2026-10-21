@@ -15,7 +15,6 @@ import { useUi } from '../store/ui';
 import { svgPoint } from '../ui/drag';
 import { confirmDialog, toast } from '../ui/notify';
 import { FloorPlan } from '../ui/FloorPlan';
-import { TableQr } from '../forms/GuestMenuForms';
 
 const SHAPES: TableShape[] = ['round', 'square', 'rect', 'bench'];
 const DECOR: DecorKind[] = ['wall', 'door', 'bar', 'buffet', 'column', 'plant', 'label'];
@@ -210,7 +209,6 @@ export function EditorView() {
             <div style={{ margin: '8px 0' }}>{FEATURES.map(f => <label key={f} className="chk"><input type="checkbox" checked={selT.features.includes(f)}
               onChange={e => saveTable(selT, { features: e.target.checked ? [...selT.features, f] : selT.features.filter(x => x !== f) })} /> {t(f)}</label>)}</div>
             <div className="row"><button className="btn small" onClick={duplicate}>Duplizieren</button><button className="btn small danger" onClick={deleteSelected}><Trash2 />Löschen</button></div>
-            <TableQr tb={selT} onRenew={qrToken => saveTable(selT, { qrToken })} />
           </> : selD ? <>
             <div className="grid2">
               <label>Typ<select value={selD.kind} onChange={e => saveDecor(selD, { kind: e.target.value as DecorKind })}>{DECOR.map(k => <option key={k} value={k}>{t(k)}</option>)}</select></label>
