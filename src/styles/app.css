@@ -765,3 +765,37 @@ small.danger,.danger{color:var(--danger)}
 .chef-dishes th,.chef-dishes td{text-align:right;padding:5px 8px;border-bottom:1px solid var(--line)}
 .chef-dishes th:first-child,.chef-dishes td:first-child{text-align:left}
 .chef-dishes td.hot{color:#c25e10;font-weight:700}
+
+/* ---------- Module Garage, Massage, Fahrrad ---------- */
+.extras{display:flex;flex-direction:column;gap:10px}
+.xhead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line)}
+.xdate{gap:6px;align-items:center;flex-wrap:wrap}
+.xdate .is-today{border-color:var(--accent)}
+.extras .pad{padding:8px 12px;margin:0}
+.xgrid{display:grid;grid-auto-rows:44px;padding:0 0 4px}
+.xg-corner,.xg-head{position:sticky;top:0;background:var(--panel);font-size:11px;color:var(--muted);white-space:nowrap;padding:4px 2px;border-bottom:1px solid var(--line)}
+.xg-head.start{border-left:1px solid var(--line);padding-left:4px}
+.xg-label{display:flex;flex-direction:column;justify-content:center;padding:0 10px;border-bottom:1px solid var(--line);position:sticky;left:0;background:var(--panel);z-index:2;line-height:1.2}
+.xg-label small{font-size:11px}
+.xg-cell{border:0;border-radius:0;border-bottom:1px solid var(--line);background:transparent;padding:0;cursor:pointer;min-width:0;width:auto;height:auto;box-shadow:none}
+.xg-cell.start{border-left:1px solid var(--line)}
+.xg-cell:hover{background:var(--accent-soft)}
+.xg-cell.off{background:repeating-linear-gradient(135deg,transparent 0 6px,var(--panel2) 6px 12px)}
+.xg-cell.on{background:rgba(45,164,78,.08)}
+.xg-bar{z-index:1;margin:5px 2px;border-radius:7px;border:1px solid rgba(0,0,0,.15);color:#fff;font-size:12px;font-weight:600;text-align:left;padding:0 6px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;min-width:0}
+.xg-bar.m-garage{background:#4F7BD1}
+.xg-bar.m-fahrrad{background:#2da44e}
+.xg-bar.m-massage{background:#a371f7}
+.xlist{list-style:none;margin:0;padding:6px 8px}
+.xlist .btn{text-align:left;white-space:normal;height:auto;padding:4px 6px}
+.xform{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.xform label{display:flex;flex-direction:column;gap:4px}
+.xform label.chk{flex-direction:row;align-items:center}
+.xform .wide{grid-column:1/-1}
+@media (max-width:560px){.xform{grid-template-columns:1fr}}
+table.presence{border-collapse:collapse;width:100%}
+table.presence th,table.presence td{border-bottom:1px solid var(--line);padding:6px;text-align:left;white-space:nowrap}
+table.presence td input{width:92px;display:block;margin:2px 0}
+table.presence td.on{background:rgba(45,164,78,.08)}
+label.inline{display:inline-flex;align-items:center;gap:4px}

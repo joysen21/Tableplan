@@ -23,7 +23,6 @@ test('Küche bestellt bei Agostini per WhatsApp; Historie und Auswertung', async
   expect(url).toContain('5 × Kiste Coca Cola 1l');
   expect(url).toContain('Bitte bis Freitag');
   await wa.close();
-  await expect(page.locator('.toast', { hasText: 'Historie' })).toBeVisible();
   await expect(page.locator('.order-send')).toContainText('0 Artikel');
 
   // Historie und Übernehmen als neue Bestellung

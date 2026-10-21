@@ -25,6 +25,10 @@ export function remapIds(d: VenueData, newId: () => string): VenueData {
     menus: (d.menus ?? []).map(x => ({ ...x, id: m(x.id)!, serviceId: m(x.serviceId)!, items: x.items.map(i => ({ ...i, dishId: m(i.dishId)! })) })),
     menuChoices: [], // Gäste-Auswahl wird nicht übernommen
     passCalls: [],
+    hotelResources: (d.hotelResources ?? []).map(x => ({ ...x, id: m(x.id)! })),
+    therapies: (d.therapies ?? []).map(x => ({ ...x, id: m(x.id)! })),
+    presence: (d.presence ?? []).map(x => ({ ...x, id: m(x.id)!, resourceId: m(x.resourceId)! })),
+    bookings: (d.bookings ?? []).map(x => ({ ...x, id: m(x.id)!, resourceId: m(x.resourceId)!, stayId: m(x.stayId)!, therapyId: m(x.therapyId) })),
     // Bereichsleitungen sind Benutzer des alten Betriebs → im neuen Betrieb neu zuweisen
     departments: (d.departments ?? []).map(x => ({ ...x, id: m(x.id)!, leadIds: [] })),
     shifts: (d.shifts ?? []).map(x => ({ ...x, id: m(x.id)!, departmentId: m(x.departmentId)!, staffId: m(x.staffId), positionId: m(x.positionId), templateId: m(x.templateId) })),

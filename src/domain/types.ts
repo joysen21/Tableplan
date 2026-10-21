@@ -15,7 +15,7 @@ export type Course = 'vorspeise' | 'suppe' | 'zwischengang' | 'hauptgang' | 'bei
 export type Diet = 'vegetarisch' | 'vegan';
 export type TableState = 'frei' | 'reserviert' | 'bald' | 'platziert' | 'rechnung' | 'ueberfaellig' | 'ueberzogen' | 'gesperrt';
 
-export type ModuleKey = 'dienstplan' | 'bestellliste' | 'pass';
+export type ModuleKey = 'dienstplan' | 'bestellliste' | 'pass' | ExtraModule;
 /** modules: zugeschaltete Zusatzmodule des Betriebs */
 /** Erscheinungsbild der Gäste-Speisekarte (QR): Logo, Titelbild, Akzentfarbe, Titel und Begrüßung */
 /** welcomeIt/welcomeEn optional – fehlt die Übersetzung, erscheint der deutsche Text */
@@ -37,6 +37,21 @@ export interface SupplierProduct { id: string; supplierId: string; name: string;
 export interface OrderLine { productId: string; name: string; unit: string; qty: number }
 /** Gesendete Bestellung (Historie) */
 export interface SupplierOrder { id: string; supplierId: string; createdAt: string; createdBy: string; items: OrderLine[]; note: string }
+
+/* ---------- Module Garage, Massage, Fahrrad ---------- */
+export type ExtraModule = 'garage' | 'massage' | 'fahrrad';
+/** Stellplatz (ev = Ladeplatz), Masseurin oder Fahrrad (art, size) */
+export interface HotelResource { id: string; module: ExtraModule; name: string; sort: number; active: boolean; ev: boolean; art: string; size: string }
+export interface Therapy { id: string; name: string; duration: number; price: number; sort: number; active: boolean }
+/** Anwesenheit einer Masseurin an einem Tag (HH:MM) */
+export interface Presence { id: string; resourceId: string; date: string; start: string; end: string }
+/** Fahrrad: ganzer Tag, Vormittag, Nachmittag */
+export type BikePart = 'tag' | 'vm' | 'nm';
+/** Buchung einer Ressource durch einen Hotelgast; starts/ends lokal „JJJJ-MM-TTTHH:MM“, Ende ausschließlich */
+export interface Booking {
+  id: string; module: ExtraModule; resourceId: string; stayId: string; starts: string; ends: string;
+  therapyId: string | null; plate: string; ev: boolean; part: BikePart | null; price: number | null; note: string; createdBy: string; updatedAt?: string;
+}
 
 /* ---------- Modul Pass + Chef ---------- */
 /** Stand eines Abrufs: Service ruft ab → Küche meldet fertig → Service serviert */
@@ -182,6 +197,7 @@ export interface VenueData {
   shifts: Shift[]; absences: Absence[]; publications: Publication[];
   suppliers: Supplier[]; supplierProducts: SupplierProduct[]; supplierOrders: SupplierOrder[];
   passCalls: PassCall[];
+  hotelResources: HotelResource[]; therapies: Therapy[]; presence: Presence[]; bookings: Booking[];
 }
 
 export interface SessionUser { id: string; name: string; email: string; role: Role }

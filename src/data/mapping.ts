@@ -1,6 +1,6 @@
 /** Umwandlung Datenbankzeile (snake_case) ↔ Fachobjekt (camelCase) */
 import type {
-  Absence, AuditEntry, Decor, Department, DiningTable, Dish, Ingredient, Layout, Member, Menu, MenuChoice, PassCall, Position, Publication, Reservation, Room, Service, Shift,
+  Absence, AuditEntry, Decor, Department, DiningTable, Dish, Ingredient, Layout, Member, Menu, MenuChoice, PassCall, HotelResource, Therapy, Presence, Booking, Position, Publication, Reservation, Room, Service, Shift,
   ShiftTemplate, Staff, Station, Stay, Supplier, SupplierOrder, SupplierProduct, TableBlock, TableCombo
 } from '../domain/types';
 import type { EntityKey, EntityMap } from './repo';
@@ -13,7 +13,7 @@ export const TABLE_OF: Record<EntityKey | 'stays' | 'reservations' | 'reservatio
   services: 'services', blocks: 'table_blocks', ingredients: 'ingredients', dishes: 'dishes', menus: 'menus', menuChoices: 'menu_choices',
   departments: 'departments', positions: 'positions', staff: 'staff', shiftTemplates: 'shift_templates',
   shifts: 'shifts', absences: 'absences', publications: 'roster_publications',
-  suppliers: 'order_suppliers', supplierProducts: 'order_products', supplierOrders: 'supplier_orders', passCalls: 'pass_calls', stays: 'stays', reservations: 'reservations', reservation_tables: 'reservation_tables', audit: 'audit_log'
+  suppliers: 'order_suppliers', supplierProducts: 'order_products', supplierOrders: 'supplier_orders', passCalls: 'pass_calls', hotelResources: 'hotel_resources', therapies: 'massage_therapies', presence: 'resource_presence', bookings: 'resource_bookings', stays: 'stays', reservations: 'reservations', reservation_tables: 'reservation_tables', audit: 'audit_log'
 };
 export const KIND_OF: Record<string, keyof typeof TABLE_OF> =
   Object.fromEntries(Object.entries(TABLE_OF).map(([k, v]) => [v, k as keyof typeof TABLE_OF]));
@@ -78,6 +78,11 @@ export const fromDb = {
   supplierOrders: (r: Row): SupplierOrder => ({ id: r.id, supplierId: r.supplier_id, createdAt: r.created_at, createdBy: r.created_by ?? '', items: r.items ?? [], note: r.note ?? '' }),
   passCalls: (r: Row): PassCall => ({ id: r.id, reservationId: r.reservation_id, menuId: r.menu_id, course: r.course, counts: r.counts ?? {}, cancelled: r.cancelled ?? {},
     state: r.state, calledBy: r.called_by ?? '', calledByName: r.called_by_name ?? '', calledAt: r.called_at, readyAt: r.ready_at ?? null, servedAt: r.served_at ?? null, updatedAt: r.updated_at }),
+  hotelResources: (r: Row): HotelResource => ({ id: r.id, module: r.module, name: r.name, sort: r.sort ?? 0, active: r.active !== false, ev: !!r.ev, art: r.art ?? '', size: r.size ?? '' }),
+  therapies: (r: Row): Therapy => ({ id: r.id, name: r.name, duration: r.duration ?? 50, price: Number(r.price ?? 0), sort: r.sort ?? 0, active: r.active !== false }),
+  presence: (r: Row): Presence => ({ id: r.id, resourceId: r.resource_id, date: r.date, start: hhmm(r.start_time), end: hhmm(r.end_time) }),
+  bookings: (r: Row): Booking => ({ id: r.id, module: r.module, resourceId: r.resource_id, stayId: r.stay_id, starts: String(r.starts).slice(0, 16), ends: String(r.ends).slice(0, 16),
+    therapyId: r.therapy_id ?? null, plate: r.plate ?? '', ev: !!r.ev, part: r.part ?? null, price: r.price == null ? null : Number(r.price), note: r.note ?? '', createdBy: r.created_by ?? '', updatedAt: r.updated_at }),
   publications: (r: Row): Publication => ({ id: r.id, departmentId: r.department_id, weekStart: r.week_start, publishedAt: r.published_at, publishedBy: r.published_by ?? '' }),
   shiftTemplates: (r: Row): ShiftTemplate => ({
     id: r.id, departmentId: r.department_id, positionId: r.position_id ?? null, name: r.name, short: r.short ?? '', start: hhmm(r.start_time), end: hhmm(r.end_time),
@@ -137,6 +142,11 @@ export const toDb = {
   supplierOrders: (x: SupplierOrder, v: string) => ({ id: x.id, venue_id: v, supplier_id: x.supplierId, created_at: x.createdAt, created_by: x.createdBy, items: x.items, note: x.note }),
   passCalls: (x: PassCall, v: string) => ({ id: x.id, venue_id: v, reservation_id: x.reservationId, menu_id: x.menuId, course: x.course, counts: x.counts, cancelled: x.cancelled,
     state: x.state, called_by: x.calledBy, called_by_name: x.calledByName, called_at: x.calledAt, ready_at: x.readyAt, served_at: x.servedAt }),
+  hotelResources: (x: HotelResource, v: string) => ({ id: x.id, venue_id: v, module: x.module, name: x.name.trim(), sort: x.sort, active: x.active, ev: x.ev, art: x.art, size: x.size }),
+  therapies: (x: Therapy, v: string) => ({ id: x.id, venue_id: v, name: x.name.trim(), duration: x.duration, price: x.price, sort: x.sort, active: x.active }),
+  presence: (x: Presence, v: string) => ({ id: x.id, venue_id: v, resource_id: x.resourceId, date: x.date, start_time: x.start, end_time: x.end }),
+  bookings: (x: Booking, v: string) => ({ id: x.id, venue_id: v, module: x.module, resource_id: x.resourceId, stay_id: x.stayId, starts: x.starts, ends: x.ends,
+    therapy_id: x.therapyId, plate: x.plate.trim(), ev: x.ev, part: x.part, price: x.price, note: x.note, created_by: x.createdBy }),
   publications: (x: Publication, v: string) => ({ id: x.id, venue_id: v, department_id: x.departmentId, week_start: x.weekStart, published_by: x.publishedBy }),
   shiftTemplates: (x: ShiftTemplate, v: string) => ({
     id: x.id, venue_id: v, department_id: x.departmentId, position_id: x.positionId, name: x.name, short: x.short, start_time: x.start, end_time: x.end,

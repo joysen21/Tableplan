@@ -1,10 +1,10 @@
 /** Oberflächentexte – zentral abgelegt, vorbereitet für IT/EN */
 const DE: Record<string, string> = {
   live: 'Live-Plan', zeit: 'Zeitleiste', res: 'Reservierungen', hotel: 'Hotelgäste', berichte: 'Berichte',
-  editor: 'Raumplan-Editor', settings: 'Einstellungen', menue: 'Menü', dienst: 'Dienstplan', pass: 'Pass', chef: 'Chef', bestell: 'Bestellliste',
+  editor: 'Raumplan-Editor', settings: 'Einstellungen', menue: 'Menü', dienst: 'Dienstplan', pass: 'Pass', chef: 'Chef', garage: 'Garage', massage: 'Massage', fahrrad: 'Fahrrad', bestell: 'Bestellliste',
   // Kurzformen für die Navigationsleiste am Handy
   'kurz.live': 'Live', 'kurz.zeit': 'Zeitleiste', 'kurz.res': 'Reserv.', 'kurz.hotel': 'Hotel', 'kurz.berichte': 'Berichte',
-  'kurz.editor': 'Editor', 'kurz.settings': 'Einstellungen', 'kurz.menue': 'Menü', 'kurz.dienst': 'Dienste', 'kurz.pass': 'Pass', 'kurz.chef': 'Chef', 'kurz.bestell': 'Bestellen',
+  'kurz.editor': 'Editor', 'kurz.settings': 'Einstellungen', 'kurz.menue': 'Menü', 'kurz.dienst': 'Dienste', 'kurz.pass': 'Pass', 'kurz.chef': 'Chef', 'kurz.garage': 'Garage', 'kurz.massage': 'Massage', 'kurz.fahrrad': 'Rad', 'kurz.bestell': 'Bestellen',
   // Dienstplan: Vertragsarten
   urlaub: 'Urlaub', krank: 'Krank',
   unbefristet: 'Unbefristet', befristet: 'Befristet', saison: 'Saisonvertrag', lehrling: 'Lehrling', aushilfe: 'Aushilfe (Extra)',

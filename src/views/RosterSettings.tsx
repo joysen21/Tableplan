@@ -1,7 +1,7 @@
 /** Einstellungen (Admin): Zusatzmodule ein-/ausschalten, Bereiche & Bereichsleitungen des Dienstplans */
 import { useEffect, useState } from 'react';
 import { Plus, Trash2 } from '../ui/icons';
-import { ModuleToggle, SupplierSettings } from '../forms/ModuleSettings';
+import { ModuleToggle, ResourceSettings, SupplierSettings, TherapySettings } from '../forms/ModuleSettings';
 import { repo } from '../data';
 import { newId } from '../domain/demo';
 import { ROSTER_COLORS } from '../domain/constants';
@@ -31,6 +31,9 @@ export function ModulesPanel() {
       {on && <DepartmentsAdmin />}
       {on && <><h4 style={{ margin: '14px 0 6px' }}>Prüfregeln</h4><RulesForm /></>}
       <ModuleToggle mod="pass" label="Pass + Chef" hint="Service ruft Gänge ab (Pass-Plan nach Gang-Stand eingefärbt), Küche meldet fertig, Service serviert. Chef-Ansicht mit Abrufen je Kellner, demnächst kommenden Gängen und Mengen je Gericht." />
+      <ModuleToggle mod="garage" label="Garage" hint="Stellplätze einzeln (mit Ladeplatz für E-Autos); Buchung je Hotelgast von–bis mit Kennzeichen, Belegungsplan über 14 Nächte."><ResourceSettings mod="garage" /></ModuleToggle>
+      <ModuleToggle mod="massage" label="Massage" hint="Masseurinnen mit Anwesenheit, Therapien mit Dauer und Preis; Tages-Zeitleiste je Masseurin, Buchung nur für Hotelgäste."><ResourceSettings mod="massage" /><TherapySettings /></ModuleToggle>
+      <ModuleToggle mod="fahrrad" label="Fahrrad" hint="Räder einzeln mit Art und Größe; Buchung ganzer Tag, Vormittag oder Nachmittag, Wochenplan."><ResourceSettings mod="fahrrad" /></ModuleToggle>
       <ModuleToggle mod="bestellliste" label="Bestellliste" hint="Artikellisten je Lieferant, Bestellung per WhatsApp, Historie und Auswertung je Monat."><SupplierSettings /></ModuleToggle>
     </div></div>
   );

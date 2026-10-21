@@ -4,7 +4,7 @@
  */
 import type {
   Absence, AuditEntry, Branding, Decor, Department, DiningTable, Dish, Ingredient, Layout, Member, Menu, MenuChoice, ModuleKey, OnDuty, Position, Publication,
-  PublicRoster, Reservation, Role, Room, RosterSettings, Service, Shift, ShiftTemplate, Staff, Station, StatusConfig, QrWindow, Stay, PassCall, Supplier, SupplierOrder, SupplierProduct, TableBlock, TableCombo, VenueData
+  PublicRoster, Reservation, Role, Room, RosterSettings, Service, Shift, ShiftTemplate, Staff, Station, StatusConfig, QrWindow, Stay, PassCall, Supplier, HotelResource, Therapy, Presence, Booking, SupplierOrder, SupplierProduct, TableBlock, TableCombo, VenueData
 } from '../domain/types';
 import type { GuestMenuData } from '../domain/guestMenu';
 
@@ -19,6 +19,8 @@ export interface EntityMap {
   suppliers: Supplier; supplierProducts: SupplierProduct; supplierOrders: SupplierOrder;
   /** Modul Pass + Chef (nicht in ENTITY_KEYS: Abrufe werden beim Einspielen einer Sicherung nicht übernommen) */
   passCalls: PassCall;
+  /** Module Garage, Massage, Fahrrad */
+  hotelResources: HotelResource; therapies: Therapy; presence: Presence; bookings: Booking;
 }
 export type EntityKey = keyof EntityMap;
 export const ENTITY_KEYS: EntityKey[] = ['services', 'rooms', 'stations', 'tables', 'decor', 'combos', 'layouts', 'blocks', 'ingredients', 'dishes', 'menus',
@@ -29,6 +31,8 @@ export const ROSTER_PLAN_KEYS: EntityKey[] = ['shifts', 'absences', 'publication
 export const ROSTER_KEYS: EntityKey[] = [...ROSTER_BASE_KEYS, ...ROSTER_PLAN_KEYS];
 /** Tabellen des Moduls Bestellliste (eigene Migration – fehlt sie, läuft der Rest weiter) */
 export const ORDER_KEYS: EntityKey[] = ['suppliers', 'supplierProducts', 'supplierOrders'];
+/** Tabellen der Module Garage, Massage, Fahrrad (eigene Migration; Buchungen verweisen auf Aufenthalte) */
+export const EXTRA_KEYS: EntityKey[] = ['hotelResources', 'therapies', 'presence', 'bookings'];
 
 export interface AuthUser { id: string; email: string }
 export interface Membership { venueId: string; venueName: string; role: Role; name: string }

@@ -80,6 +80,13 @@ export class DemoRepo implements Repo {
       if (!moduleAllowed(db.data[venueId].venue, 'bestellliste', m.role)) throw new RepoError('forbidden', 'Keine Berechtigung für die Bestellliste.');
       return;
     }
+    // Garage/Massage/Fahrrad: Buchungen für alle mit einem der Module, Anwesenheit mit Massage (Ressourcen pflegt nur der Admin)
+    const v = db.data[venueId].venue;
+    if (what === 'bookings' || what === 'presence') {
+      const mods = what === 'presence' ? ['massage' as const] : (['garage', 'massage', 'fahrrad'] as const);
+      if (!mods.some(x => moduleAllowed(v, x, m.role))) throw new RepoError('forbidden', 'Keine Berechtigung für dieses Modul.');
+      return;
+    }
     if (what === 'passCalls') {
       if (!moduleAllowed(db.data[venueId].venue, 'pass', m.role)) throw new RepoError('forbidden', 'Keine Berechtigung für den Pass.');
       return;
