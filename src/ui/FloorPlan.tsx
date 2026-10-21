@@ -3,6 +3,7 @@ import type { PointerEvent as RPE, Ref } from 'react';
 import { hasAllergy } from '../domain/menu';
 import { byId, persons, type TableStatus } from '../domain/logic';
 import { PLAN_BASES, pickableStatuses, tableLook } from '../domain/statuses';
+import { roomNosAt } from '../domain/guestMenu';
 import { useData } from '../store/hooks';
 import { StatusIcon } from './StatusIcon';
 import type { Decor, DiningTable, Room, VenueData } from '../domain/types';
@@ -94,6 +95,9 @@ export function FloorPlan(p: Props) {
         if (mode !== 'edit' && r && s.r) {
           const nm = r.name.split(' · ')[0], more = s.more ? ` +${s.more}` : '', len = maxLen - more.length;
           lineEls.push(<tspan key="a" x={0} dy={14} fontSize={11}>{nm.length > len ? nm.slice(0, len - 1) + '…' : nm}{more}</tspan>);
+          // Zimmernummern der Hotelgäste am Tisch (zusätzlich zum Namen)
+          const nos = mode === 'live' ? roomNosAt(data, tb.id, r) : [];
+          if (nos.length) lineEls.push(<tspan key="z" x={0} dy={13} fontSize={small ? 10 : 11} fontWeight={700}>Zi. {nos.join('/')}</tspan>);
           lineEls.push(small
             ? <tspan key="b" x={0} dy={13} fontSize={10}>{persons(r)}P{r.stayId ? '⌂' : ''}{hasAllergy(r) ? '⚠' : ''}</tspan>
             : <tspan key="b" x={0} dy={13} fontSize={11}>{r.time} · {persons(r)}P{r.stayId ? ' ⌂' : ''}{hasAllergy(r) ? ' ⚠' : ''}{r.vip ? ' ★' : ''}</tspan>);

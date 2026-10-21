@@ -4,7 +4,7 @@
  */
 import type {
   Absence, AuditEntry, Branding, Decor, Department, DiningTable, Dish, Ingredient, Layout, Member, Menu, MenuChoice, ModuleKey, OnDuty, Position, Publication,
-  PublicRoster, Reservation, Role, Room, RosterSettings, Service, Shift, ShiftTemplate, Staff, Station, StatusConfig, Stay, TableBlock, TableCombo, VenueData
+  PublicRoster, Reservation, Role, Room, RosterSettings, Service, Shift, ShiftTemplate, Staff, Station, StatusConfig, QrWindow, Stay, TableBlock, TableCombo, VenueData
 } from '../domain/types';
 import type { GuestMenuData } from '../domain/guestMenu';
 
@@ -90,6 +90,8 @@ export interface Repo {
   setStatusConfig(venueId: string, cfg: StatusConfig): Promise<void>;
   /** QR-Code der Gäste-Speisekarte erneuern (nur Admin) – der alte Code gilt danach nicht mehr */
   setQrToken(venueId: string, token: string): Promise<void>;
+  /** Zeitfenster der automatischen QR-Menüwahl (nur Admin) */
+  setQrWindow(venueId: string, w: QrWindow): Promise<void>;
   // Gäste-Speisekarte per QR – ohne Anmeldung, nur mit dem Tisch-Schlüssel
   guestMenu(token: string): Promise<GuestMenuData | null>;
   /** party = Hotelzimmer (stayId) oder externe Reservierung am Tisch (resId) */

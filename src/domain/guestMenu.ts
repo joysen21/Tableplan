@@ -4,14 +4,30 @@
  * Dieselben Regeln prüft die Datenbank in guest_menu / guest_menu_save (Migration 20261013000000_gaeste_menue_qr.sql).
  */
 import { BOARD_MEALS, COURSES } from './constants';
-import { byId, isCancelled, persons, tableNames } from './logic';
-import type { Allergen, Branding, Course, Diet, Menu, MenuChoice, MenuItem, MenuOrdering, Reservation, ServiceKind, Stay, VenueData } from './types';
+import { byId, isCancelled, linkedTables, persons, tableNames } from './logic';
+import type { Allergen, Branding, Course, Diet, Menu, MenuChoice, MenuItem, MenuOrdering, MenuState, QrWindow, Reservation, ServiceKind, Stay, VenueData } from './types';
 import { addDays } from '../lib/time';
 
 export const DEFAULT_BRANDING: Branding = { title: '', welcome: '', color: '#0F2347', logoUrl: null, coverUrl: null };
 export const brandingOf = (v: { name: string; branding?: Partial<Branding> | null }): Branding =>
   ({ ...DEFAULT_BRANDING, ...(v.branding ?? {}), title: v.branding?.title || v.name });
 export const orderingOf = (m: Pick<Menu, 'ordering'>): MenuOrdering => m.ordering ?? 'aus';
+
+export const DEFAULT_QR_WINDOW: QrWindow = { open: '21:00', close: '10:00' };
+/** Neues Menü: Abendessen öffnet automatisch per Zeitfenster, alles andere schaltet die Küche von Hand frei */
+export const defaultOrdering = (kind: ServiceKind | undefined): MenuOrdering => (kind === 'abend' ? 'auto' : 'aus');
+
+/** Wirksamer Zustand für Gäste: 'auto' = vor dem Vorabend (open) unsichtbar, bis close am Tag offen, danach geschlossen.
+ *  Gleiche Regel in der DB-Funktion menu_state (Migration 20261023000000_qr_zeitfenster.sql). */
+export function menuState(m: Pick<Menu, 'ordering' | 'date'>, venue: { qrWindow?: QrWindow }, now = new Date()): MenuState {
+  const o = orderingOf(m);
+  if (o !== 'auto') return o;
+  const w = { ...DEFAULT_QR_WINDOW, ...venue.qrWindow };
+  const at = (day: string, hm: string) => new Date(`${day}T${hm}:00`);
+  if (now < at(addDays(m.date, -1), w.open)) return 'aus';
+  if (now < at(m.date, w.close)) return 'offen';
+  return 'geschlossen';
+}
 
 /** Geheimer Tisch-Schlüssel für den QR-Code (24 Hex-Zeichen, nicht erratbar) */
 export function newQrToken(): string {
@@ -30,7 +46,7 @@ export interface GuestRoom { stayId: string | null; resId?: string | null; roomN
 /** Schlüssel einer Auswahl-Partei (Zimmer oder Reservierung) */
 export const partyKey = (x: { stayId?: string | null; resId?: string | null }) => x.stayId || 'r:' + (x.resId ?? '');
 /** pick = freie Platzwahl: rooms enthält alle Zimmer mit dieser Mahlzeit, der Gast wählt sein Zimmer aus */
-export interface GuestMenu { id: string; date: string; service: string; kind: string; state: MenuOrdering; pick: boolean; items: GuestDish[]; rooms: GuestRoom[] }
+export interface GuestMenu { id: string; date: string; service: string; kind: string; state: MenuState; pick: boolean; items: GuestDish[]; rooms: GuestRoom[] }
 /** table = null: QR-Code des Betriebs (ein Code für alle Tische) – der Gast wählt Zimmer bzw. Tisch selbst */
 export interface GuestMenuData { venue: { name: string; branding: Branding }; table: { name: string } | null; menus: GuestMenu[] }
 
@@ -67,19 +83,19 @@ export function menuRooms(d: VenueData, m: Pick<Menu, 'id' | 'date' | 'serviceId
 
 /** Gäste-Ansicht für einen QR-Schlüssel (heute und morgen, nur freigegebene Menüs) – im Demo-Modus statt der DB-Funktion.
  *  Schlüssel des Betriebs → alle Gäste zur Auswahl; älterer Tisch-Schlüssel → nur die Gäste an diesem Tisch */
-export function buildGuestMenu(d: VenueData, token: string, day0: string): GuestMenuData | null {
+export function buildGuestMenu(d: VenueData, token: string, day0: string, now = new Date()): GuestMenuData | null {
   if (token.length < 16) return null;
   const whole = d.venue.qrToken === token;
   const tb = whole ? undefined : d.tables.find(x => x.qrToken === token);
   if (!whole && !tb) return null;
   const svcIdx = (id: string) => d.services.findIndex(s => s.id === id);
   const menus = d.menus
-    .filter(m => (m.date === day0 || m.date === addDays(day0, 1)) && orderingOf(m) !== 'aus')
+    .filter(m => (m.date === day0 || m.date === addDays(day0, 1)) && menuState(m, d.venue, now) !== 'aus')
     .sort((a, b) => a.date.localeCompare(b.date) || svcIdx(a.serviceId) - svcIdx(b.serviceId))
     .map((m): GuestMenu => {
       const svc = byId(d.services, m.serviceId);
       return {
-        id: m.id, date: m.date, service: svc?.name ?? '', kind: svc?.kind ?? '', state: orderingOf(m), pick: !!svc?.freeSeating || whole,
+        id: m.id, date: m.date, service: svc?.name ?? '', kind: svc?.kind ?? '', state: menuState(m, d.venue, now), pick: !!svc?.freeSeating || whole,
         items: m.items.map(it => {
           const dish = byId(d.dishes, it.dishId);
           return { course: it.course, dishId: it.dishId, name: dish?.name ?? it.name, nameIt: dish?.nameIt ?? '', nameEn: dish?.nameEn ?? '', diet: dish?.diet ?? [], allergens: it.allergens };
@@ -152,5 +168,31 @@ export function choiceSummary(d: VenueData, m: Menu): ChoiceSummary {
     notes: rooms.filter(x => x.choice?.note).map(x => ({ label: x.label, note: x.choice!.note! })),
     open: rooms.filter(x => !chosen.includes(x)).map(x => ({ persons: x.persons,
       label: [x.label, x.res?.tableIds.length ? tableNames(d, x.res.tableIds) : byId(d.services, m.serviceId)?.freeSeating ? '' : 'ohne Tisch'].filter(Boolean).join(' · ') }))
+  };
+}
+
+/** Zimmernummern der Hotelgäste an einem Tisch (gleicher Tag + Service), sortiert – für den Raumplan */
+export function roomNosAt(d: VenueData, tableId: string, r: Pick<Reservation, 'date' | 'serviceId'>): string[] {
+  const nos = d.reservations
+    .filter(x => x.date === r.date && x.serviceId === r.serviceId && !isCancelled(x) && x.tableIds.includes(tableId) && x.stayId)
+    .map(x => byId(d.stays, x.stayId)?.roomNo).filter((x): x is string => !!x);
+  return [...new Set(nos)].sort((a, b) => a.localeCompare(b, 'de', { numeric: true }));
+}
+
+/** Zusammengelegte Tische: alle Reservierungen (gleicher Tag + Service), die einen der Tische nutzen – mit Personen und Menü-Summe */
+export interface TableGroup { tableIds: string[]; reservations: Reservation[]; persons: number; rooms: number; dishes: { course: Course; name: string; n: number }[] }
+export function tableGroup(d: VenueData, r: Reservation): TableGroup {
+  // Tische transitiv einsammeln (A+B für Gast 1, B+C für Gast 2 → A, B, C) – wie die Kapazitätsprüfung
+  const { tableIds, reservations } = linkedTables(d, r);
+  const tables = new Set(tableIds);
+  const sum = new Map<string, { course: Course; name: string; n: number }>();
+  for (const x of reservations) for (const dish of chosenDishes(d, x)) {
+    const e = sum.get(dish.name) ?? { ...dish, n: 0 };
+    e.n += dish.n; sum.set(dish.name, e);
+  }
+  return {
+    tableIds: [...tables], reservations, persons: reservations.reduce((a, x) => a + persons(x), 0),
+    rooms: new Set(reservations.map(x => x.stayId ?? x.id)).size,
+    dishes: COURSES.flatMap(c => [...sum.values()].filter(x => x.course === c))
   };
 }

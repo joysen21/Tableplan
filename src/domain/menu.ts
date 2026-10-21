@@ -1,7 +1,7 @@
 /** Menüverwaltung: Allergene ableiten, Portionen, Zutatenliste, Allergen-Abgleich mit Gästen – reine Fachlogik */
 import { ALLERGENS, COURSES } from './constants';
 import { byId, isCancelled, persons, resStart } from './logic';
-import { choiceSummary } from './guestMenu';
+import { choiceSummary, defaultOrdering } from './guestMenu';
 import type { Allergen, Course, Dish, Ingredient, Menu, MenuItem, Reservation, Unit, VenueData } from './types';
 import { t } from '../lib/i18n';
 import { addDays, today } from '../lib/time';
@@ -173,8 +173,8 @@ export function copyPreviousWeek(d: VenueData, date: string, newId: () => string
   const out: Menu[] = [];
   for (const day of weekDates(date)) for (const src of d.menus.filter(m => m.date === addDays(day, -7))) {
     if (findMenu(d, day, src.serviceId) || !src.items.length) continue;
-    // Gäste-Auswahl startet aus – die Küche gibt das neue Menü selbst frei
-    out.push({ ...src, id: newId(), date: day, portions: null, ordering: 'aus', items: snapshotItems(d, src.items) });
+    // Gäste-Auswahl: Abendessen automatisch per Zeitfenster, sonst gibt die Küche das neue Menü selbst frei
+    out.push({ ...src, id: newId(), date: day, portions: null, ordering: defaultOrdering(byId(d.services, src.serviceId)?.kind), items: snapshotItems(d, src.items) });
   }
   return out;
 }

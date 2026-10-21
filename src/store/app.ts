@@ -8,7 +8,7 @@ import { RepoError, type ChangeEvent, type EntityKey, type EntityMap, type LiveS
 import { demoVenueData, emptyVenueData, newId, normalizeVenueData } from '../domain/demo';
 import { OPEN_STATES } from '../domain/constants';
 import { planStay } from '../domain/logic';
-import type { Branding, ModuleKey, Reservation, RosterSettings, SessionUser, StatusConfig, Stay, VenueData } from '../domain/types';
+import type { Branding, ModuleKey, QrWindow, Reservation, RosterSettings, SessionUser, StatusConfig, Stay, VenueData } from '../domain/types';
 import { resolveStatus, statusInfo } from '../domain/statuses';
 import { EDITION } from '../lib/edition';
 import { nowMin, today } from '../lib/time';
@@ -42,6 +42,7 @@ interface AppState {
   setBranding(branding: Branding): Promise<boolean>;
   setStatusConfig(cfg: StatusConfig): Promise<boolean>;
   setQrToken(token: string): Promise<boolean>;
+  setQrWindow(w: QrWindow): Promise<boolean>;
   replaceAll(data: VenueData, logText: string): Promise<boolean>;
   log(action: string, details?: string): void;
 }
@@ -265,6 +266,13 @@ export const useApp = create<AppState>((set, get) => {
       if (!ok) return false;
       set(s => (s.data ? { data: { ...s.data, venue: { ...s.data.venue, rosterSettings: settings } } } : {}));
       get().log('Prüfregeln Dienstplan geändert');
+      return true;
+    },
+    async setQrWindow(w) {
+      const ok = await write(async () => { await repo.setQrWindow(venueId(), w); return true; });
+      if (!ok) return false;
+      set(s => (s.data ? { data: { ...s.data, venue: { ...s.data.venue, qrWindow: w } } } : {}));
+      get().log('QR-Zeitfenster geändert', `${w.open}–${w.close}`);
       return true;
     },
     async setQrToken(token) {

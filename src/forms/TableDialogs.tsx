@@ -1,7 +1,7 @@
 /** Tisch-Popup, Reservierungs-Info (Service), Walk-in, Tischsperre */
 import { useState } from 'react';
 import { allergyText, hasAllergy } from '../domain/menu';
-import { chosenDishes, menuChoiceFor } from '../domain/guestMenu';
+import { chosenDishes, menuChoiceFor, tableGroup } from '../domain/guestMenu';
 import { Minus, Plus, PersonStanding } from '../ui/icons';
 import { newId } from '../domain/demo';
 import { canEdit, canStatus, SEATED_STATES } from '../domain/constants';
@@ -32,6 +32,27 @@ function StatusButtons({ r }: { r: Reservation }) {
       <button key={o.key} className="btn" aria-pressed={cur === o.key} style={{ borderLeft: `5px solid ${o.color}` }}
         onClick={async () => { if (await setStatus(r, o.key)) closeDialog(); }}><StatusIcon icon={o.icon} size={16} />{o.label}</button>
     ))}</div>
+  );
+}
+
+/** Zusammengelegte Tische: Gesamtübersicht (Tische, Reservierungen/Zimmer, Personen, Menü summiert) – immer, auch ohne Menü */
+function GroupSummary({ r }: { r: Reservation }) {
+  const d = useData();
+  const g = tableGroup(d, r);
+  if (g.tableIds.length < 2 && g.reservations.length < 2) return null;
+  return (
+    <div className="infobox group-summary" aria-label="Zusammengelegte Tische">
+      <b>Zusammengelegt: {tableNames(d, g.tableIds)}</b> · max. {capacity(d, g.tableIds).max} P
+      <div className="gs-kpis"><span><b>{g.persons}</b> Personen</span><span><b>{g.reservations.length}</b> {g.reservations.length === 1 ? 'Reservierung' : 'Reservierungen'}</span>
+        <span><b>{g.rooms}</b> {g.rooms === 1 ? 'Zimmer/Gast' : 'Zimmer/Gäste'}</span></div>
+      <div className="muted" style={{ fontSize: 12 }}>{g.reservations.map(x => x.name).join(' · ')}</div>
+      {g.dishes.length > 0 ? <div className="menu-lines" aria-label="Menü summiert">
+        <div className="ml-title">🍽 Menü gesamt</div>
+        {g.dishes.map((x, i) => <div key={i}>
+          {(i === 0 || g.dishes[i - 1].course !== x.course) && <div className="ml-course">{t(x.course)}</div>}
+          <div className="ml-dish"><b>{x.n}×</b><span>{x.name}</span></div></div>)}
+      </div> : <div className="muted" style={{ fontSize: 12 }}>🍽 Noch kein Menü gewählt</div>}
+    </div>
   );
 }
 
@@ -79,6 +100,8 @@ export function TablePopup({ tableId }: { tableId: string }) {
   const station = byId(d.stations, tb.stationId);
   const edit = canEdit(role);
   const freeT = r ? d.tables.filter(x => x.id !== tb.id && !r.tableIds.includes(x.id) && !tableConflicts(d, x.id, r.date, resStart(r), resEnd(r), r).length) : [];
+  // Tisch dazunehmen: nur Tische aus demselben Raum
+  const addT = freeT.filter(x => x.roomId === tb.roomId);
   // Reservierungen dieses Service ohne Tisch – lassen sich per Antippen hier platzieren (Alternative zum Ziehen)
   const waiting = !r && !block && edit ? d.reservations.filter(x => x.date === ui.date && x.serviceId === serviceId && occupies(x) && !x.tableIds.length)
     .sort((a, b) => resStart(a) - resStart(b)) : [];
@@ -94,6 +117,7 @@ export function TablePopup({ tableId }: { tableId: string }) {
       <button className="btn" onClick={closeDialog}>Schließen</button></>}>
       <p className="muted" style={{ marginTop: 0 }}>{tb.minPersons}–{tb.maxPersons} Personen · {byId(d.rooms, tb.roomId)?.name}{station ? ' · ' + station.name : ''}
         {tb.features.length > 0 && <><br />{tb.features.map(t).join(', ')}</>} · Status: <b>{tableLook(d.venue, s).label}</b></p>
+      {r && <GroupSummary r={r} />}
       {r && <ResDetails r={r} />}
       {r && canStatus(role) && <StatusButtons r={r} />}
       {r && edit && (
@@ -104,7 +128,7 @@ export function TablePopup({ tableId }: { tableId: string }) {
           </select>
           <select style={{ width: 'auto' }} value="" aria-label="Tisch dazunehmen" onChange={e => e.target.value && run(saveChecked({ ...r, tableIds: [...r.tableIds, e.target.value] }, r, ['Tische zusammengelegt', r.name]))}>
             <option value="">Tisch dazunehmen…</option>
-            {freeT.map(x => <option key={x.id} value={x.id}>{x.name} ({x.maxPersons}P, {byId(d.rooms, x.roomId)?.name})</option>)}
+            {addT.map(x => <option key={x.id} value={x.id}>{x.name} ({x.maxPersons}P)</option>)}
           </select>
           {r.tableIds.length > 1 && <button className="btn" onClick={() => saveChecked({ ...r, tableIds: r.tableIds.filter(x => x !== tb.id) }, r, ['Tisch abgetrennt', r.name]).then(ok => ok && closeDialog())}>{tb.name} abtrennen</button>}
         </div>

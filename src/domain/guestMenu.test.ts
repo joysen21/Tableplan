@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { demoVenueData, emptyVenueData, newId } from './demo';
-import { brandingOf, buildGuestMenu, choiceSummary, chosenDishes, chosenText, cleanCounts, newQrToken, stayEats } from './guestMenu';
+import { brandingOf, buildGuestMenu, choiceSummary, chosenDishes, chosenText, cleanCounts, defaultOrdering, menuState, newQrToken, stayEats } from './guestMenu';
 import { dishPlans, snapshotItems } from './menu';
 import type { Dish, Menu, MenuItem, Reservation, Stay, VenueData } from './types';
 import { addDays } from '../lib/time';
@@ -141,5 +141,27 @@ describe('Gäste-Speisekarte (QR)', () => {
     expect(new Set(tokens).size).toBe(d.tables.length);
     expect(tokens.every(t => /^[0-9a-f]{24}$/.test(t!))).toBe(true);
     expect(d.menuChoices.length).toBeGreaterThan(0);
+  });
+});
+
+describe('QR-Menüwahl im Zeitfenster', () => {
+  const m = { ordering: 'auto' as const, date: '2026-10-22' };
+  const at = (s: string) => new Date(s);
+  it('Standard: ab 21 Uhr am Vorabend offen, bis 10 Uhr am Tag, danach geschlossen', () => {
+    expect(menuState(m, {}, at('2026-10-21T20:59:00'))).toBe('aus');
+    expect(menuState(m, {}, at('2026-10-21T21:00:00'))).toBe('offen');
+    expect(menuState(m, {}, at('2026-10-22T09:59:00'))).toBe('offen');
+    expect(menuState(m, {}, at('2026-10-22T10:00:00'))).toBe('geschlossen');
+  });
+  it('Zeiten einstellbar; manueller Schalter übersteuert', () => {
+    const venue = { qrWindow: { open: '18:00', close: '12:00' } };
+    expect(menuState(m, venue, at('2026-10-21T18:30:00'))).toBe('offen');
+    expect(menuState(m, venue, at('2026-10-22T11:00:00'))).toBe('offen');
+    expect(menuState({ ...m, ordering: 'geschlossen' }, venue, at('2026-10-21T22:00:00'))).toBe('geschlossen');
+    expect(menuState({ ...m, ordering: undefined }, venue, at('2026-10-21T22:00:00'))).toBe('aus');
+  });
+  it('neue Abendmenüs automatisch, andere von Hand', () => {
+    expect(defaultOrdering('abend')).toBe('auto');
+    expect(defaultOrdering('mittag')).toBe('aus');
   });
 });

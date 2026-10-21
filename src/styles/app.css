@@ -682,6 +682,10 @@ table.pub-team tr.me td{background:var(--accent-soft)}
 .st-palette{flex-basis:100%;width:min(420px,80vw);position:absolute;top:100%;left:0;z-index:5;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px;box-shadow:var(--shadow)}
 .st-icon{flex:none;vertical-align:-2px;margin-right:3px}
 .menu-choice{color:var(--hotel)}
+.room-no{color:var(--hotel);font-weight:800;white-space:nowrap}
+.group-summary{margin-bottom:8px}
+.gs-kpis{display:flex;gap:14px;flex-wrap:wrap;margin:6px 0 2px}
+.gs-kpis b{font-size:18px}
 .menu-lines{margin:8px 0 2px;padding:8px 10px;border-radius:8px;background:var(--panel);border:1px solid var(--line)}
 .menu-lines .ml-title{font-weight:700;margin-bottom:2px}
 .menu-lines .ml-course{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-top:6px}

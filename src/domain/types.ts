@@ -25,7 +25,7 @@ export interface CustomStatus { id: string; label: string; color: string; base: 
 /** Status-Einstellungen je Betrieb: Standard-Status umbenennen/umfärben/ausblenden, eigene Status ergänzen */
 export interface StatusConfig { builtIn?: Partial<Record<ResStatus, { label?: string; color?: string; hidden?: boolean; icon?: string }>>; custom?: CustomStatus[] }
 /** qrToken = Schlüssel im QR-Code der Gäste-Speisekarte (ein Code für alle Tische) */
-export interface Venue { id: string; name: string; modules: ModuleKey[]; rosterSettings?: Partial<RosterSettings>; branding?: Branding; statusConfig?: StatusConfig; qrToken?: string }
+export interface Venue { id: string; name: string; modules: ModuleKey[]; rosterSettings?: Partial<RosterSettings>; branding?: Branding; statusConfig?: StatusConfig; qrToken?: string; qrWindow?: QrWindow }
 
 export interface Member { userId: string; role: Role; name: string; email: string }
 
@@ -90,7 +90,11 @@ export interface Dish {
 export interface MenuItem { course: Course; dishId: string; share: number | null; name: string; allergens: Allergen[] }
 /** Menü eines Service an einem Tag. portions = null → automatisch aus den Reservierungen */
 /** Gäste-Auswahl per QR: aus = Gäste sehen das Menü nicht, offen = Gäste wählen, geschlossen = nur anzeigen */
-export type MenuOrdering = 'aus' | 'offen' | 'geschlossen';
+export type MenuOrdering = 'aus' | 'offen' | 'geschlossen' | 'auto';
+/** Wirksamer Zustand für Gäste ('auto' aufgelöst nach dem Zeitfenster) */
+export type MenuState = Exclude<MenuOrdering, 'auto'>;
+/** Zeitfenster der automatischen QR-Menüwahl: ab open am Vorabend bis close am Tag selbst (HH:MM) */
+export interface QrWindow { open: string; close: string }
 export interface Menu { id: string; date: string; serviceId: string; portions: number | null; bufferPct: number; notes: string; items: MenuItem[]; ordering?: MenuOrdering }
 /** Auswahl eines Hotelzimmers für ein Menü: Anzahl je Gericht (dishId → Anzahl) */
 /** Auswahl zu einem Menü: je Hotelzimmer (stayId) oder je externer Reservierung (reservationId) – Anzahl je Gericht */

@@ -8,7 +8,7 @@ import { MAX_ROOMS_PER_TABLE } from '../domain/constants';
 import { occupies, tableConflicts, resEnd, resStart } from '../domain/logic';
 import { canPlanDept } from '../domain/roster';
 import { shiftsOverlap, weekStart } from '../domain/rosterPlan';
-import type { Branding, Member, MenuChoice, ModuleKey, OnDuty, PublicRoster, Reservation, Role, RosterSettings, Shift, StatusConfig, Stay, VenueData } from '../domain/types';
+import type { Branding, Member, MenuChoice, ModuleKey, OnDuty, PublicRoster, QrWindow, Reservation, Role, RosterSettings, Shift, StatusConfig, Stay, VenueData } from '../domain/types';
 import { buildGuestMenu, cleanCounts, newQrToken, partyKey } from '../domain/guestMenu';
 import { addDays, today } from '../lib/time';
 import { ROSTER_KEYS, RepoError, type AuthUser, type ChangeEvent, type EntityKey, type EntityMap, type LiveState, type Membership, type Repo } from './repo';
@@ -346,6 +346,10 @@ export class DemoRepo implements Repo {
     let name = '';
     this.mutate(venueId, d => { d.venue.branding = { ...branding }; name = d.venue.name; });
     this.emit([{ kind: 'venue', type: 'upsert', name, branding }]);
+  }
+  async setQrWindow(venueId: string, w: QrWindow) {
+    this.guard(venueId, 'venue');
+    this.mutate(venueId, d => { d.venue.qrWindow = { ...w }; });
   }
   async setQrToken(venueId: string, token: string) {
     this.guard(venueId, 'venue');

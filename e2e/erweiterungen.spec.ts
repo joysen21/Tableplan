@@ -208,3 +208,55 @@ test('Legende im Live-Plan = Reservierungs-Status aus den Einstellungen; nur noc
   await expect(page.locator('.modal').getByLabel('Erwachsene', { exact: true })).toHaveCount(0);
   await expect(page.locator('.modal').getByLabel('Kinder', { exact: true })).toHaveCount(0);
 });
+
+test('Live-Plan: Zimmernummern am Tisch und in der Liste, Tisch dazunehmen nur im Raum, Gesamtübersicht zusammengelegter Tische', async ({ page }) => {
+  await loginDemo(page);
+  await page.getByLabel('Service').first().selectOption({ label: 'Abendessen' });
+  const info = await page.evaluate(() => {
+    const v = Object.values(JSON.parse(localStorage.getItem('tischplan.demo.v2')!).data)[0] as any;
+    const day = new Date().toLocaleDateString('sv-SE');
+    const svc = v.services.find((s: any) => s.kind === 'abend');
+    const hotel = v.reservations.find((r: any) => r.date === day && r.serviceId === svc.id && r.stayId && r.tableIds.length === 1);
+    const tb = v.tables.find((t: any) => t.id === hotel.tableIds[0]);
+    return { tableId: tb.id, roomId: tb.roomId, roomNo: v.stays.find((s: any) => s.id === hotel.stayId).roomNo,
+      otherRoomTables: v.tables.filter((t: any) => t.roomId !== tb.roomId).map((t: any) => t.name) };
+  });
+  // Zimmernummer im Plan am Tisch
+  await page.mouse.move(700, 400);
+  await expect(page.locator(`svg.plan .tb[data-table-id="${info.tableId}"] text`)).toContainText(`Zi. ${info.roomNo}`);
+  // rechte Leiste: Zimmernummer hervorgehoben
+  await expect(page.locator('.ritem .room-no', { hasText: `Zi. ${info.roomNo}` }).first()).toBeVisible();
+  // Tisch dazunehmen: nur Tische aus demselben Raum
+  await page.locator(`svg.plan .tb[data-table-id="${info.tableId}"]`).click();
+  const opts = await page.getByLabel('Tisch dazunehmen').locator('option').allTextContents();
+  for (const n of info.otherRoomTables) expect(opts.some(o => o.startsWith(n + ' '))).toBe(false);
+  await page.getByLabel('Tisch dazunehmen').selectOption({ index: 1 });
+  const confirm = page.getByRole('button', { name: 'Trotzdem speichern' });
+  if (await confirm.isVisible({ timeout: 1000 }).catch(() => false)) await confirm.click();
+  // Gesamtübersicht der zusammengelegten Tische – immer, mit Personen, Reservierungen und Menü
+  await page.mouse.move(700, 400);
+  await page.locator(`svg.plan .tb[data-table-id="${info.tableId}"]`).click();
+  const g = page.getByLabel('Zusammengelegte Tische');
+  await expect(g).toContainText('Zusammengelegt:');
+  await expect(g).toContainText('Personen');
+  await expect(g).toContainText('Reservierung');
+  await expect(g.getByLabel('Menü summiert').or(g.getByText('Noch kein Menü gewählt'))).toBeVisible();
+  await page.screenshot({ path: 'test-results/zusammengelegt.png' });
+});
+
+test('QR-Menüwahl: Abendmenü automatisch, Zeitfenster in den Einstellungen', async ({ page }) => {
+  await loginDemo(page);
+  await goView(page, 'Einstellungen');
+  const open = page.getByLabel('Öffnet am Vorabend um');
+  await expect(open).toHaveValue('21:00');
+  await expect(page.getByLabel('Schließt am Tag um')).toHaveValue('10:00');
+  await open.fill('20:00');
+  await open.blur();
+  await expect(page.locator('.toast')).toContainText('Zeitfenster gespeichert');
+  expect((await demo(page)).venue.qrWindow).toEqual({ open: '20:00', close: '10:00' });
+  // Abendmenü auf „Automatisch“: zeigt den aktuellen Zustand (heute nach 10 Uhr: geschlossen)
+  await goView(page, 'Menü');
+  await page.locator('.mw-row.today .mw-cell').last().click();
+  await page.getByLabel('Gäste-Auswahl').selectOption('auto');
+  await expect(page.locator('.guest-choice')).toContainText('jetzt: geschlossen');
+});

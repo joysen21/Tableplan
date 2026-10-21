@@ -157,6 +157,24 @@ describe('Bearbeitungskonflikte', () => {
   });
 });
 
+describe('Zusammengelegte Tische', () => {
+  it('zählen Plätze und Personen aller verbundenen Tische zusammen – auch bei mehreren Zimmern', () => {
+    const { d, t1, t2, svc } = base(); // T1, T2 je max. 4
+    const a = res({ serviceId: svc, adults: 3, tableIds: [t1, t2], stayId: 's1', name: 'A · Zi. 101' });
+    d.reservations.push(a);
+    // Zi. 102 sitzt nur an T2 – zusammen 6 Pers. bei 8 Plätzen: keine Warnung
+    const b = res({ serviceId: svc, adults: 3, tableIds: [t2], stayId: 's2', name: 'B · Zi. 102' });
+    expect(checkReservation(d, b).some(i => i.text.includes('zu klein'))).toBe(false);
+    // 9 Pers. bei 8 Plätzen: Warnung mit Hinweis
+    const c = { ...b, adults: 6 };
+    expect(checkReservation(d, c).find(i => i.text.includes('zu klein'))?.text).toMatch(/zusammen mit Zi\. 101, max\. 8 – weiteren Tisch dazunehmen/);
+  });
+  it('einzelner Tisch zu klein: Hinweis auf Tisch dazunehmen', () => {
+    const { d, t1, svc } = base();
+    expect(checkReservation(d, res({ serviceId: svc, adults: 6, tableIds: [t1] })).find(i => i.text.includes('zu klein'))?.text).toBe('Tisch zu klein: 6 Pers., max. 4 – weiteren Tisch dazunehmen');
+  });
+});
+
 describe('Tische sortieren', () => {
   it('natürlich: Zahlen numerisch, dann alphanumerisch, ohne Groß-/Kleinschreibung', () => {
     const names = ['T10', 'T2', 'S1', 'T1', 'Bar 3', 'bar 12', '20', '3', 'Terrasse'];

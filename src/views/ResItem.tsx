@@ -17,12 +17,14 @@ export function ResItem({ d, r, showDate, draggable, onPointerDown, onClick }: {
   const menu = chosenText(chosenDishes(d, r));
   const note = menuChoiceFor(d, r).choice?.note;
   const st = statusInfo(d.venue, r);
+  // Hotelgast: Zimmernummer im Namen („Gruber · Zi. 101“) hervorheben
+  const room = r.stayId ? r.name.match(/Zi\. [^·]+$/)?.[0] ?? '' : '';
   return (
     <div className={'ritem' + (unassigned ? ' unassigned' : '') + (occupies(r) || r.status === 'abgeschlossen' ? '' : ' cancel') + (onClick ? ' clickable' : '')} data-res={r.id} onPointerDown={onPointerDown} onClick={onClick}>
       {draggable && <span className="grip" data-drag-handle title="Auf einen Tisch ziehen" aria-hidden="true"><GripVertical /></span>}
       <div className="time">{showDate && <>{fmtShort(r.date)}<br /></>}{r.time}</div>
       <div className="main">
-        <div className="name">{r.vip ? '★ ' : ''}{r.name}</div>
+        <div className="name">{r.vip ? '★ ' : ''}{room ? <>{r.name.slice(0, -room.length - 3)} · <b className="room-no">{room}</b></> : r.name}</div>
         <div className="sub">{persons(r)} P · {r.tableIds.length ? 'Tisch ' + tableNames(d, r.tableIds) : <b style={{ color: 'var(--danger)' }}>ohne Tisch</b>}
           {hasAllergy(r) ? ' · ⚠ ' + allergyText(r) : ''}{r.occasion ? ' · 🎉 ' + r.occasion : ''}</div>
         {(menu || note) && <div className="sub menu-choice" title="Per QR gewähltes Menü">{menu && <>🍽 {menu}</>}{note && <> · 📝 {note}</>}</div>}

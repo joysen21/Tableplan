@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { newId } from '../domain/demo';
 import { COURSES, DIETS, DISH_COURSES, UNITS, canEditMenu } from '../domain/constants';
 import { byId, tableNames } from '../domain/logic';
+import { defaultOrdering } from '../domain/guestMenu';
 import {
   allergenWarnings, type AllergenWarning, dishAllergens, dishPlans, dishUsage, findMenu, fmtQty, ingredientUsage, itemAllergens, itemName, itemShares, menuPortions, snapshotItems
 } from '../domain/menu';
@@ -33,7 +34,7 @@ export function MenuEditor({ date, serviceId }: { date: string; serviceId: strin
   const existing = findMenu(d, date, serviceId);
   const svc = byId(d.services, serviceId);
   const [m, setM] = useState<Menu>(() => existing ? structuredClone(existing)
-    : { id: newId(), date, serviceId, portions: null, bufferPct: 10, notes: '', items: [], ordering: 'aus' });
+    : { id: newId(), date, serviceId, portions: null, bufferPct: 10, notes: '', items: [], ordering: defaultOrdering(svc?.kind) });
   const [busy, setBusy] = useState(false);
   const upd = (p: Partial<Menu>) => setM(prev => ({ ...prev, ...p }));
   /** Anteil setzen; bei genau zwei Gerichten im Gang bekommt das andere den Rest auf 100 % */

@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { Printer, Upload, X } from '../ui/icons';
 import { repo } from '../data';
-import { brandingOf, choiceSummary, guestUrl, newQrToken, orderingOf } from '../domain/guestMenu';
+import { brandingOf, choiceSummary, DEFAULT_QR_WINDOW, guestUrl, menuState, newQrToken, orderingOf } from '../domain/guestMenu';
 import { byId } from '../domain/logic';
 import type { Branding, Menu, MenuOrdering } from '../domain/types';
 import { useApp } from '../store/app';
@@ -62,8 +62,30 @@ export function BrandingPanel() {
         <button className="btn" onClick={() => openDialog({ type: 'qrprint' })}><Printer />QR-Code drucken</button>
         {d.venue.qrToken && <a className="btn" href={venueLink(d.venue.qrToken)} target="_blank" rel="noreferrer">Vorschau für Gäste</a>}
       </div>
-      <p className="muted" style={{ fontSize: 12 }}>Ob Gäste ein Menü sehen und wählen dürfen, legt die Küche je Menü fest (Menü → „Gäste-Auswahl“).</p>
+      <QrWindowFields />
+      <p className="muted" style={{ fontSize: 12 }}>Abendmenüs öffnen und schließen automatisch in diesem Zeitfenster. Die Küche kann jedes Menü von Hand übersteuern (Menü → „Gäste-Auswahl“).</p>
     </div></div>
+  );
+}
+
+/** Zeitfenster der automatischen QR-Menüwahl (Standard 21 Uhr am Vorabend bis 10 Uhr) */
+function QrWindowFields() {
+  const d = useData();
+  const store = useApp();
+  const cur = { ...DEFAULT_QR_WINDOW, ...d.venue.qrWindow };
+  const save = async (p: Partial<typeof cur>) => {
+    const next = { ...cur, ...p };
+    if (next.open === cur.open && next.close === cur.close) return;
+    if (await store.setQrWindow(next)) toast('Zeitfenster gespeichert');
+  };
+  return (
+    <div className="row mt8 qr-window" role="group" aria-label="QR-Zeitfenster">
+      <span>Menüwahl automatisch ab</span>
+      <input type="time" aria-label="Öffnet am Vorabend um" defaultValue={cur.open} key={'o' + cur.open} onBlur={e => e.target.value && save({ open: e.target.value })} style={{ width: 'auto' }} />
+      <span>Uhr am Vorabend bis</span>
+      <input type="time" aria-label="Schließt am Tag um" defaultValue={cur.close} key={'c' + cur.close} onBlur={e => e.target.value && save({ close: e.target.value })} style={{ width: 'auto' }} />
+      <span>Uhr am Tag selbst</span>
+    </div>
   );
 }
 
@@ -103,6 +125,7 @@ export function QrPrint() {
 
 /* ---------------------------------------------------------------- Menü: Gäste-Auswahl */
 const ORDERING: { v: MenuOrdering; label: string }[] = [
+  { v: 'auto', label: 'Automatisch – Vorabend bis Vormittag (Zeiten in den Einstellungen)' },
   { v: 'aus', label: 'Aus – Gäste sehen das Menü nicht' },
   { v: 'offen', label: 'Offen – Gäste wählen per QR-Code' },
   { v: 'geschlossen', label: 'Geschlossen – nur anzeigen, keine Änderungen' }
@@ -111,6 +134,8 @@ export function GuestChoicePanel({ m, ro, onOrdering }: { m: Menu; ro: boolean; 
   const d = useData();
   const s = choiceSummary(d, m);
   const ord = orderingOf(m);
+  const state = menuState(m, d.venue);
+  const w = { ...DEFAULT_QR_WINDOW, ...d.venue.qrWindow };
   const free = !!byId(d.services, m.serviceId)?.freeSeating;
   return (
     <div className="guest-choice mt12">
@@ -118,6 +143,7 @@ export function GuestChoicePanel({ m, ro, onOrdering }: { m: Menu; ro: boolean; 
       <div className="row">
         <select value={ord} disabled={ro} onChange={e => onOrdering(e.target.value as MenuOrdering)} style={{ width: 'auto' }} aria-label="Gäste-Auswahl">
           {ORDERING.map(o => <option key={o.v} value={o.v}>{o.label}</option>)}</select>
+        {ord === 'auto' && <span className="badge" title={`Gäste wählen ab ${w.open} Uhr am Vorabend bis ${w.close} Uhr`}>jetzt: {state === 'offen' ? 'offen' : state === 'aus' ? `öffnet am Vorabend ${w.open}` : 'geschlossen'}</span>}
         {s.rooms > 0 && <span className={'badge' + (s.chosenRooms < s.rooms ? ' warn' : '')}>{s.chosenRooms} von {s.rooms} gewählt · {s.chosenPersons}/{s.persons} Pers.</span>}
       </div>
       {s.open.length > 0 && ord !== 'aus' && <p className="muted" style={{ fontSize: 12, margin: '6px 0 0' }}>Noch ohne Auswahl: {s.open.map(o => `${o.label} (${o.persons}P)`).join(' · ')}</p>}

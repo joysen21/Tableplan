@@ -64,12 +64,18 @@ export function tableConflicts(d: VenueData, tableId: string, date: string, star
 }
 
 /** Andere Hotelzimmer, die gleichzeitig an denselben Tischen sitzen */
-export function tableSharers(d: VenueData, r: Reservation): Reservation[] {
-  if (!r.stayId) return [];
-  const out = new Map<string, Reservation>();
-  for (const tid of r.tableIds) for (const o of tableBusy(d, tid, r.date, resStart(r), resEnd(r), r.id))
-    if (o.stayId && o.stayId !== r.stayId) out.set(o.id, o);
-  return [...out.values()];
+/** Zusammengelegte Tische: alle Tische und Reservierungen (gleicher Tag, gleiche Zeit), die über gemeinsame Tische verbunden sind –
+ *  transitiv (Zi. 101 an T1+T2, Zi. 102 an T2+T3 → T1, T2, T3). r darf ein noch nicht gespeicherter Entwurf sein. */
+export function linkedTables(d: VenueData, r: Reservation): { tableIds: string[]; reservations: Reservation[] } {
+  const tables = new Set(r.tableIds);
+  const others = d.reservations.filter(o => o.id !== r.id && o.date === r.date && occupies(o) && overlaps(resStart(o), resEnd(o), resStart(r), resEnd(r)));
+  const group: Reservation[] = [r];
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const o of others) if (!group.includes(o) && o.tableIds.some(id => tables.has(id))) { group.push(o); o.tableIds.forEach(id => tables.add(id)); grew = true; }
+  }
+  return { tableIds: [...tables], reservations: group };
 }
 const roomOf = (r: Reservation) => r.name.split(' · ').pop() ?? r.name;
 
@@ -99,10 +105,12 @@ export function checkReservation(d: VenueData, r: Reservation): Issue[] {
     else for (const o of busy) add('error', `Tisch ${tb.name} ist belegt: ${o.name} (${o.time}–${fromMin(resEnd(o))})`);
   }
   if (r.tableIds.length) {
-    const c = capacity(d, r.tableIds), shared = tableSharers(d, r), all = p + shared.reduce((a, o) => a + persons(o), 0);
-    if (shared.length && all > c.max) add('warn', `Tisch zu klein: ${all} Pers. zusammen mit ${shared.map(roomOf).join(', ')}, max. ${c.max}`);
-    else if (p > c.max) add('warn', `Tisch zu klein: ${p} Pers., max. ${c.max}`);
-    else if (p < c.min) add('warn', `Tisch größer als nötig: ${p} Pers., min. ${c.min}`);
+    // zusammengelegte Tische: Plätze aller verbundenen Tische zählen zusammen, ebenso die Personen aller Gäste daran
+    const g = linkedTables(d, r), shared = g.reservations.filter(o => o.id !== r.id);
+    const c = capacity(d, g.tableIds), all = g.reservations.reduce((a, o) => a + persons(o), 0), own = capacity(d, r.tableIds);
+    if (shared.length && all > c.max) add('warn', `Tisch zu klein: ${all} Pers. zusammen mit ${shared.map(roomOf).join(', ')}, max. ${c.max} – weiteren Tisch dazunehmen`);
+    else if (!shared.length && p > c.max) add('warn', `Tisch zu klein: ${p} Pers., max. ${c.max} – weiteren Tisch dazunehmen`);
+    else if (!shared.length && p < own.min) add('warn', `Tisch größer als nötig: ${p} Pers., min. ${own.min}`);
   }
   if (s && (st < toMin(s.start) || st > toMin(s.end))) add('warn', `Uhrzeit außerhalb ${s.name} (${s.start}–${s.end})`);
   const digits = (x: string) => x.replace(/\D/g, '');

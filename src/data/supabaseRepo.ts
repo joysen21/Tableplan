@@ -1,7 +1,7 @@
 /** Datenzugriff über Supabase (Postgres + Auth + Realtime + Storage) */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { MAX_ROOMS_PER_TABLE } from '../domain/constants';
-import type { Branding, ModuleKey, OnDuty, PublicRoster, Reservation, Role, RosterSettings, StatusConfig, Stay, VenueData } from '../domain/types';
+import type { Branding, ModuleKey, OnDuty, PublicRoster, QrWindow, Reservation, Role, RosterSettings, StatusConfig, Stay, VenueData } from '../domain/types';
 import type { GuestMenuData } from '../domain/guestMenu';
 import { addDays, today } from '../lib/time';
 import { entityFromDb, entityToDb, fromDb, KIND_OF, TABLE_OF, toDb } from './mapping';
@@ -131,7 +131,7 @@ export class SupabaseRepo implements Repo {
       this.loadRoster(venueId, cutoff), this.loadChoices(venueId)
     ]);
     return {
-      venue: { id: venueId, name: venue?.name ?? venueName, modules: this.rosterReady ? venue?.modules ?? [] : [], rosterSettings: venue?.roster_settings ?? {}, branding: venue?.branding ?? undefined, statusConfig: venue?.status_config ?? {}, qrToken: venue?.qr_token ?? undefined },
+      venue: { id: venueId, name: venue?.name ?? venueName, modules: this.rosterReady ? venue?.modules ?? [] : [], rosterSettings: venue?.roster_settings ?? {}, branding: venue?.branding ?? undefined, statusConfig: venue?.status_config ?? {}, qrToken: venue?.qr_token ?? undefined, qrWindow: venue?.qr_window ?? undefined },
       rooms: rooms.map(fromDb.rooms).sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name)),
       stations: stations.map(fromDb.stations), tables: tables.map(fromDb.tables), decor: decor.map(fromDb.decor),
       combos: combos.map(fromDb.combos), layouts: layouts.map(fromDb.layouts),
@@ -244,6 +244,9 @@ export class SupabaseRepo implements Repo {
 
   async setBranding(venueId: string, branding: Branding) {
     await run(this.sb.from('venues').update({ branding }).eq('id', venueId));
+  }
+  async setQrWindow(venueId: string, w: QrWindow) {
+    await run(this.sb.from('venues').update({ qr_window: w }).eq('id', venueId));
   }
   async setQrToken(venueId: string, token: string) {
     await run(this.sb.from('venues').update({ qr_token: token }).eq('id', venueId));
