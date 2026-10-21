@@ -32,6 +32,9 @@ export function remapIds(d: VenueData, newId: () => string): VenueData {
     positions: (d.positions ?? []).map(x => ({ ...x, id: m(x.id)!, departmentId: m(x.departmentId)! })),
     // neue Links: die alten gehören zum anderen Betrieb
     staff: (d.staff ?? []).map(x => ({ ...x, id: m(x.id)!, departmentId: m(x.departmentId), positionIds: mm(x.positionIds), shareToken: newId() })),
-    shiftTemplates: (d.shiftTemplates ?? []).map(x => ({ ...x, id: m(x.id)!, departmentId: m(x.departmentId)!, positionId: m(x.positionId) }))
+    shiftTemplates: (d.shiftTemplates ?? []).map(x => ({ ...x, id: m(x.id)!, departmentId: m(x.departmentId)!, positionId: m(x.positionId) })),
+    suppliers: (d.suppliers ?? []).map(x => ({ ...x, id: m(x.id)! })),
+    supplierProducts: (d.supplierProducts ?? []).map(x => ({ ...x, id: m(x.id)!, supplierId: m(x.supplierId)! })),
+    supplierOrders: (d.supplierOrders ?? []).map(x => ({ ...x, id: m(x.id)!, supplierId: m(x.supplierId)!, items: x.items.map(i => ({ ...i, productId: m(i.productId)! })) }))
   };
 }

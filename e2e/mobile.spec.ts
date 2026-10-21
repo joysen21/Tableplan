@@ -104,7 +104,7 @@ test('Leiste unten: Hauptansichten + „Mehr“ mit restlichen Ansichten, Hell/D
 
 test('Küche: Leiste unten mit Berichte, Menü und Dienstplan (Küchenleitung), Abmelden über „Mehr“', async ({ page }) => {
   await loginDemo(page, 'Karl (Küche)');
-  await expect(page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('link')).toHaveText(['Berichte', 'Menü', 'Dienste']);
+  await expect(page.getByRole('navigation', { name: 'Hauptnavigation' }).getByRole('link')).toHaveText(['Berichte', 'Menü', 'Dienste', 'Bestellen']);
   await page.getByRole('button', { name: 'Mehr' }).click();
   await page.getByRole('menuitem', { name: 'Abmelden' }).click();
   await expect(page.getByRole('button', { name: /Toni/ })).toBeVisible();

@@ -1,7 +1,7 @@
 /** Umwandlung Datenbankzeile (snake_case) ↔ Fachobjekt (camelCase) */
 import type {
   Absence, AuditEntry, Decor, Department, DiningTable, Dish, Ingredient, Layout, Member, Menu, MenuChoice, Position, Publication, Reservation, Room, Service, Shift,
-  ShiftTemplate, Staff, Station, Stay, TableBlock, TableCombo
+  ShiftTemplate, Staff, Station, Stay, Supplier, SupplierOrder, SupplierProduct, TableBlock, TableCombo
 } from '../domain/types';
 import type { EntityKey, EntityMap } from './repo';
 import { hhmm } from '../lib/time';
@@ -12,7 +12,8 @@ export const TABLE_OF: Record<EntityKey | 'stays' | 'reservations' | 'reservatio
   rooms: 'rooms', stations: 'stations', tables: 'dining_tables', decor: 'decor', combos: 'table_combos', layouts: 'layouts',
   services: 'services', blocks: 'table_blocks', ingredients: 'ingredients', dishes: 'dishes', menus: 'menus', menuChoices: 'menu_choices',
   departments: 'departments', positions: 'positions', staff: 'staff', shiftTemplates: 'shift_templates',
-  shifts: 'shifts', absences: 'absences', publications: 'roster_publications', stays: 'stays', reservations: 'reservations', reservation_tables: 'reservation_tables', audit: 'audit_log'
+  shifts: 'shifts', absences: 'absences', publications: 'roster_publications',
+  suppliers: 'order_suppliers', supplierProducts: 'order_products', supplierOrders: 'supplier_orders', stays: 'stays', reservations: 'reservations', reservation_tables: 'reservation_tables', audit: 'audit_log'
 };
 export const KIND_OF: Record<string, keyof typeof TABLE_OF> =
   Object.fromEntries(Object.entries(TABLE_OF).map(([k, v]) => [v, k as keyof typeof TABLE_OF]));
@@ -72,6 +73,9 @@ export const fromDb = {
     breakMin: r.break_min ?? 0, note: r.note ?? '', updatedAt: r.updated_at
   }),
   absences: (r: Row): Absence => ({ id: r.id, staffId: r.staff_id, from: r.date_from, to: r.date_to, kind: r.kind, note: r.note ?? '' }),
+  suppliers: (r: Row): Supplier => ({ id: r.id, name: r.name, phone: r.phone ?? '', sort: r.sort ?? 0 }),
+  supplierProducts: (r: Row): SupplierProduct => ({ id: r.id, supplierId: r.supplier_id, name: r.name, unit: r.unit ?? '', group: r.grp ?? '', sort: r.sort ?? 0, active: r.active !== false }),
+  supplierOrders: (r: Row): SupplierOrder => ({ id: r.id, supplierId: r.supplier_id, createdAt: r.created_at, createdBy: r.created_by ?? '', items: r.items ?? [], note: r.note ?? '' }),
   publications: (r: Row): Publication => ({ id: r.id, departmentId: r.department_id, weekStart: r.week_start, publishedAt: r.published_at, publishedBy: r.published_by ?? '' }),
   shiftTemplates: (r: Row): ShiftTemplate => ({
     id: r.id, departmentId: r.department_id, positionId: r.position_id ?? null, name: r.name, short: r.short ?? '', start: hhmm(r.start_time), end: hhmm(r.end_time),
@@ -126,6 +130,9 @@ export const toDb = {
   }),
   absences: (x: Absence, v: string) => ({ id: x.id, venue_id: v, staff_id: x.staffId, date_from: x.from, date_to: x.to, kind: x.kind, note: x.note }),
   // published_at setzt der Server (Trigger)
+  suppliers: (x: Supplier, v: string) => ({ id: x.id, venue_id: v, name: x.name.trim(), phone: x.phone.trim(), sort: x.sort }),
+  supplierProducts: (x: SupplierProduct, v: string) => ({ id: x.id, venue_id: v, supplier_id: x.supplierId, name: x.name.trim(), unit: x.unit, grp: x.group, sort: x.sort, active: x.active }),
+  supplierOrders: (x: SupplierOrder, v: string) => ({ id: x.id, venue_id: v, supplier_id: x.supplierId, created_at: x.createdAt, created_by: x.createdBy, items: x.items, note: x.note }),
   publications: (x: Publication, v: string) => ({ id: x.id, venue_id: v, department_id: x.departmentId, week_start: x.weekStart, published_by: x.publishedBy }),
   shiftTemplates: (x: ShiftTemplate, v: string) => ({
     id: x.id, venue_id: v, department_id: x.departmentId, position_id: x.positionId, name: x.name, short: x.short, start_time: x.start, end_time: x.end,

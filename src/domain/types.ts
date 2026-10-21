@@ -15,7 +15,7 @@ export type Course = 'vorspeise' | 'suppe' | 'zwischengang' | 'hauptgang' | 'bei
 export type Diet = 'vegetarisch' | 'vegan';
 export type TableState = 'frei' | 'reserviert' | 'bald' | 'platziert' | 'rechnung' | 'ueberfaellig' | 'ueberzogen' | 'gesperrt';
 
-export type ModuleKey = 'dienstplan';
+export type ModuleKey = 'dienstplan' | 'bestellliste';
 /** modules: zugeschaltete Zusatzmodule des Betriebs */
 /** Erscheinungsbild der Gäste-Speisekarte (QR): Logo, Titelbild, Akzentfarbe, Titel und Begrüßung */
 /** welcomeIt/welcomeEn optional – fehlt die Übersetzung, erscheint der deutsche Text */
@@ -25,7 +25,18 @@ export interface CustomStatus { id: string; label: string; color: string; base: 
 /** Status-Einstellungen je Betrieb: Standard-Status umbenennen/umfärben/ausblenden, eigene Status ergänzen */
 export interface StatusConfig { builtIn?: Partial<Record<ResStatus, { label?: string; color?: string; hidden?: boolean; icon?: string }>>; custom?: CustomStatus[] }
 /** qrToken = Schlüssel im QR-Code der Gäste-Speisekarte (ein Code für alle Tische) */
-export interface Venue { id: string; name: string; modules: ModuleKey[]; rosterSettings?: Partial<RosterSettings>; branding?: Branding; statusConfig?: StatusConfig; qrToken?: string; qrWindow?: QrWindow }
+export interface Venue { id: string; name: string; modules: ModuleKey[]; rosterSettings?: Partial<RosterSettings>; branding?: Branding; statusConfig?: StatusConfig; qrToken?: string; qrWindow?: QrWindow;
+  /** Welche Rollen ein Modul sehen (Admin immer) – zuweisbar in Einstellungen → Module */
+  moduleRoles?: Partial<Record<ModuleKey, Role[]>> }
+
+/* ---------- Bestellliste (Modul) ---------- */
+/** Lieferant mit Telefonnummer für WhatsApp */
+export interface Supplier { id: string; name: string; phone: string; sort: number }
+/** Artikel eines Lieferanten, nach Gruppe (z. B. Rotwein) */
+export interface SupplierProduct { id: string; supplierId: string; name: string; unit: string; group: string; sort: number; active: boolean }
+export interface OrderLine { productId: string; name: string; unit: string; qty: number }
+/** Gesendete Bestellung (Historie) */
+export interface SupplierOrder { id: string; supplierId: string; createdAt: string; createdBy: string; items: OrderLine[]; note: string }
 
 export interface Member { userId: string; role: Role; name: string; email: string }
 
@@ -157,6 +168,7 @@ export interface VenueData {
   ingredients: Ingredient[]; dishes: Dish[]; menus: Menu[]; menuChoices: MenuChoice[];
   departments: Department[]; positions: Position[]; staff: Staff[]; shiftTemplates: ShiftTemplate[];
   shifts: Shift[]; absences: Absence[]; publications: Publication[];
+  suppliers: Supplier[]; supplierProducts: SupplierProduct[]; supplierOrders: SupplierOrder[];
 }
 
 export interface SessionUser { id: string; name: string; email: string; role: Role }

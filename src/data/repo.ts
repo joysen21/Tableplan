@@ -4,7 +4,7 @@
  */
 import type {
   Absence, AuditEntry, Branding, Decor, Department, DiningTable, Dish, Ingredient, Layout, Member, Menu, MenuChoice, ModuleKey, OnDuty, Position, Publication,
-  PublicRoster, Reservation, Role, Room, RosterSettings, Service, Shift, ShiftTemplate, Staff, Station, StatusConfig, QrWindow, Stay, TableBlock, TableCombo, VenueData
+  PublicRoster, Reservation, Role, Room, RosterSettings, Service, Shift, ShiftTemplate, Staff, Station, StatusConfig, QrWindow, Stay, Supplier, SupplierOrder, SupplierProduct, TableBlock, TableCombo, VenueData
 } from '../domain/types';
 import type { GuestMenuData } from '../domain/guestMenu';
 
@@ -15,6 +15,8 @@ export interface EntityMap {
   menuChoices: MenuChoice;
   departments: Department; positions: Position; staff: Staff; shiftTemplates: ShiftTemplate;
   shifts: Shift; absences: Absence; publications: Publication;
+  /** Modul Bestellliste */
+  suppliers: Supplier; supplierProducts: SupplierProduct; supplierOrders: SupplierOrder;
 }
 export type EntityKey = keyof EntityMap;
 export const ENTITY_KEYS: EntityKey[] = ['services', 'rooms', 'stations', 'tables', 'decor', 'combos', 'layouts', 'blocks', 'ingredients', 'dishes', 'menus',
@@ -23,6 +25,8 @@ export const ENTITY_KEYS: EntityKey[] = ['services', 'rooms', 'stations', 'table
 export const ROSTER_BASE_KEYS: EntityKey[] = ['departments', 'positions', 'staff', 'shiftTemplates'];
 export const ROSTER_PLAN_KEYS: EntityKey[] = ['shifts', 'absences', 'publications'];
 export const ROSTER_KEYS: EntityKey[] = [...ROSTER_BASE_KEYS, ...ROSTER_PLAN_KEYS];
+/** Tabellen des Moduls Bestellliste (eigene Migration – fehlt sie, läuft der Rest weiter) */
+export const ORDER_KEYS: EntityKey[] = ['suppliers', 'supplierProducts', 'supplierOrders'];
 
 export interface AuthUser { id: string; email: string }
 export interface Membership { venueId: string; venueName: string; role: Role; name: string }
@@ -34,7 +38,7 @@ export type ChangeEvent =
   | { kind: 'reservations'; type: 'upsert'; row: Omit<Reservation, 'tableIds'> }
   | { kind: 'reservation_tables'; type: 'link' | 'unlink'; reservationId: string; tableId: string }
   | { kind: 'audit'; type: 'insert'; row: AuditEntry }
-  | { kind: 'venue'; type: 'upsert'; name: string; modules?: ModuleKey[]; rosterSettings?: Partial<RosterSettings>; branding?: Branding; statusConfig?: StatusConfig };
+  | { kind: 'venue'; type: 'upsert'; name: string; modules?: ModuleKey[]; rosterSettings?: Partial<RosterSettings>; branding?: Branding; statusConfig?: StatusConfig; moduleRoles?: Partial<Record<ModuleKey, Role[]>> };
 
 export type LiveState = 'connecting' | 'live' | 'down';
 
@@ -60,6 +64,8 @@ export interface Repo {
   renameVenue(venueId: string, name: string): Promise<void>;
   /** Zusatzmodule ein-/ausschalten (nur Admin) */
   setModules(venueId: string, modules: ModuleKey[]): Promise<void>;
+  /** Sichtbarkeit der Module je Rolle (nur Admin) */
+  setModuleRoles(venueId: string, roles: Partial<Record<ModuleKey, Role[]>>): Promise<void>;
   /** Prüfregeln des Dienstplans (nur Admin) */
   setRosterSettings(venueId: string, settings: Partial<RosterSettings>): Promise<void>;
   /** Lesezugang ohne Anmeldung (Mitarbeiter-Link); null = Link ungültig */

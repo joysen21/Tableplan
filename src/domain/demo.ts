@@ -3,6 +3,7 @@ import { OCCASIONS } from './constants';
 import { guessAllergens, snapshotItems } from './menu';
 import { shiftFromTemplate, weekStart } from './rosterPlan';
 import { menuCourses, menuRooms, newQrToken } from './guestMenu';
+import { seedSuppliers } from './orders';
 import { planStay, resEnd, resStart, serviceTime, stayTableConflicts, suggestTables, tableBusy, untilEnd } from './logic';
 import type { Allergen, Course, Dish, DiningTable, Ingredient, Menu, MenuItem, Reservation, Service, ShiftTemplate, Staff, Stay, TableFeature, TableShape, Unit, VenueData } from './types';
 import { addDays, nowMin, today } from '../lib/time';
@@ -26,14 +27,15 @@ export function emptyVenueData(venueId: string, name: string): VenueData {
     venue: { id: venueId, name, modules: [], qrToken: newQrToken() },
     rooms: [{ id: newId(), name: 'Restaurant', width: 1000, height: 650, backgroundUrl: null, sort: 0 }],
     stations: [], tables: [], decor: [], combos: [], layouts: [], services: defaultServices(), blocks: [], stays: [], reservations: [], audit: [],
-    ingredients: [], dishes: [], menus: [], menuChoices: [], departments: [], positions: [], staff: [], shiftTemplates: [], shifts: [], absences: [], publications: []
+    ingredients: [], dishes: [], menus: [], menuChoices: [], departments: [], positions: [], staff: [], shiftTemplates: [], shifts: [], absences: [], publications: [],
+    suppliers: [], supplierProducts: [], supplierOrders: []
   };
 }
 
 /** Fehlende Listen/Felder ergänzen (ältere Sicherungen, Demo-Daten aus früheren Versionen) */
 export function normalizeVenueData(d: VenueData): VenueData {
   const L = ['rooms', 'stations', 'tables', 'decor', 'combos', 'layouts', 'services', 'blocks', 'stays', 'reservations', 'audit', 'ingredients', 'dishes', 'menus', 'menuChoices',
-    'departments', 'positions', 'staff', 'shiftTemplates', 'shifts', 'absences', 'publications'] as const;
+    'departments', 'positions', 'staff', 'shiftTemplates', 'shifts', 'absences', 'publications', 'suppliers', 'supplierProducts', 'supplierOrders'] as const;
   const out = { ...d } as VenueData;
   for (const k of L) (out as any)[k] = (d as any)[k] ?? [];
   out.venue = { ...d.venue, modules: d.venue?.modules ?? [], qrToken: d.venue?.qrToken || newQrToken() };
@@ -53,14 +55,15 @@ export function demoVenueData(venueId: string, name: string): VenueData {
   const pick = <T,>(a: T[]): T => a[Math.floor(rnd() * a.length)];
   const r1 = newId(), r2 = newId(), sA = newId(), sB = newId(), sC = newId();
   const d: VenueData = {
-    venue: { id: venueId, name, modules: ['dienstplan'], qrToken: newQrToken(), branding: { title: 'Hotel Sonnenhof', welcome: 'Herzlich willkommen! Wählen Sie hier Ihr Menü – unsere Küche bereitet es frisch für Sie zu.', welcomeIt: 'Benvenuti! Scegliete qui il vostro menù – la nostra cucina lo prepara fresco per voi.', welcomeEn: 'Welcome! Choose your menu here – our kitchen prepares it fresh for you.', color: '#0F2347', logoUrl: null, coverUrl: null } },
+    venue: { id: venueId, name, modules: ['dienstplan', 'bestellliste'], qrToken: newQrToken(), branding: { title: 'Hotel Sonnenhof', welcome: 'Herzlich willkommen! Wählen Sie hier Ihr Menü – unsere Küche bereitet es frisch für Sie zu.', welcomeIt: 'Benvenuti! Scegliete qui il vostro menù – la nostra cucina lo prepara fresco per voi.', welcomeEn: 'Welcome! Choose your menu here – our kitchen prepares it fresh for you.', color: '#0F2347', logoUrl: null, coverUrl: null } },
     rooms: [
       { id: r1, name: 'Restaurant', width: 1000, height: 650, backgroundUrl: null, sort: 0 },
       { id: r2, name: 'Stube', width: 720, height: 500, backgroundUrl: null, sort: 1 }
     ],
     stations: [{ id: sA, name: 'Revier A', color: '#1f6feb' }, { id: sB, name: 'Revier B', color: '#e36209' }, { id: sC, name: 'Revier Stube', color: '#1a7f37' }],
     tables: [], decor: [], combos: [], layouts: [], services: defaultServices(), blocks: [], stays: [], reservations: [], audit: [],
-    ingredients: [], dishes: [], menus: [], menuChoices: [], departments: [], positions: [], staff: [], shiftTemplates: [], shifts: [], absences: [], publications: []
+    ingredients: [], dishes: [], menus: [], menuChoices: [], departments: [], positions: [], staff: [], shiftTemplates: [], shifts: [], absences: [], publications: [],
+    suppliers: [], supplierProducts: [], supplierOrders: []
   };
   const T = (roomId: string, nm: string, shape: TableShape, x: number, y: number, w: number, h: number, min: number, max: number, stationId: string, features: TableFeature[] = []) =>
     d.tables.push({ id: newId(), roomId, name: nm, shape, x, y, width: w, height: h, rotation: 0, minPersons: min, maxPersons: max, stationId, features, chairs: true, qrToken: newQrToken() } as DiningTable);
@@ -163,6 +166,9 @@ export function demoVenueData(venueId: string, name: string): VenueData {
   d.reservations.forEach(r => { r.updatedAt = now; });
   demoKitchen(d);
   demoGuestChoices(d);
+  // Bestellliste: Agostini und Vinothek Mairhofer mit ihren Artikeln
+  const orderSeed = seedSuppliers(newId);
+  d.suppliers = orderSeed.suppliers; d.supplierProducts = orderSeed.products;
   demoRoster(d);
   return d;
 }

@@ -1,7 +1,7 @@
 /** Rahmen der angemeldeten App: am PC Seitenmenü links (ein-/ausklappbar), Kopfzeile mit Datum/Service, Status; Benutzermenü;
  *  am Handy statt Seitenmenü die Navigationsleiste unten (Hauptansichten + „Mehr“); Dialoge */
 import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react';
-import { BedDouble, CalendarClock, CalendarDays, ChartColumn, ChartGantt, ChefHat, ChevronDown, ChevronLeft, ChevronRight, Ellipsis, LogOut, Moon, PencilRuler, Pin, PinOff, Settings, Sun, Utensils, type LucideIcon } from '../ui/icons';
+import { BedDouble, CalendarClock, CalendarDays, ChartColumn, ChartGantt, ChefHat, ChevronDown, ChevronLeft, ChevronRight, Ellipsis, LogOut, Moon, PencilRuler, Pin, PinOff, Settings, ShoppingCart, Sun, Utensils, type LucideIcon } from '../ui/icons';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { repo } from '../data';
 import type { ViewKey } from '../domain/constants';
@@ -18,7 +18,7 @@ import { Dialogs } from '../forms/Dialogs';
 import { ErrorBoundary } from '../ui/ErrorBoundary';
 
 const VIEW_ICON: Record<ViewKey, LucideIcon> = {
-  live: Utensils, zeit: ChartGantt, res: CalendarDays, hotel: BedDouble, menue: ChefHat, dienst: CalendarClock, berichte: ChartColumn, editor: PencilRuler, settings: Settings
+  live: Utensils, zeit: ChartGantt, res: CalendarDays, hotel: BedDouble, menue: ChefHat, dienst: CalendarClock, bestell: ShoppingCart, berichte: ChartColumn, editor: PencilRuler, settings: Settings
 };
 /** So viele Ansichten passen in die Leiste unten (plus „Mehr“) */
 const BOTTOM_MAX = 4;

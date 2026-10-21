@@ -1,6 +1,7 @@
 /** Einstellungen (Admin): Zusatzmodule ein-/ausschalten, Bereiche & Bereichsleitungen des Dienstplans */
 import { useEffect, useState } from 'react';
 import { Plus, Trash2 } from '../ui/icons';
+import { ModuleToggle, SupplierSettings } from '../forms/ModuleSettings';
 import { repo } from '../data';
 import { newId } from '../domain/demo';
 import { ROSTER_COLORS } from '../domain/constants';
@@ -29,6 +30,7 @@ export function ModulesPanel() {
       <p className="muted" style={{ fontSize: 12, margin: '4px 0 0' }}>Personalplanung je Bereich (Küche, Service …). Sichtbar für Admins und die Bereichsleitungen; ausschalten blendet das Modul nur aus, die Daten bleiben erhalten.</p>
       {on && <DepartmentsAdmin />}
       {on && <><h4 style={{ margin: '14px 0 6px' }}>Prüfregeln</h4><RulesForm /></>}
+      <ModuleToggle mod="bestellliste" label="Bestellliste" hint="Artikellisten je Lieferant, Bestellung per WhatsApp, Historie und Auswertung je Monat."><SupplierSettings /></ModuleToggle>
     </div></div>
   );
 }

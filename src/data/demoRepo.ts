@@ -10,8 +10,9 @@ import { canPlanDept } from '../domain/roster';
 import { shiftsOverlap, weekStart } from '../domain/rosterPlan';
 import type { Branding, Member, MenuChoice, ModuleKey, OnDuty, PublicRoster, QrWindow, Reservation, Role, RosterSettings, Shift, StatusConfig, Stay, VenueData } from '../domain/types';
 import { buildGuestMenu, cleanCounts, newQrToken, partyKey } from '../domain/guestMenu';
+import { moduleAllowed } from '../domain/orders';
 import { addDays, today } from '../lib/time';
-import { ROSTER_KEYS, RepoError, type AuthUser, type ChangeEvent, type EntityKey, type EntityMap, type LiveState, type Membership, type Repo } from './repo';
+import { ORDER_KEYS, ROSTER_KEYS, RepoError, type AuthUser, type ChangeEvent, type EntityKey, type EntityMap, type LiveState, type Membership, type Repo } from './repo';
 
 const KEY = 'tischplan.demo.v2';
 const SESSION = 'tischplan.demo.user';
@@ -74,6 +75,11 @@ export class DemoRepo implements Repo {
     const u = this.user(); const db = this.read();
     const m = u && db.members.find(x => x.venueId === venueId && x.email === u.email);
     if (!m) throw new RepoError('forbidden', 'Keine Berechtigung');
+    // Module mit Rollen-Zuweisung (wie module_allowed() in der DB)
+    if (ORDER_KEYS.includes(what as EntityKey)) {
+      if (!moduleAllowed(db.data[venueId].venue, 'bestellliste', m.role)) throw new RepoError('forbidden', 'Keine Berechtigung für die Bestellliste.');
+      return;
+    }
     const w = WRITE[m.role];
     if (!w.includes('*') && !w.includes(what)) throw new RepoError('forbidden', 'Keine Berechtigung für diese Änderung.');
   }
@@ -132,6 +138,12 @@ export class DemoRepo implements Repo {
     this.guard(venueId, 'venue');
     this.mutate(venueId, (d, db) => { d.venue.name = name; const v = db.venues.find(x => x.id === venueId); if (v) v.name = name; });
     this.emit([{ kind: 'venue', type: 'upsert', name }]);
+  }
+  async setModuleRoles(venueId: string, roles: Partial<Record<ModuleKey, Role[]>>) {
+    this.guard(venueId, 'venue');
+    let name = '';
+    this.mutate(venueId, d => { d.venue.moduleRoles = structuredClone(roles); name = d.venue.name; });
+    this.emit([{ kind: 'venue', type: 'upsert', name, moduleRoles: roles }]);
   }
   async setModules(venueId: string, modules: ModuleKey[]) {
     this.guard(venueId, 'venue');

@@ -8,7 +8,7 @@ import { RepoError, type ChangeEvent, type EntityKey, type EntityMap, type LiveS
 import { demoVenueData, emptyVenueData, newId, normalizeVenueData } from '../domain/demo';
 import { OPEN_STATES } from '../domain/constants';
 import { planStay } from '../domain/logic';
-import type { Branding, ModuleKey, QrWindow, Reservation, RosterSettings, SessionUser, StatusConfig, Stay, VenueData } from '../domain/types';
+import type { Branding, ModuleKey, QrWindow, Reservation, Role, RosterSettings, SessionUser, StatusConfig, Stay, VenueData } from '../domain/types';
 import { resolveStatus, statusInfo } from '../domain/statuses';
 import { EDITION } from '../lib/edition';
 import { nowMin, today } from '../lib/time';
@@ -37,6 +37,7 @@ interface AppState {
   remove(kind: EntityKey, ids: string[], logText?: [string, string]): Promise<boolean>;
   renameVenue(name: string): Promise<void>;
   setModules(modules: ModuleKey[]): Promise<boolean>;
+  setModuleRoles(roles: Partial<Record<ModuleKey, Role[]>>): Promise<boolean>;
   setRosterSettings(settings: Partial<RosterSettings>): Promise<boolean>;
   /** Erscheinungsbild der Gäste-Speisekarte (QR) speichern */
   setBranding(branding: Branding): Promise<boolean>;
@@ -59,7 +60,7 @@ export function applyEvent(d: VenueData, e: ChangeEvent): VenueData {
     return i >= 0 ? list.map((x, j) => (j === i ? row : x)) : [...list, row];
   };
   switch (e.kind) {
-    case 'venue': return { ...d, venue: { ...d.venue, name: e.name, modules: e.modules ?? d.venue.modules, rosterSettings: e.rosterSettings ?? d.venue.rosterSettings, branding: e.branding ?? d.venue.branding, statusConfig: e.statusConfig ?? d.venue.statusConfig } };
+    case 'venue': return { ...d, venue: { ...d.venue, name: e.name, modules: e.modules ?? d.venue.modules, rosterSettings: e.rosterSettings ?? d.venue.rosterSettings, branding: e.branding ?? d.venue.branding, statusConfig: e.statusConfig ?? d.venue.statusConfig, moduleRoles: e.moduleRoles ?? d.venue.moduleRoles } };
     case 'audit': return d.audit.some(a => a.id === e.row.id) ? d : { ...d, audit: [e.row, ...d.audit].slice(0, 500) };
     case 'reservation_tables': {
       const r = d.reservations.find(x => x.id === e.reservationId);
@@ -258,7 +259,14 @@ export const useApp = create<AppState>((set, get) => {
       const ok = await write(async () => { await repo.setModules(venueId(), modules); return true; });
       if (!ok) return false;
       set(s => (s.data ? { data: { ...s.data, venue: { ...s.data.venue, modules } } } : {}));
-      get().log(modules.includes('dienstplan') ? 'Modul eingeschaltet' : 'Modul ausgeschaltet', 'Dienstplan');
+      get().log('Module geändert', modules.join(', ') || 'keine');
+      return true;
+    },
+    async setModuleRoles(roles) {
+      const ok = await write(async () => { await repo.setModuleRoles(venueId(), roles); return true; });
+      if (!ok) return false;
+      set(s => (s.data ? { data: { ...s.data, venue: { ...s.data.venue, moduleRoles: roles } } } : {}));
+      get().log('Modul-Sichtbarkeit geändert', Object.entries(roles).map(([m, r]) => `${m}: ${(r ?? []).join('/')}`).join(' · '));
       return true;
     },
     async setRosterSettings(settings) {
