@@ -799,3 +799,5 @@ table.presence th,table.presence td{border-bottom:1px solid var(--line);padding:
 table.presence td input{width:92px;display:block;margin:2px 0}
 table.presence td.on{background:rgba(45,164,78,.08)}
 label.inline{display:inline-flex;align-items:center;gap:4px}
+
+.dinner-export tr.open td{color:var(--muted)}

@@ -1,6 +1,8 @@
 /** Berichte, nach Abteilung gruppiert (Service, Küche, Hotel, Dienstplan) – alle druckbar */
 import { useState, type ReactNode } from 'react';
-import { BedDouble, CalendarClock, ChefHat, Printer, Utensils, type LucideIcon } from '../ui/icons';
+import { BedDouble, CalendarClock, ChefHat, Download, Printer, Utensils, type LucideIcon } from '../ui/icons';
+import { dinnerCsv, dinnerExport } from '../domain/dinnerExport';
+import { downloadCSV } from '../lib/download';
 import { byId, isBlocked, isCancelled, isInHouse, needsTable, persons, resStart, tableNames, tableStatusAt } from '../domain/logic';
 import { statusInfo } from '../domain/statuses';
 import type { Menu, Reservation, VenueData } from '../domain/types';
@@ -20,7 +22,7 @@ import { sortDepartments } from '../domain/roster';
 /** Berichte je Abteilung, die sie braucht */
 const GROUPS: { key: string; label: string; icon: LucideIcon; reports: [string, string][] }[] = [
   { key: 'service', label: 'Service', icon: Utensils, reports: [['tag', 'Tagesübersicht'], ['allergie', 'Allergie-Liste'], ['plan', 'Tischplan']] },
-  { key: 'kueche', label: 'Küche', icon: ChefHat, reports: [['kueche', 'Küchenvorschau / Briefing'], ['zutaten', 'Zutatenliste'], ['allergene', 'Allergen-Übersicht']] },
+  { key: 'kueche', label: 'Küche', icon: ChefHat, reports: [['kueche', 'Küchenvorschau / Briefing'], ['abend', 'Abendessen-Export'], ['zutaten', 'Zutatenliste'], ['allergene', 'Allergen-Übersicht']] },
   { key: 'hotel', label: 'Hotel', icon: BedDouble, reports: [['hotel', 'Hotel-Tischliste']] },
   { key: 'dienst', label: 'Dienstplan', icon: CalendarClock, reports: [['dienst', 'Dienstplan']] }
 ];
@@ -88,6 +90,21 @@ export function ReportsView() {
         {unas.length > 0 && <li><b>{unas.length} Reservierungen noch ohne Tisch</b></li>}
         {blocked.length > 0 && <li>Gesperrte Tische: {blocked.map(x => x.name).join(', ')}</li>}
         <li>Kinderstühle: {rs.filter(r => r.highchair).length}</li></ul></>;
+  } else if (type === 'abend') {
+    const x = dinnerExport(d, D);
+    body = <>{head('Abendessen – Gerichte je Zimmer', x.serviceName)}
+      {!x.menu ? <p className="muted">Für diesen Tag ist kein Abendmenü eingetragen (Ansicht „Menü“).</p> : <>
+        <div className="row no-print mb8">
+          <button className="btn" onClick={() => downloadCSV(`abendessen-${D}.csv`, dinnerCsv(x, c => t(c)))}><Download />CSV herunterladen</button>
+          <span className="muted">{x.rows.length} Zimmer/Reservierungen{x.open ? ` · ${x.open} ohne Auswahl` : ' · alle haben gewählt'}</span>
+        </div>
+        <table className="list dinner-export"><thead><tr><th>Zimmer</th><th>Name</th><th>Tisch</th><th>P</th>{x.courses.map(c => <th key={c}>{t(c)}</th>)}<th>Notiz</th><th>Allergien</th></tr></thead>
+          <tbody>{x.rows.map((r, i) => <tr key={i} className={r.chosen ? '' : 'open'}><td><b>{r.room || '–'}</b></td><td>{r.name}</td><td>{r.table || '–'}</td><td>{r.persons}</td>
+            {x.courses.map(c => <td key={c}>{r.dishes[c] ?? (r.chosen ? '–' : '')}</td>)}<td>{r.note}</td><td>{r.allergies && <b>⚠ {r.allergies}</b>}</td></tr>)}</tbody></table>
+        <h4>Summe je Gericht</h4>
+        <table className="list"><tbody>{x.totals.map(s => <tr key={s.name}><td style={{ width: 120 }} className="muted">{t(s.course)}</td><td>{s.name}</td><td style={{ textAlign: 'right' }}><b>{s.n}</b></td></tr>)}</tbody></table>
+        {!x.totals.length && <p className="muted">Noch keine Auswahl.</p>}
+      </>}</>;
   } else if (type === 'allergie') {
     const rs = d.reservations.filter(r => r.date === D && !isCancelled(r) && hasAllergy(r)).sort((a, b) => a.serviceId.localeCompare(b.serviceId) || resStart(a) - resStart(b));
     body = <>{head('Allergie-Liste')}<AllergyTable d={d} rs={rs} withSvc /></>;
