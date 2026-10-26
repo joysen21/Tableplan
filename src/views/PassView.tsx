@@ -10,7 +10,7 @@ import { byId, persons, tableStatusAt } from '../domain/logic';
 import { newId } from '../domain/demo';
 import {
   PASS_LOOK, byWaiter, callNet, cancelPortion, chefOverview, minutesSince, netCount, newCall, partyLabel, passProgress, tablePass,
-  type CallView, type CourseState, type PassLook
+  type CallView, type CourseProgress, type CourseState, type DishProgress, type PassLook
 } from '../domain/pass';
 import type { TableLook } from '../domain/statuses';
 import type { DiningTable, MenuChoice, PassCall, Reservation } from '../domain/types';
@@ -76,7 +76,7 @@ function PassTable({ tableId, onClose }: { tableId: string; onClose: () => void 
   const tb = byId(d.tables, tableId);
   const { reservations } = tablePass(d, tableId, ui.date, serviceId);
   return (
-    <Modal title={'Pass · Tisch ' + (tb?.name ?? '')} onClose={onClose} width={620} footer={<><span className="spacer" /><button className="btn" onClick={onClose}>Schließen</button></>}>
+    <Modal title={'Pass · Tisch ' + (tb?.name ?? '')} onClose={onClose} width={900} footer={<><span className="spacer" /><button className="btn" onClick={onClose}>Schließen</button></>}>
       {!reservations.length && <p className="muted">An diesem Tisch ist in diesem Service niemand.</p>}
       {reservations.map(r => <PassParty key={r.id} r={r} />)}
     </Modal>
@@ -97,11 +97,11 @@ function PassParty({ r }: { r: Reservation }) {
     const row: MenuChoice = { id: p.choice?.id ?? newId(), menuId: p.menu.id, stayId: r.stayId ?? null, reservationId: r.stayId ? null : r.id, counts: res.counts, note: note.trim() };
     return store.upsert('menuChoices', [row], [log, label]);
   };
-  const call = async (dishId?: string) => {
-    const c = newCall(p, r, user, newId, dishId);
+  // ganzen Gang abrufen – ohne Rückfrage
+  const call = () => {
+    const c = newCall(p, r, user, newId);
     if (!c) return;
     const lines = Object.entries(c.counts).map(([k, n]) => `${n}× ${p.current!.dishes.find(x => x.dishId === k)?.name}`);
-    if (!(await confirmDialog(`${t(c.course)} abrufen?`, [label, ...lines], 'Abrufen'))) return;
     store.upsert('passCalls', [c], ['Gang abgerufen', `${label}: ${t(c.course)} – ${lines.join(', ')}`]);
   };
   const setState = (c: PassCall, state: PassCall['state']) => {
@@ -118,8 +118,13 @@ function PassParty({ r }: { r: Reservation }) {
     if (!next || !(await confirmDialog('Abgerufene Portion stornieren?', [`1× ${name}`, label, 'Die Küche sieht sie als storniert.'], 'Stornieren', true))) return;
     store.upsert('passCalls', [next], ['Portion storniert', `${label}: 1× ${name}`]);
   };
-  const dishName = (k: string) => byId(d.dishes, k)?.name ?? p.menu?.items.find(i => i.dishId === k)?.name ?? '?';
-  const open = p.courses.flatMap(c => c.calls).filter(c => c.state !== 'serviert' && callNet(c) > 0);
+  // −1: zuerst eine offene Portion, sonst eine bereits abgerufene (Küche sieht sie als storniert)
+  const minusOne = (c: CourseProgress, x: DishProgress) => {
+    if (x.open > 0) return cancelOpen(x.dishId, x.name);
+    const call = c.calls.find(k => k.state !== 'serviert' && netCount(k, x.dishId) > 0);
+    if (call) cancelCalled(call, x.dishId, x.name);
+  };
+  const active = (c: CourseProgress) => c.calls.filter(k => k.state !== 'serviert' && callNet(k) > 0);
 
   return (
     <section className="pass-party" aria-label={label}>
@@ -139,43 +144,35 @@ function PassParty({ r }: { r: Reservation }) {
         ) : (
           <>
             <ol className="pass-courses">
-              {p.courses.filter(c => c.state !== 'leer').map(c => (
-                <li key={c.course} className={'st-' + c.state + (c === p.current ? ' current' : '')}>
-                  <div className="pc-head"><b>{t(c.course)}</b><span className={'pass-badge st-' + c.state}>{STATE_LABEL[c.state]}</span></div>
-                  <ul>
-                    {c.dishes.map(x => (
-                      <li key={x.dishId}>
-                        <span>{x.chosen - x.cancelled}× {x.name}{x.cancelled ? <small className="danger"> ({x.cancelled} storniert)</small> : null}
-                          {x.open > 0 && x.called > 0 && <small className="muted"> · {x.open} offen</small>}</span>
-                        {x.open > 0 && <span className="row" style={{ gap: 4 }}>
-                          <button className="btn small ghost" aria-label={`Storno ${x.name}`} title="Eine offene Portion stornieren" onClick={() => cancelOpen(x.dishId, x.name)}>−1</button>
-                          {c === p.current && <button className="btn small" onClick={() => call(x.dishId)} aria-label={`${x.name} abrufen`}>Abrufen</button>}
-                        </span>}
-                      </li>
-                    ))}
-                  </ul>
-                  {c === p.current && c.dishes.some(x => x.open) && <button className="btn primary small mt8" onClick={() => call()}><BellRing />Ganzen Gang abrufen</button>}
-                </li>
-              ))}
+              {p.courses.filter(c => c.state !== 'leer').map(c => {
+                const act = active(c), ready = act.some(k => k.state === 'fertig');
+                const oldest = act.map(k => k.calledAt).sort()[0];
+                const badge = c.state === 'abgerufen' ? `in der Küche · ${minutesSince(oldest ?? new Date().toISOString())} min` : c.state === 'fertig' ? 'fertig – abholen' : STATE_LABEL[c.state];
+                return (
+                  <li key={c.course} className={'st-' + c.state + (c === p.current ? ' current' : '')}>
+                    <div className="pc-head"><b>{t(c.course)}</b><span className={'pass-badge st-' + c.state}>{badge}</span></div>
+                    <ul>
+                      {c.dishes.map(x => {
+                        const canMinus = x.open > 0 || c.calls.some(k => k.state !== 'serviert' && netCount(k, x.dishId) > 0);
+                        return (
+                          <li key={x.dishId}>
+                            <span><b>{x.chosen - x.cancelled}×</b> {x.name}{x.cancelled ? <small className="danger"> ({x.cancelled} storniert)</small> : null}
+                              {x.open > 0 && x.called > 0 && <small className="muted"> · {x.open} offen</small>}</span>
+                            {canMinus && c.state !== 'serviert' && <button className="btn small pass-minus" aria-label={`Storno ${x.name}`} title="Eine Portion stornieren" onClick={() => minusOne(c, x)}>−1</button>}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    {c === p.current && c.dishes.some(x => x.open) && <button className="btn primary pass-call-btn" onClick={call}><BellRing />{t(c.course)} abrufen</button>}
+                    {act.length > 0 && <div className="row pass-served">
+                      <button className={'btn pass-call-btn' + (ready ? ' primary' : '')} onClick={() => act.forEach(k => setState(k, 'serviert'))}><Check />Serviert</button>
+                      <small className="muted">abgerufen von {[...new Set(act.map(k => k.calledByName || 'Service'))].join(', ')}</small>
+                    </div>}
+                  </li>
+                );
+              })}
             </ol>
             {p.done && <p className="ok-text"><Check /> Alle Gänge serviert.</p>}
-            {open.length > 0 && <h4 style={{ margin: '12px 0 4px' }}>Abgerufen</h4>}
-            {open.map(c => (
-              <div key={c.id} className={'pass-call st-' + c.state}>
-                <div className="pc-head"><b>{t(c.course)}</b>
-                  <span className={'pass-badge st-' + c.state}>{c.state === 'fertig' ? 'fertig – abholen' : `in der Küche · ${minutesSince(c.calledAt)} min`}</span></div>
-                <ul>
-                  {Object.keys(c.counts).filter(k => c.counts[k] > 0).map(k => (
-                    <li key={k}><span>{netCount(c, k)}× {dishName(k)}{c.cancelled[k] ? <small className="danger"> ({c.cancelled[k]} storniert)</small> : null}</span>
-                      {netCount(c, k) > 0 && <button className="btn small ghost" aria-label={`Storno abgerufen ${dishName(k)}`} title="Eine abgerufene Portion stornieren" onClick={() => cancelCalled(c, k, dishName(k))}>−1</button>}</li>
-                  ))}
-                </ul>
-                <div className="row">
-                  <button className={'btn small' + (c.state === 'fertig' ? ' primary' : '')} onClick={() => setState(c, 'serviert')}><Check />Serviert</button>
-                  <small className="muted">abgerufen von {c.calledByName || 'Service'}</small>
-                </div>
-              </div>
-            ))}
             <button className="btn small ghost mt8" onClick={() => setEdit({ counts: p.choice?.counts ?? {}, note: p.choice?.note ?? '' })}>Auswahl ändern</button>
           </>
         )}

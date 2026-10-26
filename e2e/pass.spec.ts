@@ -22,9 +22,10 @@ test('Gang abrufen, Küche meldet fertig, Service serviert', async ({ page }) =>
   const name = (await table.getAttribute('aria-label'))!.match(/^Tisch (\S+),/)![1];
   await table.click();
   const dlg = page.getByRole('dialog', { name: `Pass · Tisch ${name}` });
-  await dlg.getByRole('button', { name: 'Ganzen Gang abrufen' }).first().click();
-  await page.getByRole('button', { name: 'Abrufen', exact: true }).click();
-  await expect(dlg.locator('.pass-call').first()).toContainText('in der Küche');
+  // ohne Rückfrage; Stand direkt beim Gang
+  await dlg.getByRole('button', { name: /abrufen$/ }).first().click();
+  await expect(dlg.locator('.pass-courses > li.current .pass-badge')).toContainText('in der Küche');
+  await expect(dlg.getByRole('button', { name: /^S+ abrufen$/ })).toHaveCount(0);
   await page.screenshot({ path: 'test-results/pass-tisch.png' });
   await dlg.getByRole('button', { name: 'Schließen' }).last().click();
 
@@ -46,7 +47,8 @@ test('Gang abrufen, Küche meldet fertig, Service serviert', async ({ page }) =>
   await dinner(page);
   await page.getByRole('list', { name: 'Fertig zum Abholen' }).getByRole('listitem').filter({ hasText: name }).first().click();
   const dlg2 = page.getByRole('dialog', { name: `Pass · Tisch ${name}` });
-  await dlg2.locator('.pass-call.st-fertig').first().getByRole('button', { name: 'Serviert' }).click();
+  await expect(dlg2.locator('.pass-courses > li.current .pass-badge')).toContainText('fertig – abholen');
+  await dlg2.locator('.pass-courses > li.current').getByRole('button', { name: 'Serviert' }).click();
   await expect(dlg2.locator('.pass-courses .current').first()).toBeVisible();
 });
 

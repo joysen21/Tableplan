@@ -808,3 +808,16 @@ label.inline{display:inline-flex;align-items:center;gap:4px}
 .xg-bar:hover .xg-edge{background:rgba(255,255,255,.35)}
 .settings-group .module-block{border-top:0;margin-top:0;padding-top:0}
 .settings-colhead{margin:4px 2px -4px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+/* Pass: großes Abruffenster */
+.modal:has(.pass-party){width:min(900px,96vw)}
+.pass-party{font-size:16px}
+.pass-party h3{font-size:19px}
+.pass-courses>li{padding:12px 14px}
+.pass-courses ul li{min-height:40px}
+.pass-call-btn{min-height:48px;font-size:17px;padding:0 22px;margin-top:10px}
+.pass-call-btn svg{width:20px;height:20px}
+.btn.pass-minus{background:var(--danger);border-color:var(--danger);color:#fff;font-weight:700;min-width:44px;min-height:36px}
+.btn.pass-minus:hover{background:var(--danger-h)}
+.pass-served{align-items:center;gap:10px}
+@media (max-width:760px){.pass-call-btn{width:100%;justify-content:center}}
+.pass-party .pass-badge{font-size:14px;padding:3px 12px;font-weight:600}
