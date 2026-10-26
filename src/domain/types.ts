@@ -18,7 +18,7 @@ export type Course = 'vorspeise' | 'suppe' | 'zwischengang' | 'hauptgang' | 'bei
 export type Diet = 'vegetarisch' | 'vegan';
 export type TableState = 'frei' | 'reserviert' | 'bald' | 'platziert' | 'rechnung' | 'ueberfaellig' | 'ueberzogen' | 'gesperrt';
 
-export type ModuleKey = 'dienstplan' | 'bestellliste' | 'pass' | ExtraModule;
+export type ModuleKey = 'dienstplan' | 'bestellliste' | 'pass' | 'faelligkeiten' | ExtraModule;
 /** modules: zugeschaltete Zusatzmodule des Betriebs */
 /** Erscheinungsbild der Gäste-Speisekarte (QR): Logo, Titelbild, Akzentfarbe, Titel und Begrüßung */
 /** welcomeIt/welcomeEn optional – fehlt die Übersetzung, erscheint der deutsche Text */
@@ -56,6 +56,15 @@ export type BikePart = 'tag' | 'vm' | 'nm';
 export interface Booking {
   id: string; module: ExtraModule; resourceId: string; stayId: string; starts: string; ends: string;
   therapyId: string | null; plate: string; ev: boolean; part: BikePart | null; price: number | null; note: string; createdBy: string; updatedAt?: string;
+}
+
+/* ---------- Modul Fälligkeiten ---------- */
+export interface DueGroup { id: string; name: string; sort: number }
+/** Fälligkeit: intervalMonths 0 = einmalig; reminderDays = so viele Tage vorher „demnächst fällig“; staffName = Anzeige des Verantwortlichen */
+export interface DueItem {
+  id: string; title: string; groupId: string | null; dueDate: string; intervalMonths: number;
+  staffId: string | null; staffName: string; reminderDays: number;
+  done: boolean; doneAt: string | null; lastDone: string | null; note: string; updatedAt?: string;
 }
 
 /* ---------- Modul Pass + Chef ---------- */
@@ -203,6 +212,7 @@ export interface VenueData {
   suppliers: Supplier[]; supplierProducts: SupplierProduct[]; supplierOrders: SupplierOrder[];
   passCalls: PassCall[];
   hotelResources: HotelResource[]; therapies: Therapy[]; presence: Presence[]; bookings: Booking[];
+  dueGroups: DueGroup[]; dueItems: DueItem[];
 }
 
 export interface SessionUser { id: string; name: string; email: string; role: Role }

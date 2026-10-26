@@ -7,7 +7,7 @@ import { seedSuppliers } from './orders';
 import { newCall, passProgress, passReservations } from './pass';
 import { bikeRange, garageRange, massageRange } from './extras';
 import { planStay, resEnd, resStart, serviceTime, stayTableConflicts, suggestTables, tableBusy, untilEnd } from './logic';
-import type { Allergen, Booking, HotelResource, Course, Dish, DiningTable, Ingredient, Menu, MenuItem, Reservation, Service, ShiftTemplate, Staff, Stay, TableFeature, TableShape, Unit, VenueData } from './types';
+import type { Allergen, Booking, DueItem, HotelResource, Course, Dish, DiningTable, Ingredient, Menu, MenuItem, Reservation, Service, ShiftTemplate, Staff, Stay, TableFeature, TableShape, Unit, VenueData } from './types';
 import { addDays, nowMin, today } from '../lib/time';
 
 export const newId = () => crypto.randomUUID();
@@ -30,14 +30,14 @@ export function emptyVenueData(venueId: string, name: string): VenueData {
     rooms: [{ id: newId(), name: 'Restaurant', width: 1000, height: 650, backgroundUrl: null, sort: 0 }],
     stations: [], tables: [], decor: [], combos: [], layouts: [], services: defaultServices(), blocks: [], stays: [], reservations: [], audit: [],
     ingredients: [], dishes: [], menus: [], menuChoices: [], departments: [], positions: [], staff: [], shiftTemplates: [], shifts: [], absences: [], publications: [],
-    suppliers: [], supplierProducts: [], supplierOrders: [], passCalls: [], hotelResources: [], therapies: [], presence: [], bookings: []
+    suppliers: [], supplierProducts: [], supplierOrders: [], passCalls: [], hotelResources: [], therapies: [], presence: [], bookings: [], dueGroups: [], dueItems: []
   };
 }
 
 /** Fehlende Listen/Felder ergänzen (ältere Sicherungen, Demo-Daten aus früheren Versionen) */
 export function normalizeVenueData(d: VenueData): VenueData {
   const L = ['rooms', 'stations', 'tables', 'decor', 'combos', 'layouts', 'services', 'blocks', 'stays', 'reservations', 'audit', 'ingredients', 'dishes', 'menus', 'menuChoices',
-    'departments', 'positions', 'staff', 'shiftTemplates', 'shifts', 'absences', 'publications', 'suppliers', 'supplierProducts', 'supplierOrders', 'passCalls', 'hotelResources', 'therapies', 'presence', 'bookings'] as const;
+    'departments', 'positions', 'staff', 'shiftTemplates', 'shifts', 'absences', 'publications', 'suppliers', 'supplierProducts', 'supplierOrders', 'passCalls', 'hotelResources', 'therapies', 'presence', 'bookings', 'dueGroups', 'dueItems'] as const;
   const out = { ...d } as VenueData;
   for (const k of L) (out as any)[k] = (d as any)[k] ?? [];
   out.venue = { ...d.venue, modules: d.venue?.modules ?? [], qrToken: d.venue?.qrToken || newQrToken() };
@@ -57,7 +57,7 @@ export function demoVenueData(venueId: string, name: string): VenueData {
   const pick = <T,>(a: T[]): T => a[Math.floor(rnd() * a.length)];
   const r1 = newId(), r2 = newId(), sA = newId(), sB = newId(), sC = newId();
   const d: VenueData = {
-    venue: { id: venueId, name, modules: ['dienstplan', 'bestellliste', 'pass', 'garage', 'massage', 'fahrrad'], qrToken: newQrToken(), branding: { title: 'Hotel Sonnenhof', welcome: 'Herzlich willkommen! Wählen Sie hier Ihr Menü – unsere Küche bereitet es frisch für Sie zu.', welcomeIt: 'Benvenuti! Scegliete qui il vostro menù – la nostra cucina lo prepara fresco per voi.', welcomeEn: 'Welcome! Choose your menu here – our kitchen prepares it fresh for you.', color: '#0F2347', logoUrl: null, coverUrl: null } },
+    venue: { id: venueId, name, modules: ['dienstplan', 'bestellliste', 'pass', 'garage', 'massage', 'fahrrad', 'faelligkeiten'], qrToken: newQrToken(), branding: { title: 'Hotel Sonnenhof', welcome: 'Herzlich willkommen! Wählen Sie hier Ihr Menü – unsere Küche bereitet es frisch für Sie zu.', welcomeIt: 'Benvenuti! Scegliete qui il vostro menù – la nostra cucina lo prepara fresco per voi.', welcomeEn: 'Welcome! Choose your menu here – our kitchen prepares it fresh for you.', color: '#0F2347', logoUrl: null, coverUrl: null } },
     rooms: [
       { id: r1, name: 'Restaurant', width: 1000, height: 650, backgroundUrl: null, sort: 0 },
       { id: r2, name: 'Stube', width: 720, height: 500, backgroundUrl: null, sort: 1 }
@@ -65,7 +65,7 @@ export function demoVenueData(venueId: string, name: string): VenueData {
     stations: [{ id: sA, name: 'Revier A', color: '#1f6feb' }, { id: sB, name: 'Revier B', color: '#e36209' }, { id: sC, name: 'Revier Stube', color: '#1a7f37' }],
     tables: [], decor: [], combos: [], layouts: [], services: defaultServices(), blocks: [], stays: [], reservations: [], audit: [],
     ingredients: [], dishes: [], menus: [], menuChoices: [], departments: [], positions: [], staff: [], shiftTemplates: [], shifts: [], absences: [], publications: [],
-    suppliers: [], supplierProducts: [], supplierOrders: [], passCalls: [], hotelResources: [], therapies: [], presence: [], bookings: []
+    suppliers: [], supplierProducts: [], supplierOrders: [], passCalls: [], hotelResources: [], therapies: [], presence: [], bookings: [], dueGroups: [], dueItems: []
   };
   const T = (roomId: string, nm: string, shape: TableShape, x: number, y: number, w: number, h: number, min: number, max: number, stationId: string, features: TableFeature[] = []) =>
     d.tables.push({ id: newId(), roomId, name: nm, shape, x, y, width: w, height: h, rotation: 0, minPersons: min, maxPersons: max, stationId, features, chairs: true, qrToken: newQrToken() } as DiningTable);
@@ -174,6 +174,7 @@ export function demoVenueData(venueId: string, name: string): VenueData {
   const orderSeed = seedSuppliers(newId);
   d.suppliers = orderSeed.suppliers; d.supplierProducts = orderSeed.products;
   demoRoster(d);
+  demoDue(d);
   return d;
 }
 
@@ -333,6 +334,21 @@ function demoExtras(d: VenueData) {
   if (here[1]) d.bookings.push(B({ module: 'massage', resourceId: lena.id, stayId: here[1].id, ...massageRange(t0, '14:30', 25), therapyId: d.therapies[0].id, price: 45 }));
   if (here[2]) d.bookings.push(B({ module: 'fahrrad', resourceId: bikes[0].id, stayId: here[2].id, ...bikeRange(t0, 'tag'), part: 'tag' }));
   if (here[3]) d.bookings.push(B({ module: 'fahrrad', resourceId: bikes[2].id, stayId: here[3].id, ...bikeRange(addDays(t0, 1), 'vm'), part: 'vm' }));
+}
+
+/** Fälligkeiten: Gruppen wie in der Migration und ein paar Termine rund um heute */
+function demoDue(d: VenueData) {
+  const G = (name: string, sort: number) => ({ id: newId(), name, sort });
+  d.dueGroups = [G('Wartung', 0), G('Prüfungen & Behörden', 1), G('Verträge', 2), G('Versicherungen', 3)];
+  const t0 = today(), staff = d.staff.filter(s => s.active);
+  const I = (title: string, g: number, days: number, interval: number, reminder: number, si: number): DueItem => ({
+    id: newId(), title, groupId: d.dueGroups[g].id, dueDate: addDays(t0, days), intervalMonths: interval, staffId: staff[si]?.id ?? null, staffName: staff[si]?.name ?? '',
+    reminderDays: reminder, done: false, doneAt: null, lastDone: null, note: '' });
+  d.dueItems = [
+    I('Feuerlöscher prüfen', 1, -3, 24, 30, 0), I('Lüftungsanlage Küche reinigen', 0, 0, 6, 14, 1), I('Aufzug TÜV', 1, 9, 12, 30, 2),
+    I('HACCP-Schulung Küche', 1, 20, 12, 21, 1), I('Wartung Kaffeemaschine', 0, 45, 3, 14, 3), I('Betriebshaftpflicht verlängern', 3, 70, 12, 60, 0),
+    I('Pachtvertrag Parkplatz', 2, 160, 0, 90, 0)
+  ];
 }
 
 /** Pass: am heutigen Abend sind ein paar Gänge schon abgerufen, fertig oder serviert */

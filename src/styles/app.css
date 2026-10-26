@@ -853,3 +853,33 @@ table.boards select{min-width:118px}
 .dp-flag{width:18px;height:18px;flex:none;color:var(--muted)}
 .dp-item.on{font-weight:600}
 .dp-item.on .dp-flag{color:var(--danger);fill:var(--danger)}
+/* Modul Fälligkeiten */
+.nav-badge{min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--danger);color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;margin-left:auto}
+.topnav a{position:relative}
+.nav-auto .sidenav:not(:hover) .topnav .nav-badge{position:absolute;top:2px;right:2px;margin:0}
+.bottomnav a{position:relative}
+.bottomnav .nav-badge{position:absolute;top:2px;right:calc(50% - 22px);margin:0}
+.due{display:flex;flex-direction:column;gap:12px}
+.due-head{align-items:center;flex-wrap:wrap;gap:8px}
+.count.warn{background:var(--danger);color:#fff;border-color:var(--danger)}
+.due-dash{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;align-items:start}
+.due-sec h3{display:flex;align-items:center;gap:8px}
+.due-sec.ueberfaellig h3{color:var(--danger-text)}
+.due-sec.faellig h3{color:#c25e10}
+.due-rows{list-style:none;margin:0;padding:4px 8px 8px}
+.due-row{display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px solid var(--line)}
+.due-row:last-child{border-bottom:0}
+.due-main{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;background:none;border:0;padding:0;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.due-main small{font-size:12px}
+.due-date{display:flex;flex-direction:column;align-items:flex-end;white-space:nowrap;font-size:13px}
+.due-date small{font-size:11px;color:var(--muted)}
+.due-row.st-ueberfaellig .due-date{color:var(--danger-text)}
+.due-row.st-erledigt{opacity:.6}
+.due-flag svg{color:var(--muted)}
+.due-flag:hover svg{color:var(--ok)}
+.due-flag.on svg{color:var(--ok);fill:var(--ok)}
+.due-filter{gap:8px;flex-wrap:wrap;align-items:center}
+.due-banner{display:flex;align-items:center;gap:10px;margin:10px 14px 0;padding:8px 12px;border:1px solid #f0883e;border-radius:10px;background:rgba(240,136,62,.12);font-size:14px}
+.due-banner>span{flex:1;min-width:0}
+.due-banner svg{color:#c25e10;flex:none}
+@media (max-width:760px){.due-banner{display:none}.bottomnav button{position:relative}.bottomnav button .nav-badge{position:absolute;top:2px;right:calc(50% - 22px);margin:0}}

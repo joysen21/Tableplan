@@ -3,7 +3,7 @@ import type { ModuleKey, Role, Venue } from './types';
 
 /** Standard-Rollen je Modul, solange in den Einstellungen nichts zugewiesen ist (Admin sieht immer alles) */
 export const DEFAULT_MODULE_ROLES: Partial<Record<ModuleKey, Role[]>> = {
-  bestellliste: ['kueche'], pass: ['service', 'kueche'], garage: ['empfang'], massage: ['empfang'], fahrrad: ['empfang']
+  bestellliste: ['kueche'], pass: ['service', 'kueche'], garage: ['empfang'], massage: ['empfang'], fahrrad: ['empfang'], faelligkeiten: ['empfang']
 };
 
 /** Darf diese Rolle das Modul sehen? (Modul eingeschaltet + Admin oder zugewiesene Rolle) */

@@ -1,6 +1,6 @@
 /** Einstellungen (Admin): Module (je Modul eine Gruppe), Bereiche & Bereichsleitungen des Dienstplans */
 import { useEffect, useState } from 'react';
-import { Bike, ConciergeBell, HandHeart, Plus, ShoppingCart, SquareParking, Trash2, type LucideIcon } from '../ui/icons';
+import { Bike, CalendarCheck, ConciergeBell, HandHeart, Plus, ShoppingCart, SquareParking, Trash2, type LucideIcon } from '../ui/icons';
 import { ModuleToggle, ResourceSettings, SupplierSettings, TherapySettings } from '../forms/ModuleSettings';
 import { repo } from '../data';
 import { newId } from '../domain/demo';
@@ -13,6 +13,7 @@ import { EDITION } from '../lib/edition';
 import { useData } from '../store/hooks';
 import { confirmDialog, toast } from '../ui/notify';
 import { DeptIcon, DeptIconPicker } from '../ui/DeptIcon';
+import { DueGroupSettings } from './DueView';
 
 /** Eigenständige Dienstplan-App: Modul ist immer an, nur Bereiche & Leitungen und Prüfregeln */
 export function ModulesPanel() {
@@ -50,6 +51,8 @@ export const MODULE_GROUPS: { mod: ModuleKey; title: string; icon: LucideIcon; h
     body: () => <ModuleToggle mod="massage" label="Massage" hint="Masseurinnen mit Anwesenheit, Therapien mit Dauer und Preis; Tages-Zeitleiste je Masseurin, Buchung nur für Hotelgäste."><ResourceSettings mod="massage" /><TherapySettings /></ModuleToggle> },
   { mod: 'fahrrad', title: 'Fahrrad', icon: Bike, hint: 'Räder mit Art und Größe',
     body: () => <ModuleToggle mod="fahrrad" label="Fahrrad" hint="Räder einzeln mit Art und Größe; Buchung ganzer Tag, Vormittag oder Nachmittag, Wochenplan."><ResourceSettings mod="fahrrad" /></ModuleToggle> },
+  { mod: 'faelligkeiten', title: 'Fälligkeiten', icon: CalendarCheck, hint: 'Termine mit Erinnerung, Gruppen',
+    body: () => <ModuleToggle mod="faelligkeiten" label="Fälligkeiten" hint="Wiederkehrende und einmalige Termine (Wartung, Prüfungen, Verträge …) mit Gruppe, Verantwortlichem, Intervall und Erinnerung; Dashboard mit überfälligen, heute und demnächst fälligen."><DueGroupSettings /></ModuleToggle> },
   { mod: 'bestellliste', title: 'Bestellliste', icon: ShoppingCart, hint: 'Lieferanten, Bestellung per WhatsApp',
     body: () => <ModuleToggle mod="bestellliste" label="Bestellliste" hint="Artikellisten je Lieferant, Bestellung per WhatsApp, Historie und Auswertung je Monat."><SupplierSettings /></ModuleToggle> }
 ];

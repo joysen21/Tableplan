@@ -1,6 +1,6 @@
 /** Umwandlung Datenbankzeile (snake_case) ↔ Fachobjekt (camelCase) */
 import type {
-  Absence, AuditEntry, Decor, Department, DiningTable, Dish, Ingredient, Layout, Member, Menu, MenuChoice, PassCall, HotelResource, Therapy, Presence, Booking, Position, Publication, Reservation, Room, Service, Shift,
+  Absence, AuditEntry, Decor, Department, DiningTable, Dish, Ingredient, Layout, Member, Menu, MenuChoice, PassCall, DueGroup, DueItem, HotelResource, Therapy, Presence, Booking, Position, Publication, Reservation, Room, Service, Shift,
   ShiftTemplate, Staff, Station, Stay, Supplier, SupplierOrder, SupplierProduct, TableBlock, TableCombo
 } from '../domain/types';
 import type { EntityKey, EntityMap } from './repo';
@@ -13,7 +13,7 @@ export const TABLE_OF: Record<EntityKey | 'stays' | 'reservations' | 'reservatio
   services: 'services', blocks: 'table_blocks', ingredients: 'ingredients', dishes: 'dishes', menus: 'menus', menuChoices: 'menu_choices',
   departments: 'departments', positions: 'positions', staff: 'staff', shiftTemplates: 'shift_templates',
   shifts: 'shifts', absences: 'absences', publications: 'roster_publications',
-  suppliers: 'order_suppliers', supplierProducts: 'order_products', supplierOrders: 'supplier_orders', passCalls: 'pass_calls', hotelResources: 'hotel_resources', therapies: 'massage_therapies', presence: 'resource_presence', bookings: 'resource_bookings', stays: 'stays', reservations: 'reservations', reservation_tables: 'reservation_tables', audit: 'audit_log'
+  suppliers: 'order_suppliers', supplierProducts: 'order_products', supplierOrders: 'supplier_orders', passCalls: 'pass_calls', hotelResources: 'hotel_resources', therapies: 'massage_therapies', presence: 'resource_presence', bookings: 'resource_bookings', dueGroups: 'due_groups', dueItems: 'due_items', stays: 'stays', reservations: 'reservations', reservation_tables: 'reservation_tables', audit: 'audit_log'
 };
 export const KIND_OF: Record<string, keyof typeof TABLE_OF> =
   Object.fromEntries(Object.entries(TABLE_OF).map(([k, v]) => [v, k as keyof typeof TABLE_OF]));
@@ -83,6 +83,9 @@ export const fromDb = {
   presence: (r: Row): Presence => ({ id: r.id, resourceId: r.resource_id, date: r.date, start: hhmm(r.start_time), end: hhmm(r.end_time) }),
   bookings: (r: Row): Booking => ({ id: r.id, module: r.module, resourceId: r.resource_id, stayId: r.stay_id, starts: String(r.starts).slice(0, 16), ends: String(r.ends).slice(0, 16),
     therapyId: r.therapy_id ?? null, plate: r.plate ?? '', ev: !!r.ev, part: r.part ?? null, price: r.price == null ? null : Number(r.price), note: r.note ?? '', createdBy: r.created_by ?? '', updatedAt: r.updated_at }),
+  dueGroups: (r: Row): DueGroup => ({ id: r.id, name: r.name, sort: r.sort ?? 0 }),
+  dueItems: (r: Row): DueItem => ({ id: r.id, title: r.title, groupId: r.group_id ?? null, dueDate: r.due_date, intervalMonths: r.interval_months ?? 0,
+    staffId: r.staff_id ?? null, staffName: r.staff_name ?? '', reminderDays: r.reminder_days ?? 14, done: !!r.done, doneAt: r.done_at ?? null, lastDone: r.last_done ?? null, note: r.note ?? '', updatedAt: r.updated_at }),
   publications: (r: Row): Publication => ({ id: r.id, departmentId: r.department_id, weekStart: r.week_start, publishedAt: r.published_at, publishedBy: r.published_by ?? '' }),
   shiftTemplates: (r: Row): ShiftTemplate => ({
     id: r.id, departmentId: r.department_id, positionId: r.position_id ?? null, name: r.name, short: r.short ?? '', start: hhmm(r.start_time), end: hhmm(r.end_time),
@@ -147,6 +150,9 @@ export const toDb = {
   presence: (x: Presence, v: string) => ({ id: x.id, venue_id: v, resource_id: x.resourceId, date: x.date, start_time: x.start, end_time: x.end }),
   bookings: (x: Booking, v: string) => ({ id: x.id, venue_id: v, module: x.module, resource_id: x.resourceId, stay_id: x.stayId, starts: x.starts, ends: x.ends,
     therapy_id: x.therapyId, plate: x.plate.trim(), ev: x.ev, part: x.part, price: x.price, note: x.note, created_by: x.createdBy }),
+  dueGroups: (x: DueGroup, v: string) => ({ id: x.id, venue_id: v, name: x.name.trim(), sort: x.sort }),
+  dueItems: (x: DueItem, v: string) => ({ id: x.id, venue_id: v, title: x.title.trim(), group_id: x.groupId, due_date: x.dueDate, interval_months: x.intervalMonths,
+    staff_id: x.staffId, staff_name: x.staffName, reminder_days: x.reminderDays, done: x.done, done_at: x.doneAt, last_done: x.lastDone, note: x.note }),
   publications: (x: Publication, v: string) => ({ id: x.id, venue_id: v, department_id: x.departmentId, week_start: x.weekStart, published_by: x.publishedBy }),
   shiftTemplates: (x: ShiftTemplate, v: string) => ({
     id: x.id, venue_id: v, department_id: x.departmentId, position_id: x.positionId, name: x.name, short: x.short, start_time: x.start, end_time: x.end,

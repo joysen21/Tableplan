@@ -82,6 +82,10 @@ export class DemoRepo implements Repo {
     }
     // Garage/Massage/Fahrrad: Buchungen für alle mit einem der Module, Anwesenheit mit Massage (Ressourcen pflegt nur der Admin)
     const v = db.data[venueId].venue;
+    if (what === 'dueGroups' || what === 'dueItems') {
+      if (!moduleAllowed(v, 'faelligkeiten', m.role)) throw new RepoError('forbidden', 'Keine Berechtigung für die Fälligkeiten.');
+      return;
+    }
     if (what === 'bookings' || what === 'presence') {
       const mods = what === 'presence' ? ['massage' as const] : (['garage', 'massage', 'fahrrad'] as const);
       if (!mods.some(x => moduleAllowed(v, x, m.role))) throw new RepoError('forbidden', 'Keine Berechtigung für dieses Modul.');
@@ -397,6 +401,10 @@ export class DemoRepo implements Repo {
   private guestVenue(token: string): VenueData | undefined {
     // QR-Code des Betriebs (für alle Tische) oder ein älterer Tisch-QR-Code
     return Object.values(this.read().data).find(d => d.venue?.qrToken === token || d.tables?.some(t => t.qrToken === token));
+  }
+  async dueStaff(venueId: string) {
+    const d = this.read().data[venueId];
+    return (d?.staff ?? []).filter(s => s.active).map(s => ({ id: s.id, name: s.name })).sort((a, b) => a.name.localeCompare(b.name, 'de'));
   }
   async guestMenu(token: string) {
     const d = this.guestVenue(token);

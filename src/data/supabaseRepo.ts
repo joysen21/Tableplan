@@ -5,7 +5,7 @@ import type { BoardDef, Branding, ModuleKey, OnDuty, PublicRoster, QrWindow, Res
 import type { GuestMenuData } from '../domain/guestMenu';
 import { addDays, today } from '../lib/time';
 import { entityFromDb, entityToDb, fromDb, KIND_OF, TABLE_OF, toDb } from './mapping';
-import { ENTITY_KEYS, EXTRA_KEYS, ORDER_KEYS, ROSTER_BASE_KEYS, ROSTER_KEYS, ROSTER_PLAN_KEYS, RepoError, type AuthUser, type ChangeEvent, type EntityKey, type EntityMap, type LiveState, type Membership, type Repo } from './repo';
+import { DUE_KEYS, ENTITY_KEYS, EXTRA_KEYS, ORDER_KEYS, ROSTER_BASE_KEYS, ROSTER_KEYS, ROSTER_PLAN_KEYS, RepoError, type AuthUser, type ChangeEvent, type EntityKey, type EntityMap, type LiveState, type Membership, type Repo } from './repo';
 
 const INITIAL_URL = typeof location !== 'undefined' ? location.href : '';
 
@@ -52,6 +52,7 @@ export class SupabaseRepo implements Repo {
   private ordersReady = true;
   private passReady = true;
   private extrasReady = true;
+  private dueReady = true;
 
   constructor(url: string, key: string, headers?: Record<string, string>) {
     this.sb = createClient(url, key, {
@@ -127,7 +128,7 @@ export class SupabaseRepo implements Repo {
   async loadVenue(venueId: string, venueName: string, historyDays: number): Promise<VenueData> {
     const cutoff = addDays(today(), -historyDays);
     const byVenue = (q: any) => q.eq('venue_id', venueId).order('id');
-    const [rooms, stations, tables, decor, combos, layouts, services, blocks, stays, reservations, audit, venue, ingredients, dishes, menus, roster, choices, orders, passCalls, extras] = await Promise.all([
+    const [rooms, stations, tables, decor, combos, layouts, services, blocks, stays, reservations, audit, venue, ingredients, dishes, menus, roster, choices, orders, passCalls, extras, due] = await Promise.all([
       this.all('rooms', byVenue), this.all('stations', byVenue), this.all('dining_tables', byVenue), this.all('decor', byVenue),
       this.all('table_combos', byVenue), this.all('layouts', byVenue), this.all('services', byVenue),
       this.all('table_blocks', q => byVenue(q).gte('date', cutoff)),
@@ -136,7 +137,7 @@ export class SupabaseRepo implements Repo {
       run<any[]>(this.sb.from('audit_log').select('*').eq('venue_id', venueId).order('ts', { ascending: false }).limit(300)),
       run<any>(this.sb.from('venues').select('*').eq('id', venueId).maybeSingle()),
       this.all('ingredients', byVenue), this.all('dishes', byVenue), this.all('menus', q => byVenue(q).gte('date', cutoff)),
-      this.loadRoster(venueId, cutoff), this.loadChoices(venueId), this.loadOrders(venueId), this.loadPass(venueId), this.loadExtras(venueId, cutoff)
+      this.loadRoster(venueId, cutoff), this.loadChoices(venueId), this.loadOrders(venueId), this.loadPass(venueId), this.loadExtras(venueId, cutoff), this.loadDue(venueId)
     ]);
     return {
       venue: { id: venueId, name: venue?.name ?? venueName, modules: this.rosterReady ? venue?.modules ?? [] : [], rosterSettings: venue?.roster_settings ?? {}, branding: venue?.branding ?? undefined, statusConfig: venue?.status_config ?? {}, qrToken: venue?.qr_token ?? undefined, qrWindow: venue?.qr_window ?? undefined, moduleRoles: venue?.module_roles ?? undefined, boardConfig: venue?.board_config ?? undefined },
@@ -150,7 +151,7 @@ export class SupabaseRepo implements Repo {
       dishes: dishes.map(fromDb.dishes).sort((a, b) => a.name.localeCompare(b.name, 'de')), menus: menus.map(fromDb.menus),
       // nur Auswahl zu geladenen Menüs (ältere fallen weg)
       menuChoices: choices.filter(c => menus.some(m => m.id === c.menuId)),
-      ...roster, ...orders, passCalls, ...extras
+      ...roster, ...orders, passCalls, ...extras, ...due
     };
   }
   /** Gäste-Auswahl der Menüs (QR); fehlt die Migration noch, bleibt die Liste leer */
@@ -206,6 +207,22 @@ export class SupabaseRepo implements Repo {
       this.extrasReady = false;
       return { hotelResources: [], therapies: [], presence: [], bookings: [] };
     }
+  }
+  /** Fälligkeiten (Modul): Gruppen und alle Einträge; fehlt die Migration, bleibt alles leer */
+  private async loadDue(venueId: string) {
+    const byVenue = (q: any) => q.eq('venue_id', venueId).order('id');
+    try {
+      const [g, i] = await Promise.all([this.all('due_groups', byVenue), this.all('due_items', byVenue)]);
+      this.dueReady = true;
+      return { dueGroups: g.map(fromDb.dueGroups), dueItems: i.map(fromDb.dueItems) };
+    } catch (e: any) {
+      if (!/42P01|PGRST205|does not exist|Could not find the table/.test(String(e?.message) + (e?.code ?? ''))) throw e;
+      this.dueReady = false;
+      return { dueGroups: [], dueItems: [] };
+    }
+  }
+  async dueStaff(venueId: string) {
+    try { return (await run<{ id: string; name: string }[]>(this.sb.rpc('due_staff', { p_venue: venueId }))) ?? []; } catch { return []; }
   }
   /** Dienstplan-Stammdaten; fehlt die Migration noch, bleibt das Modul einfach aus */
   private async loadRoster(venueId: string, cutoff: string) {
@@ -274,7 +291,8 @@ export class SupabaseRepo implements Repo {
     const roster = [...(this.planReady ? ['roster_publications', 'absences', 'shifts'] : []), ...(this.rosterReady ? ['shift_templates', 'staff', 'positions', 'departments'] : [])];
     const orders = this.ordersReady ? ['supplier_orders', 'order_products', 'order_suppliers'] : [];
     const extras = this.extrasReady ? ['resource_bookings', 'resource_presence', 'massage_therapies', 'hotel_resources'] : [];
-    for (const t of [...extras, ...orders, ...roster, 'menus', 'dishes', 'ingredients', 'reservations', 'stays', 'table_blocks', 'table_combos', 'layouts', 'decor', 'dining_tables', 'stations', 'rooms', 'services'])
+    const due = this.dueReady ? ['due_items', 'due_groups'] : [];
+    for (const t of [...due, ...extras, ...orders, ...roster, 'menus', 'dishes', 'ingredients', 'reservations', 'stays', 'table_blocks', 'table_combos', 'layouts', 'decor', 'dining_tables', 'stations', 'rooms', 'services'])
       await run(this.sb.from(t).delete().eq('venue_id', venueId));
     for (const k of ENTITY_KEYS) {
       if ((!this.rosterReady && ROSTER_KEYS.includes(k)) || (!this.planReady && ROSTER_PLAN_KEYS.includes(k))) continue;
@@ -285,6 +303,7 @@ export class SupabaseRepo implements Repo {
     await this.saveReservations(venueId, d.reservations);
     // Buchungen verweisen auf Aufenthalte → nach den Aufenthalten
     if (this.extrasReady) for (const k of EXTRA_KEYS) await this.upsert(venueId, k, (d[k] ?? []) as any);
+    if (this.dueReady) for (const k of DUE_KEYS) await this.upsert(venueId, k, (d[k] ?? []) as any);
   }
   private async upsertStaysRaw(venueId: string, stays: Stay[]) {
     for (let i = 0; i < stays.length; i += 500)
@@ -332,7 +351,7 @@ export class SupabaseRepo implements Repo {
     const ch = this.sb.channel(`venue-${venueId}-${crypto.randomUUID()}`);
     const skip = [...(this.rosterReady ? this.planReady ? [] : ROSTER_PLAN_KEYS : ROSTER_KEYS).map(k => TABLE_OF[k]), ...(this.choicesReady ? [] : ['menu_choices']),
       ...(this.ordersReady ? [] : ORDER_KEYS.map(k => TABLE_OF[k])), ...(this.passReady ? [] : ['pass_calls']),
-      ...(this.extrasReady ? [] : EXTRA_KEYS.map(k => TABLE_OF[k]))];
+      ...(this.extrasReady ? [] : EXTRA_KEYS.map(k => TABLE_OF[k])), ...(this.dueReady ? [] : DUE_KEYS.map(k => TABLE_OF[k]))];
     const tables = Object.values(TABLE_OF).filter(t => !skip.includes(t)).concat('venues');
     const handle = (p: any) => {
       const table: string = p.table;

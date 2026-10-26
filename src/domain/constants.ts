@@ -23,7 +23,7 @@ export const DISH_COURSES: Course[] = COURSES.filter(c => c !== 'zwischengang' &
 export const UNITS: Unit[] = ['g', 'ml', 'stk'];
 export const DIETS: Diet[] = ['vegetarisch', 'vegan'];
 export const ROLES: Role[] = ['admin', 'empfang', 'service', 'kueche'];
-export type ViewKey = 'live' | 'zeit' | 'res' | 'hotel' | 'menue' | 'dienst' | 'pass' | 'chef' | 'garage' | 'massage' | 'fahrrad' | 'bestell' | 'berichte' | 'editor' | 'settings';
+export type ViewKey = 'live' | 'zeit' | 'res' | 'hotel' | 'menue' | 'dienst' | 'pass' | 'chef' | 'garage' | 'massage' | 'fahrrad' | 'faellig' | 'bestell' | 'berichte' | 'editor' | 'settings';
 export const ROLE_VIEWS: Record<Role, ViewKey[]> = {
   admin: ['live', 'zeit', 'res', 'hotel', 'menue', 'berichte', 'editor', 'settings'],
   empfang: ['live', 'zeit', 'res', 'hotel', 'menue', 'berichte'],
@@ -46,6 +46,7 @@ export function viewsFor(role: Role, venue: Venue, departments: Department[], us
   // Pass für den Service, Chef für die Küche – Admin sieht beides
   if (moduleAllowed(venue, 'pass', role)) { if (role !== 'kueche') add('pass'); if (role === 'kueche' || role === 'admin') add('chef'); }
   for (const m of ['garage', 'massage', 'fahrrad'] as const) if (moduleAllowed(venue, m, role)) add(m);
+  if (moduleAllowed(venue, 'faelligkeiten', role)) add('faellig');
   if (moduleAllowed(venue, 'bestellliste', role)) add('bestell');
   return views;
 }

@@ -4,7 +4,7 @@
  */
 import type {
   BoardDef, Absence, AuditEntry, Branding, Decor, Department, DiningTable, Dish, Ingredient, Layout, Member, Menu, MenuChoice, ModuleKey, OnDuty, Position, Publication,
-  PublicRoster, Reservation, Role, Room, RosterSettings, Service, Shift, ShiftTemplate, Staff, Station, StatusConfig, QrWindow, Stay, PassCall, Supplier, HotelResource, Therapy, Presence, Booking, SupplierOrder, SupplierProduct, TableBlock, TableCombo, VenueData
+  PublicRoster, Reservation, Role, Room, RosterSettings, Service, Shift, ShiftTemplate, Staff, Station, StatusConfig, QrWindow, Stay, PassCall, Supplier, HotelResource, Therapy, Presence, Booking, DueGroup, DueItem, SupplierOrder, SupplierProduct, TableBlock, TableCombo, VenueData
 } from '../domain/types';
 import type { GuestMenuData } from '../domain/guestMenu';
 
@@ -21,6 +21,8 @@ export interface EntityMap {
   passCalls: PassCall;
   /** Module Garage, Massage, Fahrrad */
   hotelResources: HotelResource; therapies: Therapy; presence: Presence; bookings: Booking;
+  /** Modul Fälligkeiten */
+  dueGroups: DueGroup; dueItems: DueItem;
 }
 export type EntityKey = keyof EntityMap;
 export const ENTITY_KEYS: EntityKey[] = ['services', 'rooms', 'stations', 'tables', 'decor', 'combos', 'layouts', 'blocks', 'ingredients', 'dishes', 'menus',
@@ -33,6 +35,8 @@ export const ROSTER_KEYS: EntityKey[] = [...ROSTER_BASE_KEYS, ...ROSTER_PLAN_KEY
 export const ORDER_KEYS: EntityKey[] = ['suppliers', 'supplierProducts', 'supplierOrders'];
 /** Tabellen der Module Garage, Massage, Fahrrad (eigene Migration; Buchungen verweisen auf Aufenthalte) */
 export const EXTRA_KEYS: EntityKey[] = ['hotelResources', 'therapies', 'presence', 'bookings'];
+/** Tabellen des Moduls Fälligkeiten (eigene Migration) */
+export const DUE_KEYS: EntityKey[] = ['dueGroups', 'dueItems'];
 
 export interface AuthUser { id: string; email: string }
 export interface Membership { venueId: string; venueName: string; role: Role; name: string }
@@ -108,6 +112,8 @@ export interface Repo {
   setQrWindow(venueId: string, w: QrWindow): Promise<void>;
   // Gäste-Speisekarte per QR – ohne Anmeldung, nur mit dem Tisch-Schlüssel
   guestMenu(token: string): Promise<GuestMenuData | null>;
+  /** Mitarbeitende zur Auswahl als Verantwortliche (Modul Fälligkeiten) */
+  dueStaff(venueId: string): Promise<{ id: string; name: string }[]>;
   /** Name zum eingegebenen Zimmer (nur dieses Zimmer, nur Gäste heute/morgen im Haus) – zur Bestätigung auf der QR-Speisekarte */
   guestRoomName(token: string, stayId: string): Promise<string | null>;
   /** party = Hotelzimmer (stayId) oder externe Reservierung am Tisch (resId) */

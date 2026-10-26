@@ -1,7 +1,7 @@
 /** Rahmen der angemeldeten App: am PC Seitenmenü links (ein-/ausklappbar), Kopfzeile mit Datum/Service, Status; Benutzermenü;
  *  am Handy statt Seitenmenü die Navigationsleiste unten (Hauptansichten + „Mehr“); Dialoge */
 import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react';
-import { BedDouble, CalendarClock, CalendarDays, ChartColumn, ChartGantt, ChefHat, ChevronDown, ChevronLeft, ChevronRight, Ellipsis, LogOut, Moon, PencilRuler, Pin, PinOff, Settings, ShoppingCart, ConciergeBell, CookingPot, SquareParking, HandHeart, Bike, Sun, Utensils, type LucideIcon } from '../ui/icons';
+import { BedDouble, CalendarClock, CalendarDays, ChartColumn, ChartGantt, ChefHat, ChevronDown, ChevronLeft, ChevronRight, Ellipsis, LogOut, Moon, PencilRuler, Pin, PinOff, Settings, ShoppingCart, ConciergeBell, CookingPot, SquareParking, HandHeart, Bike, CalendarCheck, Sun, Utensils, type LucideIcon } from '../ui/icons';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { repo } from '../data';
 import type { ViewKey } from '../domain/constants';
@@ -16,9 +16,10 @@ import { dragState } from '../ui/drag';
 import { useThemeStore } from '../ui/theme';
 import { Dialogs } from '../forms/Dialogs';
 import { ErrorBoundary } from '../ui/ErrorBoundary';
+import { dueAlertCount, dueDashboard } from '../domain/due';
 
 const VIEW_ICON: Record<ViewKey, LucideIcon> = {
-  live: Utensils, zeit: ChartGantt, res: CalendarDays, hotel: BedDouble, menue: ChefHat, dienst: CalendarClock, pass: ConciergeBell, chef: CookingPot, garage: SquareParking, massage: HandHeart, fahrrad: Bike, bestell: ShoppingCart, berichte: ChartColumn, editor: PencilRuler, settings: Settings
+  live: Utensils, zeit: ChartGantt, res: CalendarDays, hotel: BedDouble, menue: ChefHat, dienst: CalendarClock, pass: ConciergeBell, chef: CookingPot, garage: SquareParking, massage: HandHeart, fahrrad: Bike, faellig: CalendarCheck, bestell: ShoppingCart, berichte: ChartColumn, editor: PencilRuler, settings: Settings
 };
 /** So viele Ansichten passen in die Leiste unten (plus „Mehr“) */
 const BOTTOM_MAX = 4;
@@ -79,6 +80,14 @@ export function Shell() {
   const current = views.find(v => PATHS[v] === loc.pathname);
   // Leiste unten nur bei mehreren Ansichten; was nicht hineinpasst, steht im „Mehr“-Menü
   const bottom = views.length > 1 ? views.slice(0, BOTTOM_MAX) : [];
+  // Fälligkeiten: Hinweiszahl im Menü (überfällig, heute, demnächst) und einmal am Tag eine Meldung
+  const dueN = views.includes('faellig') ? dueAlertCount(data.dueItems ?? [], today()) : 0;
+  const badge = (v: ViewKey) => (v === 'faellig' && dueN > 0 ? <span className="nav-badge" aria-label={`${dueN} fällig`}>{dueN}</span> : null);
+  // Meldung oben (bis zum Schließen; danach erst am nächsten Tag wieder)
+  const dueKey = `tischplan.faellig.meldung.${data.venue.id}`;
+  const [dueHidden, setDueHidden] = useState(() => { try { return localStorage.getItem(dueKey) === today(); } catch { return false; } });
+  const dd = dueN ? dueDashboard(data.dueItems, today()) : null;
+  const hideDue = () => { setDueHidden(true); try { localStorage.setItem(dueKey, today()); } catch { /* egal */ } };
   const more = views.slice(bottom.length ? BOTTOM_MAX : views.length);
 
   // „Jetzt“-Modus: Uhrzeit alle 30 s nachführen
@@ -99,7 +108,7 @@ export function Shell() {
       <aside className="sidenav">
         <span className="brand" title={data.venue.name}><img className="logo-light" src="/joke-icon.svg" alt="JoKe" /><img className="logo-dark" src="/joke-icon-weiss.svg" alt="JoKe" /><span className="venue lbl">{data.venue.name}</span></span>
         <nav className="topnav" aria-label="Ansichten">{views.map(v => { const I = VIEW_ICON[v]; return (
-          <NavLink key={v} to={PATHS[v]} aria-label={t(v)} className={({ isActive }) => (isActive ? 'active' : '')}><I aria-hidden="true" /><span className="lbl">{t(v)}</span></NavLink>); })}</nav>
+          <NavLink key={v} to={PATHS[v]} aria-label={t(v)} className={({ isActive }) => (isActive ? 'active' : '')}><I aria-hidden="true" /><span className="lbl">{t(v)}</span>{badge(v)}</NavLink>); })}</nav>
         <button className="side-toggle" onClick={toggleNav} aria-pressed={pinned} aria-label={pinned ? 'Menü automatisch einklappen' : 'Menü fixieren'} title={pinned ? 'Menü automatisch einklappen' : 'Menü offen fixieren'}>
           {pinned ? <PinOff /> : <Pin />}<span className="lbl">{pinned ? 'Automatisch einklappen' : 'Menü fixieren'}</span></button>
       </aside>
@@ -119,12 +128,17 @@ export function Shell() {
         <SyncIndicator />
         <button className="btn small usermenu-btn" aria-haspopup="menu" aria-expanded={menu !== null} onClick={toggleMenu} title={user.email}>{user.name}<ChevronDown /></button>
       </header>
+      {dd && !dueHidden && loc.pathname !== PATHS.faellig && <div className="due-banner" role="status">
+        <CalendarCheck aria-hidden="true" /><span><b>Fälligkeiten:</b> {[dd.ueberfaellig.length && `${dd.ueberfaellig.length} überfällig`, dd.faellig.length && `${dd.faellig.length} heute fällig`, dd.bald.length && `${dd.bald.length} demnächst`].filter(Boolean).join(', ')}</span>
+        <NavLink to={PATHS.faellig} className="btn small" onClick={hideDue}>Ansehen</NavLink>
+        <button className="btn small icon ghost" aria-label="Meldung schließen" title="Bis morgen ausblenden" onClick={hideDue}>×</button>
+      </div>}
       <main id="main"><ErrorBoundary resetKey={loc.pathname}><Outlet /></ErrorBoundary></main>
       </div>
       {bottom.length > 0 && (
         <nav className="bottomnav" aria-label="Hauptnavigation">
-          {bottom.map(v => { const I = VIEW_ICON[v]; return <NavLink key={v} to={PATHS[v]} aria-label={t(v)} className={({ isActive }) => (isActive ? 'active' : '')}><I /><span>{t('kurz.' + v)}</span></NavLink>; })}
-          <button className={more.some(v => PATHS[v] === loc.pathname) ? 'active' : ''} aria-haspopup="menu" aria-expanded={menu !== null} onClick={toggleMenu}><Ellipsis /><span>Mehr</span></button>
+          {bottom.map(v => { const I = VIEW_ICON[v]; return <NavLink key={v} to={PATHS[v]} aria-label={t(v)} className={({ isActive }) => (isActive ? 'active' : '')}><I /><span>{t('kurz.' + v)}</span>{badge(v)}</NavLink>; })}
+          <button className={more.some(v => PATHS[v] === loc.pathname) ? 'active' : ''} aria-haspopup="menu" aria-expanded={menu !== null} onClick={toggleMenu}><Ellipsis /><span>Mehr</span>{more.includes('faellig') && badge('faellig')}</button>
         </nav>
       )}
       {menu !== null && <UserMenu more={more} at={menu} onClose={() => setMenu(null)} />}
