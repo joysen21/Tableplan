@@ -108,7 +108,7 @@ test('Menüauswahl eines Hotelgasts im Reservierungsformular eingeben', async ({
   expect(c.note).toBe('Dessert später');
 });
 
-test('Menü: Gänge aufklappbar, nach Häufigkeit, max. 20, Suche, Auswahl per Flag', async ({ page }) => {
+test('Menü: Gänge aufklappbar, nach Häufigkeit, max. 20, Suche, Auswahlbutton', async ({ page }) => {
   await loginDemo(page);
   // viele Gerichte im Hauptgang, damit „Weitere laden“ erscheint
   await page.evaluate(() => {
@@ -130,7 +130,7 @@ test('Menü: Gänge aufklappbar, nach Häufigkeit, max. 20, Suche, Auswahl per F
   await expect(items.first()).toContainText('verwendet');
   await picker.getByRole('button', { name: /^Weitere \d+ laden/ }).click();
   await expect(items).not.toHaveCount(20);
-  // Suche und Flag
+  // Suche und Auswahlbutton
   const before = await page.locator('.menu-item-row').count();
   await picker.getByLabel('Gericht suchen').fill('testgericht 07');
   await expect(picker.locator('.dp-item')).toHaveCount(1);

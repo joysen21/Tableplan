@@ -1,7 +1,7 @@
 /** Gerichtsauswahl im Tagesmenü: Gänge als aufklappbare Untermenüs, Gerichte nach Häufigkeit (in wie vielen Menüs verwendet),
- *  je 20 Einträge (mehr laden), Textsuche über alle Gänge; Flag = Gericht im Menü (antippen setzt/entfernt). */
+ *  je 20 Einträge (mehr laden), Textsuche über alle Gänge; Auswahlbutton = Gericht ins Menü / wieder heraus. */
 import { useMemo, useState } from 'react';
-import { ChevronDown, Flag, Search } from '../ui/icons';
+import { Check, ChevronDown, Search } from '../ui/icons';
 import { DISH_COURSES } from '../domain/constants';
 import { dishFrequency, pickDishes } from '../domain/menu';
 import type { Course, VenueData } from '../domain/types';
@@ -37,11 +37,11 @@ export function DishPicker({ d, selected, onToggle }: { d: VenueData; selected: 
               {all.slice(0, n).map(x => {
                 const on = selected.has(x.id), f = freq.get(x.id) ?? 0;
                 return (
-                  <li key={x.id}>
-                    <button type="button" className={'dp-item' + (on ? ' on' : '')} aria-pressed={on} aria-label={`${x.name} ${on ? 'aus dem Menü nehmen' : 'ins Menü'}`} onClick={() => onToggle(x.id)}>
-                      <Flag className="dp-flag" aria-hidden="true" /><span>{x.name}</span>
-                      {f > 0 && <small className="muted">{f}× verwendet</small>}
-                    </button>
+                  <li key={x.id} className={'dp-item' + (on ? ' on' : '')}>
+                    <span className="dp-name">{x.name}</span>
+                    {f > 0 && <small className="muted">{f}× verwendet</small>}
+                    <button type="button" className={'btn small dp-pick' + (on ? ' primary' : '')} aria-pressed={on} aria-label={`${x.name} ${on ? 'aus dem Menü nehmen' : 'ins Menü'}`} onClick={() => onToggle(x.id)}>
+                      {on ? <><Check />Ausgewählt</> : 'Auswählen'}</button>
                   </li>
                 );
               })}

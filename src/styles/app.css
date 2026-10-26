@@ -847,12 +847,12 @@ table.boards select{min-width:118px}
 .dp-chev{width:16px;height:16px;transition:transform .15s;transform:rotate(-90deg)}
 .dp-course.open .dp-chev{transform:none}
 .dp-list{list-style:none;margin:0;padding:0 6px 8px;display:flex;flex-direction:column;gap:2px}
-.dp-item{display:flex;align-items:center;gap:8px;width:100%;border:0;background:transparent;font:inherit;color:inherit;padding:6px 8px;border-radius:6px;cursor:pointer;text-align:left}
+.dp-item{display:flex;align-items:center;gap:8px;padding:4px 8px;border-radius:6px}
 .dp-item:hover{background:var(--accent-soft)}
-.dp-item small{margin-left:auto;white-space:nowrap}
-.dp-flag{width:18px;height:18px;flex:none;color:var(--muted)}
-.dp-item.on{font-weight:600}
-.dp-item.on .dp-flag{color:var(--danger);fill:var(--danger)}
+.dp-name{flex:1;min-width:0}
+.dp-item small{white-space:nowrap}
+.dp-item.on .dp-name{font-weight:600}
+.dp-pick{min-width:118px}
 /* Modul Fälligkeiten */
 .nav-badge{min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--danger);color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;margin-left:auto}
 .topnav a{position:relative}

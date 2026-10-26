@@ -51,7 +51,7 @@ export function MenuEditor({ date, serviceId }: { date: string; serviceId: strin
   const used = new Set(m.items.map(i => i.dishId));
   const courses = COURSES.filter(c => m.items.some(i => i.course === c));
 
-  /** Gericht ins Menü (Flag in der Gerichtsauswahl) */
+  /** Gericht ins Menü (Auswahlbutton in der Gerichtsauswahl) */
   function addDish(id: string) {
     const dish = byId(d.dishes, id);
     if (dish && !used.has(id)) upd({ items: snapshotItems(d, [...m.items, { course: dish.course, dishId: dish.id, share: null, name: dish.name, allergens: [] }]) });
@@ -83,7 +83,7 @@ export function MenuEditor({ date, serviceId }: { date: string; serviceId: strin
           <div className="kpi"><b>{por.total}</b><small>Portionen gesamt</small></div>
         </div>
 
-        {!m.items.length && <p className="muted">Noch keine Gerichte. Unten in der Gerichtsauswahl per Flag wählen.</p>}
+        {!m.items.length && <p className="muted">Noch keine Gerichte. Unten in der Gerichtsauswahl „Auswählen“ antippen.</p>}
         {courses.map(c => {
           const idx = m.items.map((it, i) => (it.course === c ? i : -1)).filter(i => i >= 0);
           return (
