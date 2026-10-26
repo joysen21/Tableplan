@@ -158,7 +158,7 @@ function PassParty({ r }: { r: Reservation }) {
                           <li key={x.dishId}>
                             <span><b>{x.chosen - x.cancelled}×</b> {x.name}{x.cancelled ? <small className="danger"> ({x.cancelled} storniert)</small> : null}
                               {x.open > 0 && x.called > 0 && <small className="muted"> · {x.open} offen</small>}</span>
-                            {canMinus && c.state !== 'serviert' && <button className="btn small pass-minus" aria-label={`Storno ${x.name}`} title="Eine Portion stornieren" onClick={() => minusOne(c, x)}>−1</button>}
+                            {canMinus && c.state !== 'serviert' && <button className="btn small ghost pass-minus" aria-label={`Storno ${x.name}`} title="Eine Portion stornieren" onClick={() => minusOne(c, x)}>−1</button>}
                           </li>
                         );
                       })}

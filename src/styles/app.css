@@ -816,8 +816,7 @@ label.inline{display:inline-flex;align-items:center;gap:4px}
 .pass-courses ul li{min-height:40px}
 .pass-call-btn{min-height:48px;font-size:17px;padding:0 22px;margin-top:10px}
 .pass-call-btn svg{width:20px;height:20px}
-.btn.pass-minus{background:var(--danger);border-color:var(--danger);color:#fff;font-weight:700;min-width:44px;min-height:36px}
-.btn.pass-minus:hover{background:var(--danger-h)}
+.btn.pass-minus{color:var(--danger-text);font-weight:700}
 .pass-served{align-items:center;gap:10px}
 @media (max-width:760px){.pass-call-btn{width:100%;justify-content:center}}
 .pass-party .pass-badge{font-size:14px;padding:3px 12px;font-weight:600}
