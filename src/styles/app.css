@@ -746,7 +746,7 @@ table.pub-team tr.me td{background:var(--accent-soft)}
 .pass-badge.st-serviert{color:var(--muted)}
 .ok-text{color:var(--ok);display:flex;align-items:center;gap:6px}
 small.danger,.danger{color:var(--danger)}
-.chef{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;align-items:start}
+.chef{display:grid;grid-template-columns:1fr;gap:12px;align-items:start}
 .chef>section[aria-label="Zubereiten"],.chef>section[aria-label="Gerichte"]{grid-column:1/-1}
 .chef>section{padding-bottom:12px}
 .chef>section>:not(h3){margin-left:14px;margin-right:14px}
@@ -759,8 +759,6 @@ small.danger,.danger{color:var(--danger)}
 .chef-card ul li{display:flex;flex-direction:column;font-size:15px;padding:2px 0}
 .chef-card .storno{color:var(--danger);font-size:13px}
 .chef-card .btn{align-self:flex-start;margin-top:4px}
-.chef-sum{display:flex;flex-wrap:wrap;gap:6px 14px;margin:0 0 8px}
-.chef-soon{margin:0;padding-left:18px;font-size:14px}
 .chef-dishes{width:100%;border-collapse:collapse}
 .chef-dishes th,.chef-dishes td{text-align:right;padding:5px 8px;border-bottom:1px solid var(--line)}
 .chef-dishes th:first-child,.chef-dishes td:first-child{text-align:left}

@@ -50,9 +50,7 @@ describe('Pass + Chef', () => {
     c.state = 'serviert';
     p = passProgress(d, r);
     expect(p.current?.course).toBe('hauptgang');
-    // demnächst = nächster Gang nach dem servierten
     const o = chefOverview(d, DAY, svc);
-    expect(o.soon[0].lines).toEqual([{ name: 'Rind', n: 1 }, { name: 'Fisch', n: 1 }]);
     expect(o.dishes.find(x => x.dishId === suppe.id)).toMatchObject({ total: 2, served: 2, open: 0 });
     // einzelnes Gericht abrufen
     const one = newCall(p, r, user, newId, rind.id)!;
@@ -71,6 +69,15 @@ describe('Pass + Chef', () => {
     d.passCalls[0] = cancelPortion(s, suppe.id)!;
     expect(cancelPortion(d.passCalls[0], suppe.id)).toBeNull();
     expect(passProgress(d, r).current?.course).toBe('hauptgang');
+  });
+
+  it('Chef: Revier nach der Zimmernummer bzw. dem Namen, ohne Revier nichts', () => {
+    const { d, r, svc } = setup();
+    d.passCalls.push(newCall(passProgress(d, r), r, user, newId)!);
+    expect(chefOverview(d, DAY, svc).active[0].label).toBe('Rossi');
+    d.stations.push({ id: 's1', name: 'Revier A', color: '#000' });
+    d.tables[0].stationId = 's1';
+    expect(chefOverview(d, DAY, svc).active[0].label).toBe('Rossi · Revier A');
   });
 
   it('ohne Menüauswahl: Tisch „ohne“, nichts abrufbar', () => {

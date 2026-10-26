@@ -3,7 +3,7 @@
  *  Menüauswahl für Gäste ohne Auswahl eintragen.
  *  Chef (Küche): Abrufe je Kellner mit „Fertig“, fertige Gänge, demnächst kommende Gänge, Mengen je Gericht – alles live. */
 import { useMemo, useState } from 'react';
-import { BellRing, Check, ChefHat, Clock, CookingPot, Hourglass, Undo2 } from '../ui/icons';
+import { BellRing, Check, ChefHat, Clock, CookingPot, Undo2 } from '../ui/icons';
 import { cleanCounts } from '../domain/guestMenu';
 import { allergyText, hasAllergy } from '../domain/menu';
 import { byId, persons, tableStatusAt } from '../domain/logic';
@@ -191,8 +191,6 @@ export function ChefView() {
   const svc = byId(d.services, serviceId);
   const ready = (c: CallView) => store.upsert('passCalls', [{ ...c.call, state: 'fertig', readyAt: new Date().toISOString() }], ['Gang fertig', `${c.label}: ${t(c.call.course)}`]);
   const back = (c: CallView) => store.upsert('passCalls', [{ ...c.call, state: 'abgerufen', readyAt: null }], ['Gang zurück in Arbeit', `${c.label}: ${t(c.call.course)}`]);
-  const soonSum = new Map<string, number>();
-  for (const s of o.soon) for (const l of s.lines) soonSum.set(l.name, (soonSum.get(l.name) ?? 0) + l.n);
 
   if (!o.menu) return <div className="panel"><p className="muted">Für {svc?.name ?? 'diesen Service'} ist an diesem Tag kein Menü angelegt.</p></div>;
   return (
@@ -215,15 +213,6 @@ export function ChefView() {
         <div className="chef-cards">
           {o.ready.map(c => <CallCard key={c.call.id} c={c} action={<button className="btn small ghost" onClick={() => back(c)} title="Doch noch nicht fertig"><Undo2 />Zurück</button>} />)}
         </div>
-      </section>
-      <section className="panel" aria-label="Demnächst">
-        <h3><Hourglass />Demnächst <span className="count">{o.soon.length}</span></h3>
-        {!o.soon.length ? <p className="muted">Kein nächster Gang in Sicht.</p> : <>
-          <p className="chef-sum">{[...soonSum.entries()].map(([n, k]) => <span key={n}><b>{k}×</b> {n}</span>)}</p>
-          <ul className="chef-soon">
-            {o.soon.map(s => <li key={s.res.id}><b>{s.tables}</b> {s.label} · {t(s.course)}: {s.lines.map(l => `${l.n}× ${l.name}`).join(', ')}</li>)}
-          </ul>
-        </>}
       </section>
       <section className="panel" aria-label="Gerichte">
         <h3><CookingPot />Gerichte</h3>

@@ -37,6 +37,7 @@ test('Gang abrufen, Küche meldet fertig, Service serviert', async ({ page }) =>
   await expect(cook.getByRole('heading', { name: 'Toni (Service)' })).toBeVisible();
   const card = cook.locator('.chef-card', { hasText: name }).first();
   await expect(card).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Demnächst' })).toHaveCount(0);
   await page.screenshot({ path: 'test-results/chef.png', fullPage: true });
   await card.getByRole('button', { name: 'Fertig' }).click();
   await expect(page.getByRole('region', { name: 'Fertig' }).locator('.chef-card', { hasText: name })).toBeVisible();

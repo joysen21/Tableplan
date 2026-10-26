@@ -74,30 +74,33 @@ export function tablePass(d: VenueData, tableId: string, date: string, serviceId
   return { look: RANK.find(l => looks.includes(l)) ?? 'serviert', reservations };
 }
 
-/** „Zi. 101 · Huber“ bzw. Name */
-export function partyLabel(d: VenueData, r: Reservation): string {
+/** „Zi. 101 · Huber“ bzw. Name; mit Revier: „Zi. 101 · Revier A · Huber“ (ohne Revier am Tisch nichts) */
+export function partyLabel(d: VenueData, r: Reservation, withStation = false): string {
   const stay = r.stayId ? byId(d.stays, r.stayId) : undefined;
+  const station = withStation ? stationNames(d, r) : '';
   // Hotel-Reservierungen heißen oft schon „Name · Zi. 101“ – Zimmer nur einmal vorne
-  return stay ? `Zi. ${stay.roomNo} · ${r.name.split(' · ')[0]}` : r.name;
+  return stay ? [`Zi. ${stay.roomNo}`, station, r.name.split(' · ')[0]].filter(Boolean).join(' · ') : [r.name, station].filter(Boolean).join(' · ');
 }
+/** Reviere der Tische einer Reservierung (leer, wenn keinem Revier zugeordnet) */
+export const stationNames = (d: VenueData, r: Reservation) =>
+  [...new Set(r.tableIds.map(id => byId(d.stations, byId(d.tables, id)?.stationId)?.name).filter((x): x is string => !!x))].join('/');
 
 /* ---------- Küche (Chef) ---------- */
 export interface ChefDish { dishId: string; name: string; course: Course; total: number; open: number; inKitchen: number; ready: number; served: number }
 export interface CallView { call: PassCall; res: Reservation; label: string; tables: string; lines: { dishId: string; name: string; n: number; cancelled: number }[] }
-export interface SoonView { res: Reservation; label: string; tables: string; course: Course; lines: { name: string; n: number }[] }
-export interface ChefOverview { menu?: Menu; dishes: ChefDish[]; active: CallView[]; ready: CallView[]; soon: SoonView[] }
+export interface ChefOverview { menu?: Menu; dishes: ChefDish[]; active: CallView[]; ready: CallView[] }
 
 export function chefOverview(d: VenueData, date: string, serviceId: string): ChefOverview {
   const menu = d.menus.find(m => m.date === date && m.serviceId === serviceId);
-  if (!menu) return { dishes: [], active: [], ready: [], soon: [] };
+  if (!menu) return { dishes: [], active: [], ready: [] };
   const list = passReservations(d, date, serviceId).map(r => ({ r, p: passProgress(d, r) }));
   const dishes = new Map<string, ChefDish>();
   for (const it of menu.items) dishes.set(it.dishId, { dishId: it.dishId, name: dishName(d, menu, it.dishId), course: it.course, total: 0, open: 0, inKitchen: 0, ready: 0, served: 0 });
   const view = (call: PassCall, r: Reservation): CallView => ({
-    call, res: r, label: partyLabel(d, r), tables: tableNames(d, r.tableIds),
+    call, res: r, label: partyLabel(d, r, true), tables: tableNames(d, r.tableIds),
     lines: Object.keys(call.counts).filter(k => call.counts[k] > 0).map(k => ({ dishId: k, name: dishName(d, menu, k), n: call.counts[k], cancelled: call.cancelled[k] ?? 0 }))
   });
-  const active: CallView[] = [], ready: CallView[] = [], soon: SoonView[] = [];
+  const active: CallView[] = [], ready: CallView[] = [];
   for (const { r, p } of list) {
     for (const c of p.courses) {
       for (const x of c.dishes) {
@@ -114,13 +117,9 @@ export function chefOverview(d: VenueData, date: string, serviceId: string): Che
         else if (call.state === 'fertig' && callNet(call) > 0) ready.push(view(call, r));
       }
     }
-    // demnächst: nächster Gang, nachdem der vorige serviert ist
-    const cur = p.current, i = cur ? p.courses.indexOf(cur) : -1;
-    if (cur && cur.state === 'wartet' && p.courses.slice(0, i).some(c => c.state === 'serviert'))
-      soon.push({ res: r, label: partyLabel(d, r), tables: tableNames(d, r.tableIds), course: cur.course, lines: cur.dishes.filter(x => x.open).map(x => ({ name: x.name, n: x.open })) });
   }
   const byTime = (a: CallView, b: CallView) => a.call.calledAt.localeCompare(b.call.calledAt);
-  return { menu, dishes: [...dishes.values()].filter(x => x.total || x.served || x.inKitchen || x.ready), active: active.sort(byTime), ready: ready.sort(byTime), soon };
+  return { menu, dishes: [...dishes.values()].filter(x => x.total || x.served || x.inKitchen || x.ready), active: active.sort(byTime), ready: ready.sort(byTime) };
 }
 
 /** Abrufe je Kellner gruppiert (Name → Abrufe), in Reihenfolge des ältesten Abrufs */
