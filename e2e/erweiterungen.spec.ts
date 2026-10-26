@@ -108,17 +108,38 @@ test('Menüauswahl eines Hotelgasts im Reservierungsformular eingeben', async ({
   expect(c.note).toBe('Dessert später');
 });
 
-test('Küche fügt mehrere Gerichte auf einmal ins Menü ein', async ({ page }) => {
+test('Menü: Gänge aufklappbar, nach Häufigkeit, max. 20, Suche, Auswahl per Flag', async ({ page }) => {
   await loginDemo(page);
+  // viele Gerichte im Hauptgang, damit „Weitere laden“ erscheint
+  await page.evaluate(() => {
+    const db = JSON.parse(localStorage.getItem('tischplan.demo.v2')!);
+    const v = Object.values(db.data)[0] as any;
+    for (let i = 1; i <= 25; i++) v.dishes.push({ id: crypto.randomUUID(), name: `Testgericht ${String(i).padStart(2, '0')}`, nameIt: '', nameEn: '', course: 'hauptgang', diet: [], notes: '', ingredients: [] });
+    localStorage.setItem('tischplan.demo.v2', JSON.stringify(db));
+  });
+  await page.reload();
   await goView(page, 'Menü');
   await page.locator('.mw-row.today .mw-cell').last().click();
+  const picker = page.getByRole('group', { name: 'Gerichte auswählen' });
+  const head = picker.getByRole('button', { name: /^Hauptgang/ });
+  await expect(head).toHaveAttribute('aria-expanded', 'false');
+  await head.click();
+  const items = picker.locator('.dp-course.open .dp-item');
+  await expect(items).toHaveCount(20);
+  // häufig verwendete (im Demo-Menü) zuerst
+  await expect(items.first()).toContainText('verwendet');
+  await picker.getByRole('button', { name: /^Weitere \d+ laden/ }).click();
+  await expect(items).not.toHaveCount(20);
+  // Suche und Flag
   const before = await page.locator('.menu-item-row').count();
-  await page.getByRole('button', { name: 'Mehrere auswählen…' }).click();
-  const pick = page.getByRole('group', { name: 'Mehrere Gerichte auswählen' });
-  await pick.getByRole('checkbox').nth(0).check();
-  await pick.getByRole('checkbox').nth(1).check();
-  await pick.getByRole('button', { name: '2 Gerichte hinzufügen' }).click();
-  await expect(page.locator('.menu-item-row')).toHaveCount(before + 2);
+  await picker.getByLabel('Gericht suchen').fill('testgericht 07');
+  await expect(picker.locator('.dp-item')).toHaveCount(1);
+  await picker.getByRole('button', { name: 'Testgericht 07 ins Menü' }).click();
+  await expect(page.locator('.menu-item-row')).toHaveCount(before + 1);
+  await picker.getByRole('button', { name: 'Testgericht 07 aus dem Menü nehmen' }).click();
+  await expect(page.locator('.menu-item-row')).toHaveCount(before);
+  await picker.getByLabel('Gericht suchen').fill('');
+  await page.screenshot({ path: 'test-results/menue-gerichtsauswahl.png' });
 });
 
 test('Bereich bekommt ein Icon, das im Dienstplan vor Bereich und Mitarbeitenden steht', async ({ page }) => {

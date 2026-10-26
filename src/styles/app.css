@@ -682,8 +682,6 @@ table.pub-team tr.me td{background:var(--accent-soft)}
 .mce-dish{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 0;font-size:14px}
 .mce-step{display:flex;align-items:center;gap:6px}
 .mce-step b{min-width:18px;text-align:center}
-.dish-pick{border:1px solid var(--line);border-radius:10px;padding:8px 10px;max-height:320px;overflow:auto}
-.dish-pick-list{display:flex;flex-wrap:wrap;gap:4px 14px;margin:2px 0 8px}
 .dept-icon{flex:none;vertical-align:-2px;margin-right:4px}
 .icon-palette{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
 .icon-opt{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:8px;background:var(--panel);cursor:pointer;padding:0}
@@ -828,3 +826,20 @@ body.dragging,body.dragging *{cursor:grabbing!important}
 .chef-note{font-size:13px;background:var(--accent-soft);border-radius:6px;padding:3px 6px}
 table.boards td{vertical-align:middle}
 table.boards select{min-width:118px}
+/* Gerichtsauswahl im Menü: Gänge aufklappbar, Flag = im Menü */
+.dish-picker{border:1px solid var(--line);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:6px}
+.dp-search{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:8px;padding:0 8px;background:var(--panel)}
+.dp-search svg{width:16px;height:16px;color:var(--muted)}
+.dp-search input{border:0;background:transparent;box-shadow:none;flex:1;min-width:0}
+.dp-course{border:1px solid var(--line);border-radius:8px;background:var(--panel2)}
+.dp-head{display:flex;align-items:center;gap:8px;width:100%;background:transparent;border:0;padding:8px 10px;font:inherit;color:inherit;cursor:pointer;text-align:left}
+.dp-head .muted{margin-left:auto;font-size:12px}
+.dp-chev{width:16px;height:16px;transition:transform .15s;transform:rotate(-90deg)}
+.dp-course.open .dp-chev{transform:none}
+.dp-list{list-style:none;margin:0;padding:0 6px 8px;display:flex;flex-direction:column;gap:2px}
+.dp-item{display:flex;align-items:center;gap:8px;width:100%;border:0;background:transparent;font:inherit;color:inherit;padding:6px 8px;border-radius:6px;cursor:pointer;text-align:left}
+.dp-item:hover{background:var(--accent-soft)}
+.dp-item small{margin-left:auto;white-space:nowrap}
+.dp-flag{width:18px;height:18px;flex:none;color:var(--muted)}
+.dp-item.on{font-weight:600}
+.dp-item.on .dp-flag{color:var(--danger);fill:var(--danger)}

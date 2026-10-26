@@ -190,3 +190,17 @@ export function allergyText(r: WithAllergy): string {
     .filter(p => { const g = guessAllergens(p); return p && !(g.length && g.every(a => sel.includes(a))); });
   return [sel.map(t).join(', '), rest.join(', ')].filter(Boolean).join(' · ');
 }
+
+/** Wie oft ein Gericht in Menüs vorkommt (für die Sortierung der Gerichtsauswahl) */
+export function dishFrequency(menus: Pick<Menu, 'items'>[]): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const m of menus) for (const id of new Set(m.items.map(i => i.dishId))) out.set(id, (out.get(id) ?? 0) + 1);
+  return out;
+}
+/** Gerichte eines Gangs, optional gefiltert nach Text (Name, auch IT/EN), häufig verwendete zuerst, dann alphabetisch */
+export function pickDishes(dishes: Dish[], course: Course, search: string, freq: Map<string, number>): Dish[] {
+  const q = search.trim().toLowerCase();
+  return dishes
+    .filter(x => x.course === course && (!q || [x.name, x.nameIt, x.nameEn].some(n => n?.toLowerCase().includes(q))))
+    .sort((a, b) => (freq.get(b.id) ?? 0) - (freq.get(a.id) ?? 0) || a.name.localeCompare(b.name, 'de'));
+}

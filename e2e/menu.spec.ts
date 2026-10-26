@@ -34,7 +34,10 @@ test('Küche: Zutat und Gericht anlegen, Menü eintragen, Zutatenliste stimmt', 
   const create = page.getByRole('button', { name: /^Menü Abendessen .* anlegen$/ }).first();
   const label = (await create.getAttribute('aria-label'))!.replace(/ anlegen$/, '');
   await create.click();
-  await dlg.getByLabel('Gericht hinzufügen').selectOption({ label: 'E2E Kürbissuppe' });
+  // Gerichtsauswahl: Textsuche, Flag setzen
+  await dlg.getByLabel('Gericht suchen').fill('kürbis');
+  await dlg.getByRole('button', { name: 'E2E Kürbissuppe ins Menü' }).click();
+  await expect(dlg.getByRole('button', { name: 'E2E Kürbissuppe aus dem Menü nehmen' })).toHaveAttribute('aria-pressed', 'true');
   await dlg.getByLabel('Portionen von Hand').check();
   await dlg.getByLabel('Portionen', { exact: true }).fill('40');
   await dlg.getByLabel('Puffer %').fill('0');

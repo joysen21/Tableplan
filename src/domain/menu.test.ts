@@ -158,3 +158,17 @@ describe('Demo-Daten', () => {
     expect(n.menus).toEqual([]); expect(n.dishes).toEqual([]);
   });
 });
+
+describe('Gerichtsauswahl', () => {
+  it('nach Häufigkeit sortiert, Suche auch auf IT/EN', async () => {
+    const { dishFrequency, pickDishes } = await import('./menu');
+    const dish = (id: string, name: string, nameIt = ''): Dish => ({ id, name, nameIt, nameEn: '', course: 'hauptgang', diet: [], notes: '', ingredients: [] });
+    const list = [dish('a', 'Apfel'), dish('b', 'Braten', 'Arrosto'), dish('c', 'Cordon bleu')];
+    const it = (dishId: string): MenuItem => ({ course: 'hauptgang', dishId, share: null, name: '', allergens: [] });
+    const freq = dishFrequency([{ items: [it('c'), it('c')] }, { items: [it('c'), it('b')] }]);
+    expect(freq.get('c')).toBe(2); // je Menü einmal gezählt
+    expect(pickDishes(list, 'hauptgang', '', freq).map(x => x.id)).toEqual(['c', 'b', 'a']);
+    expect(pickDishes(list, 'hauptgang', 'arro', freq).map(x => x.id)).toEqual(['b']);
+    expect(pickDishes(list, 'dessert', '', freq)).toEqual([]);
+  });
+});
