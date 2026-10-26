@@ -10,6 +10,12 @@ test('Küche bestellt bei Agostini per WhatsApp; Historie und Auswertung', async
   await page.getByLabel('Menge Kiste Coca Cola 1l').fill('5');
   await page.getByLabel('Notiz an den Lieferanten').fill('Bitte bis Freitag');
   await expect(page.locator('.order-send')).toContainText('2 Artikel · 7 Stück');
+  // rechts im Warenkorb, dort auch änderbar
+  const cart = page.getByRole('complementary', { name: 'Warenkorb' });
+  await expect(cart.getByLabel('Menge Warenkorb Orangensaft')).toHaveValue('2');
+  await cart.getByLabel('mehr Warenkorb Orangensaft').click();
+  await cart.getByLabel('weniger Warenkorb Orangensaft').click();
+  await expect(page.getByLabel('Menge Orangensaft', { exact: true })).toHaveValue('2');
   await page.screenshot({ path: 'test-results/bestellliste.png' });
 
   // WhatsApp öffnet sich mit fertigem Text an die hinterlegte Nummer

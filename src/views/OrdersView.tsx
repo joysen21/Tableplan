@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Minus, Plus, Send, Trash2 } from '../ui/icons';
 import { newId } from '../domain/demo';
-import { monthlyTotals, orderLines, orderText, productGroups, sortProducts, waLink, waNumber } from '../domain/orders';
+import { monthlyTotals, orderLines, orderText, productFrequency, sortedProducts, sortProducts, waLink, waNumber, type ProductSort } from '../domain/orders';
 import type { SupplierProduct } from '../domain/types';
 import { useApp } from '../store/app';
 import { useData } from '../store/hooks';
@@ -12,6 +12,7 @@ type Tab = 'bestellen' | 'historie' | 'auswertung' | 'artikel';
 const MONTHS = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
 const draftKey = (venueId: string, supplierId: string) => `tischplan.bestellung.${venueId}.${supplierId}`;
 const loadDraft = (k: string): Record<string, number> => { try { return JSON.parse(localStorage.getItem(k) || '{}'); } catch { return {}; } };
+const SORT_KEY = 'tischplan.bestellung.sort';
 const saveDraft = (k: string, v: Record<string, number>) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* egal */ } };
 
 export function OrdersView() {
@@ -51,11 +52,24 @@ function OrderForm({ supplierId }: { supplierId: string }) {
   const [qty, setQty] = useState<Record<string, number>>(() => loadDraft(key));
   const [note, setNote] = useState('');
   const [q, setQ] = useState('');
+  const [sort, setSort] = useState<ProductSort>(() => { try { return (localStorage.getItem(SORT_KEY) as ProductSort) || 'haeufig'; } catch { return 'haeufig'; } });
   useEffect(() => saveDraft(key, qty), [key, qty]);
+  useEffect(() => { try { localStorage.setItem(SORT_KEY, sort); } catch { /* egal */ } }, [sort]);
+  const freq = useMemo(() => productFrequency(d.supplierOrders, supplierId), [d.supplierOrders, supplierId]);
   const lines = orderLines(products, qty);
   const set = (id: string, n: number) => setQty(prev => { const next = { ...prev }; if (n > 0) next[id] = Math.min(999, n); else delete next[id]; return next; });
-  const shown = productGroups(products.filter(p => !q || p.name.toLowerCase().includes(q.toLowerCase())));
+  const shown = sortedProducts(products.filter(p => !q || p.name.toLowerCase().includes(q.toLowerCase())), sort, freq);
   const phoneOk = waNumber(supplier.phone).length >= 8;
+  const step = (p: SupplierProduct, label: string) => {
+    const n = qty[p.id] ?? 0;
+    return (
+      <span className="order-step">
+        <button type="button" className="btn small icon" aria-label={`weniger ${label}`} disabled={!n} onClick={() => set(p.id, n - 1)}><Minus /></button>
+        <input type="number" min={0} inputMode="numeric" aria-label={`Menge ${label}`} value={n || ''} placeholder="0" onChange={e => set(p.id, Math.max(0, Math.round(+e.target.value || 0)))} />
+        <button type="button" className="btn small icon" aria-label={`mehr ${label}`} onClick={() => set(p.id, n + 1)}><Plus /></button>
+      </span>
+    );
+  };
 
   async function send() {
     if (!lines.length) return;
@@ -70,39 +84,62 @@ function OrderForm({ supplierId }: { supplierId: string }) {
     try { await navigator.clipboard.writeText(orderText(d.venue.name, supplier, lines, note)); toast('Text kopiert'); } catch { toast('Kopieren nicht möglich', 'err'); }
   }
   return (
-    <div className="body order-form">
-      <div className="row mb8">
-        <input type="search" placeholder="Artikel suchen…" aria-label="Artikel suchen" value={q} onChange={e => setQ(e.target.value)} style={{ flex: 1, minWidth: 160 }} />
-        {lines.length > 0 && <button className="btn small" onClick={async () => { if (await confirmDialog('Mengen leeren?', ['Alle eingegebenen Mengen dieses Lieferanten werden gelöscht.'], 'Leeren', true)) setQty({}); }}>Mengen leeren</button>}
-      </div>
-      {!products.length && <p className="muted">Keine Artikel – im Reiter „Artikel“ anlegen.</p>}
-      {shown.map(([group, list]) => (
-        <section key={group} className="order-group">
-          <h4>{group}</h4>
-          {list.map(p => {
-            const n = qty[p.id] ?? 0;
+    <div className="body order-split">
+      {/* links: alle Artikel */}
+      <section className="order-catalog" aria-label="Artikel">
+        <div className="row mb8">
+          <input type="search" placeholder="Artikel suchen…" aria-label="Artikel suchen" value={q} onChange={e => setQ(e.target.value)} style={{ flex: 1, minWidth: 160 }} />
+          <div className="seg" role="group" aria-label="Sortierung">
+            <button className="btn small" aria-pressed={sort === 'haeufig'} onClick={() => setSort('haeufig')}>Häufigkeit</button>
+            <button className="btn small" aria-pressed={sort === 'name'} onClick={() => setSort('name')}>A–Z</button>
+          </div>
+        </div>
+        {!products.length && <p className="muted">Keine Artikel – im Reiter „Artikel“ anlegen.</p>}
+        {q && products.length > 0 && !shown.length && <p className="muted">Kein Artikel gefunden.</p>}
+        <div className="order-list">
+          {shown.map(p => {
+            const n = qty[p.id] ?? 0, f = freq.get(p.id) ?? 0;
             return (
               <div key={p.id} className={'order-row' + (n ? ' has' : '')}>
-                <span className="order-name">{p.name}{p.unit && <small className="muted"> · {p.unit}</small>}</span>
-                <span className="order-step">
-                  <button type="button" className="btn small icon" aria-label={`weniger ${p.name}`} disabled={!n} onClick={() => set(p.id, n - 1)}><Minus /></button>
-                  <input type="number" min={0} inputMode="numeric" aria-label={`Menge ${p.name}`} value={n || ''} placeholder="0" onChange={e => set(p.id, Math.max(0, Math.round(+e.target.value || 0)))} />
-                  <button type="button" className="btn small icon" aria-label={`mehr ${p.name}`} onClick={() => set(p.id, n + 1)}><Plus /></button>
-                </span>
+                <span className="order-name">{p.name}{p.unit && <small className="muted"> · {p.unit}</small>}
+                  <small className="muted order-meta">{[p.group, f ? `${f}× bestellt` : ''].filter(Boolean).join(' · ')}</small></span>
+                {step(p, p.name)}
               </div>
             );
           })}
-        </section>
-      ))}
-      <label className="mt8">Notiz an den Lieferanten<input value={note} placeholder="z. B. Lieferung bitte bis Freitag" onChange={e => setNote(e.target.value)} /></label>
-      <div className="order-send">
-        <span><b>{lines.length}</b> Artikel · <b>{lines.reduce((a, l) => a + l.qty, 0)}</b> Stück</span>
-        <span className="spacer" />
-        <button className="btn small" disabled={!lines.length} onClick={copy}>Text kopieren</button>
-        <button className="btn primary" disabled={!lines.length || !phoneOk} onClick={send} title={phoneOk ? `WhatsApp an ${supplier.phone}` : 'Telefonnummer fehlt (Einstellungen → Module → Bestellliste)'}>
-          <Send />Per WhatsApp senden</button>
-      </div>
-      {!phoneOk && <p className="warnbox">Für {supplier.name} ist keine Telefonnummer hinterlegt (Einstellungen → Module → Bestellliste).</p>}
+        </div>
+      </section>
+
+      {/* rechts: Warenkorb mit Notiz und Versand */}
+      <aside className="order-cart" aria-label="Warenkorb">
+        <div className="row" style={{ justifyContent: 'space-between' }}>
+          <h4 style={{ margin: 0 }}>Warenkorb · {supplier.name}</h4>
+          {lines.length > 0 && <button className="btn small ghost" onClick={async () => { if (await confirmDialog('Warenkorb leeren?', ['Alle eingegebenen Mengen dieses Lieferanten werden gelöscht.'], 'Leeren', true)) setQty({}); }}>Leeren</button>}
+        </div>
+        {!lines.length ? <p className="muted">Noch leer – links Mengen eingeben.</p> : (
+          <ul className="cart-lines">
+            {lines.map(l => {
+              const p = products.find(x => x.id === l.productId)!;
+              return (
+                <li key={l.productId}>
+                  <span className="order-name">{l.name}{l.unit && <small className="muted"> · {l.unit}</small>}</span>
+                  {step(p, `Warenkorb ${l.name}`)}
+                  <button className="btn small icon ghost danger" aria-label={`${l.name} entfernen`} title="Entfernen" onClick={() => set(l.productId, 0)}><Trash2 /></button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        <label className="mt8">Notiz an den Lieferanten<input value={note} placeholder="z. B. Lieferung bitte bis Freitag" onChange={e => setNote(e.target.value)} /></label>
+        <div className="order-send">
+          <span><b>{lines.length}</b> Artikel · <b>{lines.reduce((a, l) => a + l.qty, 0)}</b> Stück</span>
+          <span className="spacer" />
+          <button className="btn small" disabled={!lines.length} onClick={copy}>Text kopieren</button>
+          <button className="btn primary" disabled={!lines.length || !phoneOk} onClick={send} title={phoneOk ? `WhatsApp an ${supplier.phone}` : 'Telefonnummer fehlt (Einstellungen → Module → Bestellliste)'}>
+            <Send />Per WhatsApp senden</button>
+        </div>
+        {!phoneOk && <p className="warnbox">Für {supplier.name} ist keine Telefonnummer hinterlegt (Einstellungen → Module → Bestellliste).</p>}
+      </aside>
     </div>
   );
 }

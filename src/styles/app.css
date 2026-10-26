@@ -192,7 +192,7 @@ table.list tr.clickable:hover td{background:var(--panel2)}
 .order-name{min-width:0;flex:1}
 .order-step{display:flex;align-items:center;gap:4px;flex:none}
 .order-step input{width:56px;text-align:center;margin:0;padding:4px}
-.order-send{position:sticky;bottom:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px -14px -12px;padding:10px 14px;background:var(--panel);border-top:1px solid var(--line);box-shadow:0 -4px 12px rgba(15,35,71,.06)}
+.order-send{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
 .order-hist{border:1px solid var(--line);border-radius:10px;margin-bottom:8px;overflow:hidden}
 .order-hist-head{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;width:100%;padding:10px 12px;border:0;background:var(--panel2);text-align:left;cursor:pointer;font:inherit;color:inherit}
 .order-hist-body{padding:8px 12px 12px}
@@ -200,7 +200,17 @@ table.list tr.clickable:hover td{background:var(--panel2)}
 .order-products tr.inactive input{opacity:.5}
 .supplier-row small{white-space:nowrap}
 .module-block{border-top:1px solid var(--line);margin-top:12px;padding-top:12px}
-@media (max-width:760px){.has-bottomnav .order-send{bottom:calc(64px + env(safe-area-inset-bottom))}}
+/* Bestellen: links Artikel, rechts Warenkorb (am PC mitlaufend) */
+.order-split{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,1fr);gap:16px;align-items:start}
+.order-meta{display:block;font-size:11px}
+.order-cart{position:sticky;top:70px;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--panel2);max-height:calc(100vh - 90px);overflow:auto}
+.cart-lines{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:4px}
+.cart-lines li{display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--line)}
+@media (max-width:900px){
+  .order-split{grid-template-columns:1fr}
+  .order-cart{position:sticky;top:auto;bottom:0;max-height:45vh;z-index:5;box-shadow:0 -4px 12px rgba(15,35,71,.08)}
+  .has-bottomnav .order-cart{bottom:calc(64px + env(safe-area-inset-bottom))}
+}
 .settings-toolbar{display:flex;justify-content:flex-end;margin-bottom:10px}
 @media (max-width:760px){.settings-toolbar{display:none}}
 .settings{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { newId } from './demo';
-import { moduleAllowed, monthlyTotals, orderLines, orderText, productGroups, seedSuppliers, waLink, waNumber } from './orders';
+import { moduleAllowed, monthlyTotals, productFrequency, sortedProducts, orderLines, orderText, productGroups, seedSuppliers, waLink, waNumber } from './orders';
 import { SUPPLIER_SEED } from './orderSeed';
 import type { SupplierOrder } from './types';
 
@@ -45,5 +45,18 @@ describe('Bestellliste', () => {
     expect(moduleAllowed(v, 'bestellliste', 'kueche')).toBe(false);
     expect(moduleAllowed({ modules: ['bestellliste'] }, 'bestellliste', 'kueche')).toBe(true); // Standard: Küche
     expect(moduleAllowed({ modules: [] }, 'bestellliste', 'admin')).toBe(false); // Modul aus
+  });
+});
+
+describe('Bestellliste: Sortierung', () => {
+  it('nach Bestellhäufigkeit oder Beschreibung', () => {
+    const P = (id: string, name: string) => ({ id, supplierId: 's', name, unit: '', group: '', sort: 0, active: true });
+    const list = [P('a', 'Zitronen'), P('b', 'Äpfel'), P('c', 'Bier 10'), P('d', 'Bier 2')];
+    const o = (ids: string[]) => ({ id: ids.join(), supplierId: 's', createdAt: '2026-10-01T10:00', createdBy: '', note: '', items: ids.map(i => ({ productId: i, name: '', unit: '', qty: 1 })) });
+    const freq = productFrequency([o(['a', 'c']), o(['a']), { ...o(['b']), supplierId: 'x' }], 's');
+    expect(freq.get('a')).toBe(2);
+    expect(freq.get('b')).toBeUndefined();
+    expect(sortedProducts(list, 'haeufig', freq).map(x => x.id)).toEqual(['a', 'c', 'b', 'd']);
+    expect(sortedProducts(list, 'name', freq).map(x => x.name)).toEqual(['Äpfel', 'Bier 2', 'Bier 10', 'Zitronen']);
   });
 });

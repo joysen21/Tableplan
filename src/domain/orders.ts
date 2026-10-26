@@ -22,6 +22,19 @@ export function orderLines(products: SupplierProduct[], qty: Record<string, numb
 
 export const sortProducts = (list: SupplierProduct[]) => [...list].sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name, 'de'));
 
+/** Wie oft ein Artikel bestellt wurde (Anzahl Bestellungen, in denen er vorkommt) */
+export function productFrequency(orders: SupplierOrder[], supplierId: string): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const o of orders) if (o.supplierId === supplierId) for (const l of o.items) out.set(l.productId, (out.get(l.productId) ?? 0) + 1);
+  return out;
+}
+/** Sortierung der Artikelliste: nach Beschreibung (A–Z) oder nach Bestellhäufigkeit (häufigste zuerst, dann A–Z) */
+export type ProductSort = 'name' | 'haeufig';
+export function sortedProducts(list: SupplierProduct[], sort: ProductSort, freq: Map<string, number>): SupplierProduct[] {
+  const byName = (a: SupplierProduct, b: SupplierProduct) => a.name.localeCompare(b.name, 'de', { numeric: true });
+  return [...list].sort(sort === 'name' ? byName : (a, b) => (freq.get(b.id) ?? 0) - (freq.get(a.id) ?? 0) || byName(a, b));
+}
+
 /** Gruppen in Reihenfolge ihres ersten Artikels */
 export function productGroups(products: SupplierProduct[]): [string, SupplierProduct[]][] {
   const out = new Map<string, SupplierProduct[]>();
