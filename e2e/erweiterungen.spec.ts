@@ -72,8 +72,8 @@ test('Gast schreibt per QR eine Notiz, das Personal sieht sie im Live-Plan', asy
   const r = await hotelDinner(page);
   await page.goto(`/m/${r.token}?demo`);
   await page.getByRole('tab', { name: /Heute.*Abendessen/ }).click();
-  const roomBtn = page.getByRole('button', { name: new RegExp(`Zimmer ${r.roomNo}\\b`) });
-  if (await roomBtn.isVisible().catch(() => false)) await roomBtn.click();
+  const roomIn = page.getByRole('textbox', { name: 'Zimmernummer' });
+  if (await roomIn.isVisible().catch(() => false)) { await roomIn.fill(r.roomNo); await page.getByRole('button', { name: 'Weiter' }).click(); }
   await page.locator('.gm-step button[aria-label="+"]:not([disabled])').first().click();
   await page.getByLabel('Notiz an die Küche').fill('Fleisch bitte medium');
   await page.getByRole('button', { name: 'Auswahl senden' }).click();
@@ -81,7 +81,7 @@ test('Gast schreibt per QR eine Notiz, das Personal sieht sie im Live-Plan', asy
   // nach dem Neuladen steht die Notiz wieder im Feld
   await page.reload();
   await page.getByRole('tab', { name: /Heute.*Abendessen/ }).click();
-  if (await roomBtn.isVisible().catch(() => false)) await roomBtn.click();
+  if (await roomIn.isVisible().catch(() => false)) { await roomIn.fill(r.roomNo); await page.getByRole('button', { name: 'Weiter' }).click(); }
   await expect(page.getByLabel('Notiz an die Küche')).toHaveValue('Fleisch bitte medium');
 
   await page.goto('/?demo');

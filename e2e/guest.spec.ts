@@ -20,8 +20,8 @@ test('Gast wählt per QR-Code sein Abendmenü, die Küche sieht die Auswahl', as
   await page.goto(`/m/${target.token}?demo`);
   await expect(page.getByText(`Tisch ${target.table}`)).toBeVisible();
   await page.getByRole('tab', { name: /Heute.*Abendessen/ }).click();
-  const roomBtn = page.getByRole('button', { name: new RegExp(`Zimmer ${target.roomNo}\\b`) });
-  if (await roomBtn.isVisible().catch(() => false)) await roomBtn.click();
+  const roomIn = page.getByRole('textbox', { name: 'Zimmernummer' });
+  if (await roomIn.isVisible().catch(() => false)) { await roomIn.fill(target.roomNo); await page.getByRole('button', { name: 'Weiter' }).click(); }
   await page.locator('.gm-step button[aria-label="+"]:not([disabled])').first().click();
   await page.getByRole('button', { name: 'Auswahl senden' }).click();
   await expect(page.getByText('Danke! Ihre Auswahl ist bei der Küche angekommen.')).toBeVisible();
@@ -70,10 +70,10 @@ test('Frühstück mit freier Platzwahl: Gast wählt sein Zimmer aus der Liste, d
 
   await page.goto(`/m/${target.token}?demo`);
   await page.getByRole('tab', { name: /Heute.*Frühstück/ }).click();
-  await expect(page.getByText('Freie Platzwahl – bitte wählen Sie Ihr Zimmer.')).toBeVisible();
-  const pick = page.getByRole('combobox', { name: 'Zimmer auswählen' });
-  await pick.selectOption(target.stayId);
-  await expect(pick.locator("option:checked")).toHaveText(new RegExp(`^Zimmer ${target.roomNo} ·`));
+  // freie Platzwahl: Zimmernummer eingeben
+  await page.getByRole('textbox', { name: 'Zimmernummer' }).fill(target.roomNo);
+  await page.getByRole('button', { name: 'Weiter' }).click();
+  await expect(page.locator('.gm-roomline')).toContainText(`Zimmer ${target.roomNo} ·`);
   await page.getByRole('button', { name: '+' }).first().click();
   await page.getByRole('button', { name: 'Auswahl senden' }).click();
   await expect(page.getByText('Danke! Ihre Auswahl ist bei der Küche angekommen.')).toBeVisible();
@@ -84,10 +84,11 @@ test('Frühstück mit freier Platzwahl: Gast wählt sein Zimmer aus der Liste, d
   expect(Object.values(saved ?? {}).reduce((a: number, n) => a + (n as number), 0)).toBe(1);
   await page.screenshot({ path: 'test-results/guest-breakfast.png' });
 
-  // erneut öffnen (anderer Tisch): Zimmer ist vorausgewählt
+  // erneut öffnen: Zimmer ist auf diesem Handy vorausgewählt, mit Hinweis auf die bestehende Auswahl
   await page.reload();
   await page.getByRole('tab', { name: /Heute.*Frühstück/ }).click();
-  await expect(pick).toHaveValue(target.stayId);
+  await expect(page.locator('.gm-roomline')).toContainText(`Zimmer ${target.roomNo} ·`);
+  await expect(page.getByText('Für dieses Zimmer wurde bereits ein Menü gewählt.')).toBeVisible();
 });
 
 test('Alle Gänge mit Menge wählbar – auch ein Gang mit nur einem Gericht (z. B. ohne Dessert)', async ({ page }) => {
@@ -108,8 +109,8 @@ test('Alle Gänge mit Menge wählbar – auch ein Gang mit nur einem Gericht (z.
 
   await page.goto(`/m/${target.token}?demo`);
   await page.getByRole('tab', { name: /Heute.*Abendessen/ }).click();
-  const roomBtn = page.getByRole('button', { name: new RegExp(`Zimmer ${target.roomNo}\b`) });
-  if (await roomBtn.isVisible().catch(() => false)) await roomBtn.click();
+  const roomIn = page.getByRole('textbox', { name: 'Zimmernummer' });
+  if (await roomIn.isVisible().catch(() => false)) { await roomIn.fill(target.roomNo); await page.getByRole('button', { name: 'Weiter' }).click(); }
   // Gang mit einem Gericht: vorbelegt für alle Personen, mit − und + wie die anderen Gänge
   const singleCourse = page.locator('.gm-course').filter({ has: page.locator('.gm-dish') }).filter({ hasNot: page.locator('.gm-dish + .gm-dish') }).first();
   await expect(singleCourse.locator('.gm-step b')).toHaveText(String(target.persons));
@@ -130,7 +131,7 @@ test('Alle Gänge mit Menge wählbar – auch ein Gang mit nur einem Gericht (z.
   // nach dem Neuladen bleibt die reduzierte Menge stehen (keine erneute Vorbelegung)
   await page.reload();
   await page.getByRole('tab', { name: /Heute.*Abendessen/ }).click();
-  if (await roomBtn.isVisible().catch(() => false)) await roomBtn.click();
+  if (await roomIn.isVisible().catch(() => false)) { await roomIn.fill(target.roomNo); await page.getByRole('button', { name: 'Weiter' }).click(); }
   await expect(singleCourse.locator('.gm-step b')).toHaveText(String(target.persons - 1));
 });
 
@@ -170,10 +171,10 @@ test('Ein QR-Code für alle Tische: Gast wählt Zimmer oder Tisch aus der Liste;
   await page.goto(`/m/${t.token}?demo`);
   await expect(page.locator('.gm-table')).toHaveCount(0); // kein fester Tisch
   await page.getByRole('tab', { name: /Heute.*Abendessen/ }).click();
-  await expect(page.getByText('Bitte wählen Sie Ihr Zimmer bzw. Ihren Tisch.')).toBeVisible();
-  const pick = page.getByRole('combobox', { name: 'Zimmer / Tisch auswählen' });
+  await expect(page.getByText('Bitte geben Sie Ihre Zimmernummer ein.')).toBeVisible();
+  const pick = page.getByRole('combobox', { name: 'Tisch auswählen' });
   const opts = await pick.locator('option').allTextContents();
-  expect(opts.some(o => o.startsWith('Zimmer '))).toBe(true);
+  expect(opts.some(o => o.startsWith('Zimmer '))).toBe(false); // Zimmer nur per Eingabe
   expect(opts.some(o => o.startsWith(`Tisch ${t.table} ·`))).toBe(true);
   expect(opts.join(' ')).not.toContain(t.extName); // externe Gäste ohne Namen
   await pick.selectOption('r:' + t.resId);
@@ -197,4 +198,37 @@ test('Ein QR-Code für alle Tische: Gast wählt Zimmer oder Tisch aus der Liste;
   const svgs = await cards.locator('.qr-svg').evaluateAll(els => els.map(e => e.innerHTML));
   expect(new Set(svgs).size).toBe(1); // überall derselbe Code
   await expect(page.locator('.modal')).not.toContainText('Tisch T');
+});
+
+test('QR: Zimmernummer eingeben – unbekannt, Name zur Bestätigung, Hinweis bei bereits gewählt', async ({ page }) => {
+  await loginDemo(page);
+  const t = await page.evaluate(() => {
+    const v = Object.values(JSON.parse(localStorage.getItem('tischplan.demo.v2')!).data)[0] as any;
+    const day = new Date().toLocaleDateString('sv-SE');
+    const svc = v.services.find((s: any) => s.kind === 'abend');
+    const menu = v.menus.find((m: any) => m.date === day && m.serviceId === svc.id);
+    const resOf = (pred: (stayId: string) => boolean) => v.reservations.find((x: any) => x.date === day && x.serviceId === svc.id && x.stayId && x.tableIds.length
+      && !['storniert', 'noshow'].includes(x.status) && pred(x.stayId));
+    const has = (sid: string) => v.menuChoices.some((c: any) => c.menuId === menu.id && c.stayId === sid && Object.keys(c.counts).length);
+    const chosen = v.stays.find((s: any) => s.id === resOf(has).stayId), free = v.stays.find((s: any) => s.id === resOf(sid => !has(sid)).stayId);
+    return { token: v.venue.qrToken, chosen: { no: chosen.roomNo, name: chosen.name }, free: { no: free.roomNo, name: free.name } };
+  });
+  await page.goto(`/m/${t.token}?demo`);
+  await page.getByRole('tab', { name: /Heute.*Abendessen/ }).click();
+  const input = page.getByRole('textbox', { name: 'Zimmernummer' });
+  await input.fill('999');
+  await page.getByRole('button', { name: 'Weiter' }).click();
+  await expect(page.getByRole('alert')).toContainText('Zimmer 999 wurde für dieses Menü nicht gefunden');
+
+  await input.fill(t.free.no);
+  await page.getByRole('button', { name: 'Weiter' }).click();
+  await expect(page.locator('.gm-roomline')).toContainText(`Zimmer ${t.free.no} · ${t.free.name}`);
+  await expect(page.getByText('Für dieses Zimmer wurde bereits ein Menü gewählt.')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Anderes Zimmer' }).click();
+  await input.fill(t.chosen.no);
+  await page.getByRole('button', { name: 'Weiter' }).click();
+  await expect(page.locator('.gm-roomline')).toContainText(t.chosen.name);
+  await expect(page.getByText('Für dieses Zimmer wurde bereits ein Menü gewählt.')).toBeVisible();
+  await page.screenshot({ path: 'test-results/qr-zimmer.png', fullPage: true });
 });

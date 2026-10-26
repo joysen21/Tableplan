@@ -19,7 +19,11 @@ const T: Record<Lang, Dict> = {
     freeSeating: 'Freie Platzwahl – bitte wählen Sie Ihr Zimmer.', pickRoom: 'Zimmer auswählen',
     pickWho: 'Bitte wählen Sie Ihr Zimmer bzw. Ihren Tisch.', pickParty: 'Zimmer / Tisch auswählen',
     noteLabel: 'Notiz an die Küche', notePh: 'z. B. Fleisch medium, ohne Zwiebeln, Dessert später',
-    noRoomFree: 'Für dieses Menü ist kein Hotelzimmer eingetragen. Bitte wenden Sie sich an unser Team.'
+    noRoomFree: 'Für dieses Menü ist kein Hotelzimmer eingetragen. Bitte wenden Sie sich an unser Team.',
+    enterRoom: 'Bitte geben Sie Ihre Zimmernummer ein.', roomNo: 'Zimmernummer', go: 'Weiter', otherRoom: 'Anderes Zimmer',
+    roomNotFound: 'Zimmer {n} wurde für dieses Menü nicht gefunden. Bitte prüfen Sie die Nummer oder wenden Sie sich an unser Team.',
+    alreadyChosen: 'Für dieses Zimmer wurde bereits ein Menü gewählt. Sie können die Auswahl unten ändern.',
+    noHotelRoom: 'Kein Hotelzimmer? Bitte wählen Sie Ihren Tisch:', pickTable: 'Tisch auswählen'
   },
   it: {
     today: 'Oggi', tomorrow: 'Domani', table: 'Tavolo', whichRoom: 'Per chi sceglie?', room: 'Camera', persons: 'pers.',
@@ -34,7 +38,11 @@ const T: Record<Lang, Dict> = {
     freeSeating: 'Posto libero – selezioni la Sua camera.', pickRoom: 'Selezionare la camera',
     pickWho: 'Selezioni la Sua camera o il Suo tavolo.', pickParty: 'Selezionare camera / tavolo',
     noteLabel: 'Nota per la cucina', notePh: 'p. es. carne media, senza cipolla, dessert più tardi',
-    noRoomFree: 'Per questo menù non risulta nessuna camera. Si rivolga al nostro personale.'
+    noRoomFree: 'Per questo menù non risulta nessuna camera. Si rivolga al nostro personale.',
+    enterRoom: 'Inserisca il numero della Sua camera.', roomNo: 'Numero di camera', go: 'Avanti', otherRoom: 'Altra camera',
+    roomNotFound: 'La camera {n} non risulta per questo menù. Controlli il numero o si rivolga al nostro personale.',
+    alreadyChosen: 'Per questa camera è già stato scelto un menù. Può modificare la scelta qui sotto.',
+    noHotelRoom: 'Nessuna camera d\'albergo? Selezioni il Suo tavolo:', pickTable: 'Selezionare il tavolo'
   },
   en: {
     today: 'Today', tomorrow: 'Tomorrow', table: 'Table', whichRoom: 'Who are you choosing for?', room: 'Room', persons: 'guests',
@@ -49,7 +57,11 @@ const T: Record<Lang, Dict> = {
     freeSeating: 'Free seating – please select your room.', pickRoom: 'Select room',
     pickWho: 'Please select your room or table.', pickParty: 'Select room / table',
     noteLabel: 'Note for the kitchen', notePh: 'e.g. meat medium, no onions, dessert later',
-    noRoomFree: 'No hotel room is registered for this menu. Please ask our team.'
+    noRoomFree: 'No hotel room is registered for this menu. Please ask our team.',
+    enterRoom: 'Please enter your room number.', roomNo: 'Room number', go: 'Continue', otherRoom: 'Other room',
+    roomNotFound: 'Room {n} was not found for this menu. Please check the number or ask our team.',
+    alreadyChosen: 'A menu has already been chosen for this room. You can change the selection below.',
+    noHotelRoom: 'No hotel room? Please select your table:', pickTable: 'Select table'
   }
 };
 

@@ -1,6 +1,6 @@
 /**
  * Gäste-Speisekarte (öffentlich, ohne Anmeldung): wird über den QR-Code auf dem Tisch geöffnet (/m/<Tisch-Schlüssel>).
- * Der Gast wählt sein Zimmer und je Gang, wie oft welches Gericht – die Küche sieht die Auswahl sofort.
+ * Der Gast gibt seine Zimmernummer ein (Bestätigung mit Namen) und wählt je Gang, wie oft welches Gericht – die Küche sieht die Auswahl sofort.
  * Erscheinungsbild (Logo, Titelbild, Farbe, Begrüßung) legt das Hotel in den Einstellungen fest.
  */
 import { useEffect, useMemo, useState } from 'react';
@@ -98,6 +98,22 @@ function MenuChooser({ token, menu, tableName, lang, title, onSaved }: { token: 
   const same = (r: GuestRoom) => rooms.filter(x => !x.roomNo && tableOf(x) === tableOf(r));
   const label = (r: GuestRoom) => r.roomNo ? `${tr(lang, 'room')} ${r.roomNo}`
     : `${tr(lang, 'table')} ${tableOf(r)}${same(r).length > 1 ? ` (${same(r).indexOf(r) + 1})` : ''}`;
+  const hotel = rooms.filter(r => r.roomNo), ext = rooms.filter(r => !r.roomNo);
+  const [entry, setEntry] = useState(room?.roomNo ?? '');
+  const [notFound, setNotFound] = useState('');
+  // Name zum Zimmer zur Bestätigung – nur für dieses Zimmer vom Server geholt
+  const [name, setName] = useState<string | null>(null);
+  useEffect(() => {
+    setName(null);
+    if (room?.stayId) repo.guestRoomName(token, room.stayId).then(setName).catch(() => setName(null));
+  }, [room?.stayId, token]);
+  const findRoom = (e: React.FormEvent) => {
+    e.preventDefault();
+    const no = entry.trim().toLowerCase();
+    const r = hotel.find(x => x.roomNo.trim().toLowerCase() === no);
+    if (!r) { setNotFound(entry.trim()); return; }
+    setNotFound(''); setStayId(partyKey(r));
+  };
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
@@ -140,27 +156,31 @@ function MenuChooser({ token, menu, tableName, lang, title, onSaved }: { token: 
     <section className="gm-menu">
       <h2 className="gm-menu-title">{title}</h2>
       {!open && <p className="gm-banner">{tr(lang, 'closed')}</p>}
-      {!rooms.length ? <p className="gm-note">{tr(lang, menu.pick ? 'noRoomFree' : 'noRoom')}</p> : menu.pick && rooms.length > 1 ? (
-        // Freie Platzwahl: Zimmer aus allen Zimmern mit dieser Mahlzeit auswählen
-        <div className="gm-rooms">
-          {/* ein QR-Code für alle Tische: Zimmer oder Tisch wählen; bei freier Platzwahl (Tisch-QR) nur Zimmer */}
-          <p>{tr(lang, tableName ? 'freeSeating' : 'pickWho')}</p>
-          <select className="gm-roompick" aria-label={tr(lang, tableName ? 'pickRoom' : 'pickParty')} value={stayId ?? ''} onChange={e => setStayId(e.target.value || null)}>
-            <option value="">{tr(lang, tableName ? 'pickRoom' : 'pickParty')}</option>
-            {rooms.map(r => <option key={partyKey(r)} value={partyKey(r)}>{label(r)} · {r.persons} {tr(lang, 'persons')}{Object.keys(r.counts).length ? ' ✓' : ''}</option>)}
-          </select>
+      {!rooms.length ? <p className="gm-note">{tr(lang, menu.pick ? 'noRoomFree' : 'noRoom')}</p> : rooms.length === 1 ? (
+        room && <p className="gm-roomline">{label(room)}{name && <> · <b>{name}</b></>} · {room.persons} {tr(lang, 'persons')}</p>
+      ) : room ? (
+        <div className="gm-roomsel">
+          <p className="gm-roomline">{label(room)}{name && <> · <b>{name}</b></>} · {room.persons} {tr(lang, 'persons')}</p>
+          <button className="gm-btn ghost" onClick={() => { setStayId(null); setEntry(''); }}>{tr(lang, 'otherRoom')}</button>
         </div>
-      ) : rooms.length > 1 && (
+      ) : (
+        // Zimmernummer eingeben statt aus einer Liste wählen; externe Gäste (ohne Zimmer) wählen ihren Tisch
         <div className="gm-rooms">
-          <p>{tr(lang, 'whichRoom')}</p>
-          <div>{rooms.map(r => (
-            <button key={partyKey(r)} aria-pressed={partyKey(r) === stayId} onClick={() => setStayId(partyKey(r))}>
-              {label(r)}<small>{r.persons} {tr(lang, 'persons')}{Object.keys(r.counts).length ? ' · ✓' : ''}</small>
-            </button>
-          ))}</div>
+          {hotel.length > 0 && <form className="gm-roomentry" onSubmit={findRoom}>
+            <p>{tr(lang, 'enterRoom')}</p>
+            <div><input aria-label={tr(lang, 'roomNo')} inputMode="numeric" autoComplete="off" value={entry} placeholder={tr(lang, 'roomNo')}
+              onChange={e => { setEntry(e.target.value); setNotFound(''); }} />
+              <button className="gm-btn" type="submit" disabled={!entry.trim()}>{tr(lang, 'go')}</button></div>
+          </form>}
+          {notFound && <p className="gm-msg err" role="alert">{tr(lang, 'roomNotFound').replace('{n}', notFound)}</p>}
+          {ext.length > 0 && <label className="gm-ext">{tr(lang, hotel.length ? 'noHotelRoom' : 'pickTable')}
+            <select aria-label={tr(lang, 'pickTable')} value="" onChange={e => setStayId(e.target.value || null)}>
+              <option value="">{tr(lang, 'pickTable')}</option>
+              {ext.map(r => <option key={partyKey(r)} value={partyKey(r)}>{label(r)} · {r.persons} {tr(lang, 'persons')}{Object.keys(r.counts).length ? ' ✓' : ''}</option>)}
+            </select></label>}
         </div>
       )}
-      {rooms.length === 1 && room && <p className="gm-roomline">{label(room)} · {room.persons} {tr(lang, 'persons')}</p>}
+      {room && Object.keys(room.counts).length > 0 && !msg && <p className="gm-banner info">{tr(lang, 'alreadyChosen')}</p>}
       {room && open && <p className="gm-hint">{tr(lang, 'chooseHint')}</p>}
 
       {courses.map(c => {

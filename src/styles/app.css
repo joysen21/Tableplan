@@ -786,7 +786,7 @@ small.danger,.danger{color:var(--danger)}
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;min-width:0}
 .xg-bar.m-garage{background:#4F7BD1}
 .xg-bar.m-fahrrad{background:#2da44e}
-.xg-bar.m-massage{background:#a371f7}
+.xg-bar.m-massage{background:#a371f7;white-space:pre-line;overflow-wrap:anywhere;hyphens:auto;line-height:1.25;font-size:11px;padding:3px 5px;display:flex;align-items:flex-start;text-overflow:clip}
 .xlist{list-style:none;margin:0;padding:6px 8px}
 .xlist .btn{text-align:left;white-space:normal;height:auto;padding:4px 6px}
 .xform{display:grid;grid-template-columns:1fr 1fr;gap:10px}

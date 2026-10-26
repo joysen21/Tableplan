@@ -396,6 +396,11 @@ export class DemoRepo implements Repo {
     const d = this.guestVenue(token);
     return d ? buildGuestMenu(normalizeVenueData(d), token, today()) : null;
   }
+  async guestRoomName(token: string, stayId: string) {
+    const d = this.guestVenue(token), t0 = today();
+    const s = d?.stays.find(x => x.id === stayId && x.arrival <= addDays(t0, 1) && x.departure >= t0);
+    return s?.name ?? null;
+  }
   async guestSave(token: string, menuId: string, party: { stayId: string | null; resId?: string | null }, counts: Record<string, number>, note = '') {
     const stayId = party.stayId, resId = party.resId ?? null;
     const found = this.guestVenue(token);

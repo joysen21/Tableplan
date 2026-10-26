@@ -106,6 +106,8 @@ export interface Repo {
   setQrWindow(venueId: string, w: QrWindow): Promise<void>;
   // Gäste-Speisekarte per QR – ohne Anmeldung, nur mit dem Tisch-Schlüssel
   guestMenu(token: string): Promise<GuestMenuData | null>;
+  /** Name zum eingegebenen Zimmer (nur dieses Zimmer, nur Gäste heute/morgen im Haus) – zur Bestätigung auf der QR-Speisekarte */
+  guestRoomName(token: string, stayId: string): Promise<string | null>;
   /** party = Hotelzimmer (stayId) oder externe Reservierung am Tisch (resId) */
   guestSave(token: string, menuId: string, party: { stayId: string | null; resId?: string | null }, counts: Record<string, number>, note?: string): Promise<void>;
   // Live-Aktualisierung

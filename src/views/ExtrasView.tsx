@@ -32,6 +32,8 @@ function DateBar({ step, label }: { step: number; label?: string }) {
 
 interface GridProps {
   rows: HotelResource[]; cols: GridCol[]; mod: ExtraModule; colW: number;
+  /** Zeilenhöhe (px) – Massage höher, damit die Einträge mehrzeilig lesbar sind */
+  rowH?: number;
   sub?: (r: HotelResource) => string; cellClass?: (r: HotelResource, c: GridCol) => string;
   onEmpty: (r: HotelResource, c: GridCol) => void; onOpen: (b: Booking) => void; barText: (b: Booking) => string;
 }
@@ -41,7 +43,7 @@ function ResourceGrid(p: GridProps) {
   const bookings = d.bookings.filter(b => b.module === p.mod);
   return (
     <div className="table-scroll">
-      <div className="xgrid" style={{ gridTemplateColumns: `minmax(110px,170px) repeat(${p.cols.length}, minmax(${p.colW}px,1fr))`, minWidth: 140 + p.cols.length * p.colW }} role="grid" aria-label={`Belegung ${EXTRA_LABEL[p.mod]}`}>
+      <div className="xgrid" style={{ gridTemplateColumns: `minmax(110px,170px) repeat(${p.cols.length}, minmax(${p.colW}px,1fr))`, minWidth: 140 + p.cols.length * p.colW, gridTemplateRows: '30px', gridAutoRows: p.rowH ?? 44 }} role="grid" aria-label={`Belegung ${EXTRA_LABEL[p.mod]}`}>
         <div className="xg-corner" style={{ gridRow: 1, gridColumn: 1 }} />
         {p.cols.map((c, j) => <div key={c.key} className={'xg-head' + (c.head ? ' start' : '')} style={{ gridRow: 1, gridColumn: j + 2 }}>{c.label}</div>)}
         {p.rows.map((r, i) => {
@@ -147,11 +149,11 @@ export function MassageView() {
             <button className="btn primary small" onClick={() => add(rows[0], '09:00')}><Plus />Buchung</button>
           </div>
           {!rows.length ? <p className="muted pad">Noch keine Masseurinnen – in Einstellungen → Module anlegen.</p>
-            : <ResourceGrid mod="massage" rows={rows} cols={cols} colW={16}
+            : <ResourceGrid mod="massage" rows={rows} cols={cols} colW={34} rowH={84}
               sub={r => { const p = d.presence.find(x => x.resourceId === r.id && x.date === ui.date); return p ? `${p.start}–${p.end}` : 'nicht da'; }}
               cellClass={(r, c) => (presentFor(d, r.id, c) ? 'on' : 'off')}
               onEmpty={(r, c) => add(r, c.key)} onOpen={b => setOpen({ b, isNew: false })}
-              barText={b => `${b.starts.slice(11)} ${byId(d.stays, b.stayId)?.roomNo ?? '?'} · ${byId(d.therapies, b.therapyId)?.name ?? ''}`} />}
+              barText={b => [b.starts.slice(11), `Zi. ${byId(d.stays, b.stayId)?.roomNo ?? '?'}`, byId(d.therapies, b.therapyId)?.name ?? ''].filter(Boolean).join('\n')} />}
           {day.length > 0 && <ul className="xlist">{day.map(b => (
             <li key={b.id}><button className="btn ghost small" onClick={() => setOpen({ b, isNew: false })}>
               <b>{b.starts.slice(11)}–{b.ends.slice(11)}</b> {byId(d.hotelResources, b.resourceId)?.name} · {stayLabel(byId(d.stays, b.stayId))} · {byId(d.therapies, b.therapyId)?.name ?? 'Behandlung'}

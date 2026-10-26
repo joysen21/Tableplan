@@ -75,3 +75,14 @@ body.guest-body{background:#f7f4ee;color:#1f2329}
 .gm-legend li{margin:2px 0}
 .gm-foot{display:flex;align-items:center;justify-content:center;gap:6px;padding:18px;font-size:11px;color:var(--muted);letter-spacing:.04em}
 @media (min-width:640px){.gm-hero h1{font-size:38px}.gm-menu{padding:28px 30px 22px}.gm-send{margin:20px -30px -22px;padding:14px 30px 22px}}
+/* Zimmernummer eingeben */
+.gm-roomentry>div{display:flex;gap:8px;justify-content:center;max-width:340px;margin:0 auto}
+.gm-roomentry input{flex:1;min-width:0;border:1.5px solid var(--line);background:#fff;color:var(--ink);font:inherit;font-size:20px;font-weight:700;text-align:center;border-radius:14px;padding:10px 12px;min-height:52px}
+.gm-roomentry input:focus{outline:2px solid var(--brand);outline-offset:1px}
+.gm-rooms .gm-roomentry button.gm-btn{width:auto;flex:none;padding:0 20px;min-height:52px;display:block;color:var(--on-brand);background:var(--brand);border:0}
+.gm-ext{display:block;max-width:340px;margin:16px auto 0;text-align:center;color:var(--muted);font-size:14px}
+.gm-ext select{display:block;width:100%;margin-top:6px;border:1.5px solid var(--line);background:#fff;color:var(--ink);font:inherit;font-size:16px;border-radius:14px;padding:10px 12px;min-height:48px}
+.gm-roomsel{text-align:center}
+.gm-roomsel .gm-roomline{color:var(--ink);font-size:16px}
+.gm-roomsel .gm-btn.ghost{margin-top:2px}
+.gm-banner.info{margin-top:10px}

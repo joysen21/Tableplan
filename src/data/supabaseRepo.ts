@@ -314,6 +314,10 @@ export class SupabaseRepo implements Repo {
   async guestMenu(token: string) {
     return (await run<GuestMenuData | null>(this.sb.rpc('guest_menu', { p_token: token }))) ?? null;
   }
+  async guestRoomName(token: string, stayId: string) {
+    try { return (await run<string | null>(this.sb.rpc('guest_room_name', { p_token: token, p_stay: stayId }))) ?? null; }
+    catch { return null; } // Migration 20261027000000 fehlt noch → ohne Namen weiter
+  }
   async guestSave(token: string, menuId: string, party: { stayId: string | null; resId?: string | null }, counts: Record<string, number>, note = '') {
     // p_res nur für externe Gäste mitschicken – so funktionieren Hotelzimmer auch, solange Migration 20261021000000 fehlt
     await run(this.sb.rpc('guest_menu_save', { p_token: token, p_menu: menuId, p_stay: party.stayId, p_counts: counts, p_note: note, ...(party.resId ? { p_res: party.resId } : {}) }));
