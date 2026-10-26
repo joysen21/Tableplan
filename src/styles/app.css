@@ -826,3 +826,5 @@ body.dragging .xg-bar,.xgrid.is-dragging .xg-bar{pointer-events:none}
 .xg-bar.preview.bad{background:var(--danger)!important;outline-color:var(--danger)}
 body.dragging,body.dragging *{cursor:grabbing!important}
 .chef-note{font-size:13px;background:var(--accent-soft);border-radius:6px;padding:3px 6px}
+table.boards td{vertical-align:middle}
+table.boards select{min-width:118px}

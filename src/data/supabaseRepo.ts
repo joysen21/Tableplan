@@ -1,7 +1,7 @@
 /** Datenzugriff über Supabase (Postgres + Auth + Realtime + Storage) */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { MAX_ROOMS_PER_TABLE } from '../domain/constants';
-import type { Branding, ModuleKey, OnDuty, PublicRoster, QrWindow, Reservation, Role, RosterSettings, StatusConfig, Stay, VenueData } from '../domain/types';
+import type { BoardDef, Branding, ModuleKey, OnDuty, PublicRoster, QrWindow, Reservation, Role, RosterSettings, StatusConfig, Stay, VenueData } from '../domain/types';
 import type { GuestMenuData } from '../domain/guestMenu';
 import { addDays, today } from '../lib/time';
 import { entityFromDb, entityToDb, fromDb, KIND_OF, TABLE_OF, toDb } from './mapping';
@@ -139,7 +139,7 @@ export class SupabaseRepo implements Repo {
       this.loadRoster(venueId, cutoff), this.loadChoices(venueId), this.loadOrders(venueId), this.loadPass(venueId), this.loadExtras(venueId, cutoff)
     ]);
     return {
-      venue: { id: venueId, name: venue?.name ?? venueName, modules: this.rosterReady ? venue?.modules ?? [] : [], rosterSettings: venue?.roster_settings ?? {}, branding: venue?.branding ?? undefined, statusConfig: venue?.status_config ?? {}, qrToken: venue?.qr_token ?? undefined, qrWindow: venue?.qr_window ?? undefined, moduleRoles: venue?.module_roles ?? undefined },
+      venue: { id: venueId, name: venue?.name ?? venueName, modules: this.rosterReady ? venue?.modules ?? [] : [], rosterSettings: venue?.roster_settings ?? {}, branding: venue?.branding ?? undefined, statusConfig: venue?.status_config ?? {}, qrToken: venue?.qr_token ?? undefined, qrWindow: venue?.qr_window ?? undefined, moduleRoles: venue?.module_roles ?? undefined, boardConfig: venue?.board_config ?? undefined },
       rooms: rooms.map(fromDb.rooms).sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name)),
       stations: stations.map(fromDb.stations), tables: tables.map(fromDb.tables), decor: decor.map(fromDb.decor),
       combos: combos.map(fromDb.combos), layouts: layouts.map(fromDb.layouts),
@@ -306,6 +306,9 @@ export class SupabaseRepo implements Repo {
   async setQrToken(venueId: string, token: string) {
     await run(this.sb.from('venues').update({ qr_token: token }).eq('id', venueId));
   }
+  async setBoardConfig(venueId: string, cfg: BoardDef[]) {
+    await run(this.sb.from('venues').update({ board_config: cfg }).eq('id', venueId));
+  }
   async setStatusConfig(venueId: string, cfg: StatusConfig) {
     await run(this.sb.from('venues').update({ status_config: cfg }).eq('id', venueId));
   }
@@ -334,7 +337,7 @@ export class SupabaseRepo implements Repo {
     const handle = (p: any) => {
       const table: string = p.table;
       if (table === 'venues') {
-        if (p.new?.id === venueId) onEvent({ kind: 'venue', type: 'upsert', name: p.new.name, modules: this.rosterReady ? p.new.modules : undefined, rosterSettings: p.new.roster_settings, branding: p.new.branding ?? undefined, statusConfig: p.new.status_config ?? undefined, moduleRoles: p.new.module_roles ?? undefined });
+        if (p.new?.id === venueId) onEvent({ kind: 'venue', type: 'upsert', name: p.new.name, modules: this.rosterReady ? p.new.modules : undefined, rosterSettings: p.new.roster_settings, branding: p.new.branding ?? undefined, statusConfig: p.new.status_config ?? undefined, moduleRoles: p.new.module_roles ?? undefined, boardConfig: p.new.board_config ?? undefined });
         return;
       }
       const kind = KIND_OF[table];

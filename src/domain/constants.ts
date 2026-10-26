@@ -1,4 +1,4 @@
-import type { Allergen, Board, ContractType, Course, Department, Diet, ResStatus, Role, ServiceKind, TableFeature, Unit, Venue } from './types';
+import type { Allergen, ContractType, Course, Department, Diet, ResStatus, Role, TableFeature, Unit, Venue } from './types';
 import { moduleAllowed } from './modules';
 
 export const RES_STATUS_COLOR: Record<ResStatus, string> = {
@@ -11,12 +11,9 @@ export const SEATED_STATES: ResStatus[] = ['eingetroffen', 'platziert', 'rechnun
 export const FEATURES: TableFeature[] = ['fenster', 'rollstuhl', 'hund', 'kinder', 'ruhig'];
 export const OCCASIONS = ['', 'Geburtstag', 'Jubiläum', 'Business', 'Hochzeitstag', 'Familienfeier', 'Sonstiges'];
 export const SOURCES = ['Telefon', 'Walk-in', 'Hotel', 'Hotel-Rezeption', 'Website', 'Google', 'E-Mail', 'Persönlich'];
-export const BOARDS: Board[] = ['UF', 'HP', 'VP', 'AI'];
 /** So viele Hotelzimmer dürfen sich gleichzeitig einen Tisch teilen (externe Gäste nie) – gleiche Zahl in der DB-Migration */
 export const MAX_ROOMS_PER_TABLE = 3;
-export const BOARD_SERVICES: Record<Board, ServiceKind[]> = { UF: [], HP: ['abend'], VP: ['mittag', 'abend'], AI: ['fruehstueck', 'mittag', 'abend'] };
 /** Mahlzeiten, die eine Verpflegung enthält (Frühstück immer) – für Services mit freier Platzwahl, wo es keine Tischreservierung gibt */
-export const BOARD_MEALS: Record<Board, ServiceKind[]> = { UF: ['fruehstueck'], HP: ['fruehstueck', 'abend'], VP: ['fruehstueck', 'mittag', 'abend'], AI: ['fruehstueck', 'mittag', 'abend'] };
 /** Reihenfolge und Nummern wie in Anhang II der LMIV (auf Speisekarten oft als Nummer angegeben) */
 export const ALLERGENS: Allergen[] = ['gluten', 'krebstiere', 'eier', 'fisch', 'erdnuesse', 'soja', 'milch', 'schalenfruechte', 'sellerie', 'senf', 'sesam', 'sulfite', 'lupinen', 'weichtiere'];
 export const allergenNo = (a: Allergen) => ALLERGENS.indexOf(a) + 1;

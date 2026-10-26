@@ -5,7 +5,7 @@
  * Die ASA-Datei enthält immer den kompletten Gästestand – fehlende Aufenthalte gelten als abgereist bzw. storniert.
  * Personenbezogene Zusatzdaten (Geburtsdatum, Land, Meldung …) werden nicht übernommen.
  */
-import { BOARDS } from './constants';
+import { DEFAULT_BOARDS } from './boards';
 import { guessAllergens } from './menu';
 import type { Board, Stay } from './types';
 import { parseDate } from '../lib/time';
@@ -55,10 +55,12 @@ export function parseCsv(text: string): string[][] {
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9äöüß]/g, '');
 
 /** Verpflegung aus Kürzel oder Klartext (UF/Frühstück, HP/Halbpension, VP/Vollpension, AI/All inclusive) */
-export function parseBoard(text: string): Board | undefined {
+export function parseBoard(text: string, keys: string[] = DEFAULT_BOARDS.map(b => b.key)): Board | undefined {
   const v = norm(text);
   if (!v) return undefined;
-  if ((BOARDS as string[]).includes(v.toUpperCase())) return v.toUpperCase() as Board;
+  // eigene Kürzel des Betriebs zuerst (z. B. „HPP“ für Halbpension plus)
+  const own = keys.find(k => norm(k) === v);
+  if (own) return own;
   if (/^(üf|fr|bb)|frühst|fruehst|garni/.test(v)) return 'UF';
   if (/^hb|halbp/.test(v)) return 'HP';
   if (/^fb|vollp/.test(v)) return 'VP';

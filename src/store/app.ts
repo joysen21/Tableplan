@@ -8,7 +8,7 @@ import { RepoError, type ChangeEvent, type EntityKey, type EntityMap, type LiveS
 import { demoVenueData, emptyVenueData, newId, normalizeVenueData } from '../domain/demo';
 import { OPEN_STATES } from '../domain/constants';
 import { planStay } from '../domain/logic';
-import type { Branding, ModuleKey, QrWindow, Reservation, Role, RosterSettings, SessionUser, StatusConfig, Stay, VenueData } from '../domain/types';
+import type { BoardDef, Branding, ModuleKey, QrWindow, Reservation, Role, RosterSettings, SessionUser, StatusConfig, Stay, VenueData } from '../domain/types';
 import { resolveStatus, statusInfo } from '../domain/statuses';
 import { EDITION } from '../lib/edition';
 import { nowMin, today } from '../lib/time';
@@ -42,6 +42,7 @@ interface AppState {
   /** Erscheinungsbild der Gäste-Speisekarte (QR) speichern */
   setBranding(branding: Branding): Promise<boolean>;
   setStatusConfig(cfg: StatusConfig): Promise<boolean>;
+  setBoardConfig(cfg: BoardDef[]): Promise<boolean>;
   setQrToken(token: string): Promise<boolean>;
   setQrWindow(w: QrWindow): Promise<boolean>;
   replaceAll(data: VenueData, logText: string): Promise<boolean>;
@@ -60,7 +61,7 @@ export function applyEvent(d: VenueData, e: ChangeEvent): VenueData {
     return i >= 0 ? list.map((x, j) => (j === i ? row : x)) : [...list, row];
   };
   switch (e.kind) {
-    case 'venue': return { ...d, venue: { ...d.venue, name: e.name, modules: e.modules ?? d.venue.modules, rosterSettings: e.rosterSettings ?? d.venue.rosterSettings, branding: e.branding ?? d.venue.branding, statusConfig: e.statusConfig ?? d.venue.statusConfig, moduleRoles: e.moduleRoles ?? d.venue.moduleRoles } };
+    case 'venue': return { ...d, venue: { ...d.venue, name: e.name, modules: e.modules ?? d.venue.modules, rosterSettings: e.rosterSettings ?? d.venue.rosterSettings, branding: e.branding ?? d.venue.branding, statusConfig: e.statusConfig ?? d.venue.statusConfig, moduleRoles: e.moduleRoles ?? d.venue.moduleRoles, boardConfig: e.boardConfig ?? d.venue.boardConfig } };
     case 'audit': return d.audit.some(a => a.id === e.row.id) ? d : { ...d, audit: [e.row, ...d.audit].slice(0, 500) };
     case 'reservation_tables': {
       const r = d.reservations.find(x => x.id === e.reservationId);
@@ -288,6 +289,13 @@ export const useApp = create<AppState>((set, get) => {
       if (!ok) return false;
       set(s => (s.data ? { data: { ...s.data, venue: { ...s.data.venue, qrToken: token } } } : {}));
       get().log('QR-Code der Gäste-Speisekarte erneuert', '');
+      return true;
+    },
+    async setBoardConfig(cfg) {
+      const ok = await write(async () => { await repo.setBoardConfig(venueId(), cfg); return true; });
+      if (!ok) return false;
+      set(s => (s.data ? { data: { ...s.data, venue: { ...s.data.venue, boardConfig: cfg } } } : {}));
+      get().log('Verpflegungsarten geändert', cfg.map(b => b.key).join(', '));
       return true;
     },
     async setStatusConfig(cfg) {

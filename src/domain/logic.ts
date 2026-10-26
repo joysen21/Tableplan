@@ -2,7 +2,8 @@
  * Fachlogik (rein funktional, ohne UI und Datenbank):
  * Verweildauer, Konfliktprüfung, Tischvorschläge, Live-Status, Hotel-Planung.
  */
-import { BOARD_SERVICES, MAX_ROOMS_PER_TABLE, OPEN_STATES, SEATED_STATES } from './constants';
+import { boardTables } from './boards';
+import { MAX_ROOMS_PER_TABLE, OPEN_STATES, SEATED_STATES } from './constants';
 import type { DiningTable, Reservation, Service, Stay, TableState, VenueData } from './types';
 import { addDays, fromMin, fmtShort, overlaps, toMin } from '../lib/time';
 
@@ -181,7 +182,7 @@ export const stayNights = (s: Pick<Stay, 'arrival' | 'departure'>) => {
   const out: string[] = []; for (let x = s.arrival; x < s.departure; x = addDays(x, 1)) out.push(x); return out;
 };
 export const stayServices = (d: VenueData, s: Pick<Stay, 'board'>) =>
-  d.services.filter(x => BOARD_SERVICES[s.board].includes(x.kind) && !x.freeSeating);
+  d.services.filter(x => boardTables(d.venue, s.board).includes(x.kind) && !x.freeSeating);
 export const isInHouse = (s: Stay, date: string) => s.arrival <= date && date < s.departure;
 export const needsTable = (d: VenueData, s: Stay) => stayServices(d, s).length > 0;
 

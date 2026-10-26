@@ -3,9 +3,10 @@
  * Hotelgäste wählen am Tisch je Zimmer und Gang, wie oft welches Gericht – daraus kennt die Küche die Portionen.
  * Dieselben Regeln prüft die Datenbank in guest_menu / guest_menu_save (Migration 20261013000000_gaeste_menue_qr.sql).
  */
-import { BOARD_MEALS, COURSES } from './constants';
+import { COURSES } from './constants';
+import { boardMeals } from './boards';
 import { byId, isCancelled, linkedTables, persons, tableNames } from './logic';
-import type { Allergen, Branding, Course, Diet, Menu, MenuChoice, MenuItem, MenuOrdering, MenuState, QrWindow, Reservation, ServiceKind, Stay, VenueData } from './types';
+import type { Allergen, Branding, Course, Diet, Menu, MenuChoice, MenuItem, MenuOrdering, MenuState, QrWindow, Reservation, ServiceKind, Stay, Venue, VenueData } from './types';
 import { addDays } from '../lib/time';
 
 export const DEFAULT_BRANDING: Branding = { title: '', welcome: '', color: '#0F2347', logoUrl: null, coverUrl: null };
@@ -52,8 +53,8 @@ export interface GuestMenuData { venue: { name: string; branding: Branding }; ta
 
 /** Isst der Aufenthalt bei dieser Mahlzeit mit? Frühstück am Morgen nach jeder Nacht (bis zum Abreisetag), sonst an jedem Tag bis vor der Abreise.
  *  Gleiche Regel in der DB-Funktion stay_eats (Migration 20261017000000_fruehstueck_freie_platzwahl.sql). */
-export function stayEats(s: Pick<Stay, 'board' | 'arrival' | 'departure'>, kind: ServiceKind, date: string): boolean {
-  if (!BOARD_MEALS[s.board]?.includes(kind)) return false;
+export function stayEats(venue: Pick<Venue, 'boardConfig'>, s: Pick<Stay, 'board' | 'arrival' | 'departure'>, kind: ServiceKind, date: string): boolean {
+  if (!boardMeals(venue, s.board).includes(kind)) return false;
   return kind === 'fruehstueck' ? s.arrival < date && date <= s.departure : s.arrival <= date && date < s.departure;
 }
 
@@ -69,7 +70,7 @@ export function menuRooms(d: VenueData, m: Pick<Menu, 'id' | 'date' | 'serviceId
   const room = (stay: Stay, res?: Reservation): MenuParty =>
     ({ stay, res, persons: res ? persons(res) : persons(stay), choice: choices.find(c => c.stayId === stay.id), label: `Zi. ${stay.roomNo}` });
   const list: MenuParty[] = svc?.freeSeating
-    ? d.stays.filter(s => stayEats(s, svc.kind, m.date)).map(stay => room(stay))
+    ? d.stays.filter(s => stayEats(d.venue, s, svc.kind, m.date)).map(stay => room(stay))
     : d.reservations
       .filter(r => r.date === m.date && r.serviceId === m.serviceId && !isCancelled(r) && (!tableId || r.tableIds.includes(tableId)))
       .flatMap(r => {

@@ -179,7 +179,7 @@ test('Seitenmenü am PC: klappt beim Darüberfahren auf und wieder zu, lässt si
 
   await page.getByRole('link', { name: 'Einstellungen' }).click();
   const groups = page.locator('details.settings-group');
-  await expect(groups.locator('summary')).toContainText(['Betrieb & Services', 'Reservierungen', 'Gäste-Speisekarte (QR)', 'Benutzer & Rollen', 'Daten & Sicherung', 'Protokoll',
+  await expect(groups.locator('summary')).toContainText(['Betrieb & Services', 'Reservierungen', 'Verpflegungsarten', 'Gäste-Speisekarte (QR)', 'Benutzer & Rollen', 'Daten & Sicherung', 'Protokoll',
     'Dienstplan', 'Pass + Chef', 'Garage', 'Massage', 'Fahrrad', 'Bestellliste']);
   // standardmäßig eingeklappt
   for (const g of await groups.all()) await expect(g).not.toHaveAttribute('open', '');
@@ -191,7 +191,7 @@ test('Einstellungen am PC: alle Gruppen mit einem Knopf ein- und ausklappen', as
   await loginDemo(page);
   await page.getByRole('link', { name: 'Einstellungen' }).click();
   const groups = page.locator('details.settings-group');
-  await expect(groups).toHaveCount(12);
+  await expect(groups).toHaveCount(13);
   for (const g of await groups.all()) await expect(g).not.toHaveAttribute('open', '');
   await page.getByRole('button', { name: 'Alle Einstellungen ausklappen' }).click();
   for (const g of await groups.all()) await expect(g).toHaveAttribute('open', '');
@@ -226,4 +226,28 @@ test('Berichte nach Abteilung; Tischplan je Raum; Dienstplan druckbar; ohne Ank�
   await expect(page.locator('.report').getByRole('button', { name: 'Bearbeiten' })).toHaveCount(0);
   await page.getByLabel('Bereich Dienstplan').selectOption({ label: 'Küche' });
   await expect(page.locator('.report .roster-grid')).toContainText('Lukas Mair');
+});
+
+test('Einstellungen: Verpflegungsarten bearbeiten, hinzufügen, entfernen', async ({ page }) => {
+  await loginDemo(page);
+  await page.getByRole('link', { name: 'Einstellungen' }).click();
+  await page.locator('details.settings-group > summary', { hasText: /^Verpflegungsarten/ }).click();
+  // bestehende ändern: Halbpension mit Mittagessen (inbegriffen)
+  await page.getByLabel('HP Mittag').selectOption('ja');
+  await expect(page.getByLabel('HP Mittag')).toHaveValue('ja');
+  await page.getByLabel('Bezeichnung HP').fill('Halbpension (3/4)');
+  await page.getByLabel('Bezeichnung HP').blur();
+  await expect(page.getByLabel('Bezeichnung HP')).toHaveValue('Halbpension (3/4)');
+  // neue hinzufügen und benennen
+  await page.getByRole('button', { name: 'Verpflegungsart' }).click();
+  await page.getByLabel('Kürzel Neue Verpflegung').fill('hpp');
+  await page.getByLabel('Kürzel Neue Verpflegung').blur();
+  await expect(page.getByLabel('HPP Abend')).toBeVisible();
+  await page.getByLabel('HPP Abend').selectOption('tisch');
+  // im Aufenthalt wählbar
+  await expect(page.locator('details.settings-group > summary', { hasText: /^Verpflegungsarten/ })).toContainText('HPP');
+  // wieder entfernen
+  await page.getByRole('button', { name: 'Verpflegung HPP löschen' }).click();
+  await page.getByRole('button', { name: 'Löschen', exact: true }).click();
+  await expect(page.getByLabel('HPP Abend')).toHaveCount(0);
 });

@@ -3,12 +3,12 @@ import { useMemo, useState } from 'react';
 import { AllergenPicker } from '../ui/AllergenPicker';
 import { Trash2 } from '../ui/icons';
 import { newId } from '../domain/demo';
-import { BOARDS, MAX_ROOMS_PER_TABLE } from '../domain/constants';
+import { MAX_ROOMS_PER_TABLE } from '../domain/constants';
+import { boardsOf } from '../domain/boards';
 import { parseImport, planImport } from '../domain/hotelImport';
 import { statusInfo } from '../domain/statuses';
 import { byId, capacity, isInHouse, needsTable, stayNights, stayTableConflicts, tableNames } from '../domain/logic';
 import type { Board, Stay, VenueData } from '../domain/types';
-import { t } from '../lib/i18n';
 import { addDays, fmtShort, today } from '../lib/time';
 import { readTextFile } from '../lib/text';
 import { useApp } from '../store/app';
@@ -109,7 +109,8 @@ export function StayForm({ stay }: { stay?: Stay }) {
       <div className="grid3">
         <label>Zimmer *<input value={s.roomNo} onChange={e => upd({ roomNo: e.target.value })} autoFocus={isNew} /></label>
         <label>Name *<input value={s.name} onChange={e => upd({ name: e.target.value })} /></label>
-        <label>Verpflegung<select value={s.board} onChange={e => upd({ board: e.target.value as Board })}>{BOARDS.map(b => <option key={b} value={b}>{t(b)}</option>)}</select></label>
+        <label>Verpflegung<select value={s.board} onChange={e => upd({ board: e.target.value as Board })}>{boardsOf(d.venue).map(b => <option key={b.key} value={b.key}>{b.key} – {b.label}</option>)}
+          {!boardsOf(d.venue).some(b => b.key === s.board) && <option value={s.board}>{s.board} (gelöscht)</option>}</select></label>
         <label>Personen<input type="number" min={1} value={s.adults + s.children} onChange={e => upd({ adults: Math.max(1, +e.target.value || 1), children: 0 })} /></label>
         <label>Telefon<input value={s.phone} onChange={e => upd({ phone: e.target.value })} /></label>
         <label>Anreise<input type="date" value={s.arrival} onChange={e => upd({ arrival: e.target.value })} /></label>
@@ -196,7 +197,7 @@ export function StayImport() {
         <p style={{ margin: '8px 0 0' }}><b>{parsed.format === 'asa' ? 'ASA-Zimmerliste' : 'Einfaches Format'}</b>: {parsed.stays.length} Aufenthalte gelesen
           {parsed.cancelled ? `, ${parsed.cancelled} stornierte Zeilen übersprungen` : ''}{parsed.emptyRooms ? `, ${parsed.emptyRooms} leere Zimmer` : ''} · {plan.unchanged} unverändert</p>
         {!boardInFile && plan.create.length > 0 && <label className="mt8">Verpflegung für neue Gäste (nicht in der Datei)
-          <select value={defaultBoard} onChange={e => setDefaultBoard(e.target.value as Board)}>{BOARDS.map(b => <option key={b} value={b}>{t(b)}</option>)}</select></label>}
+          <select value={defaultBoard} onChange={e => setDefaultBoard(e.target.value as Board)}>{boardsOf(d.venue).map(b => <option key={b.key} value={b.key}>{b.key} – {b.label}</option>)}</select></label>}
         <Section title="Neu" lines={plan.create.map(label)} />
         <Section title="Geändert" lines={plan.update.map(u => `Zi. ${u.before.roomNo} · ${u.before.name}: ${u.changes.join(', ')}`)} />
         {plan.remove.length > 0 && <>

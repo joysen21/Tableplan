@@ -4,6 +4,7 @@ import { allergyText, hasAllergy } from '../domain/menu';
 import { chosenDishes, menuChoiceFor, tableGroup } from '../domain/guestMenu';
 import { Minus, Plus, PersonStanding } from '../ui/icons';
 import { newId } from '../domain/demo';
+import { boardLabel } from '../domain/boards';
 import { canEdit, canStatus, SEATED_STATES } from '../domain/constants';
 import { pickableStatuses, statusInfo, statusKey, tableLook } from '../domain/statuses';
 import { StatusIcon } from '../ui/StatusIcon';
@@ -64,7 +65,7 @@ function ResDetails({ r }: { r: Reservation }) {
   return (
     <div className="infobox">
       <b>{r.vip ? '★ ' : ''}{r.name}</b> · {persons(r)} P · {r.time}–{fromMin(resEnd(r))}
-      {stay && <><br />Hotelgast Zi. {stay.roomNo} · {t(stay.board)} · bis {fmtShort(stay.departure)}</>}
+      {stay && <><br />Hotelgast Zi. {stay.roomNo} · {boardLabel(d.venue, stay.board)} · bis {fmtShort(stay.departure)}</>}
       {hasAllergy(r) && <><br />⚠ <b>{allergyText(r)}</b></>}
       {/* gewähltes Menü: je Gericht eine Zeile mit Menge, nach Gängen – auch am Handy gut lesbar */}
       {menu.length > 0 && <div className="menu-lines" aria-label="Gewähltes Menü">

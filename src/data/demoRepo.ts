@@ -8,7 +8,7 @@ import { MAX_ROOMS_PER_TABLE } from '../domain/constants';
 import { occupies, tableConflicts, resEnd, resStart } from '../domain/logic';
 import { canPlanDept } from '../domain/roster';
 import { shiftsOverlap, weekStart } from '../domain/rosterPlan';
-import type { Branding, Member, MenuChoice, ModuleKey, OnDuty, PublicRoster, QrWindow, Reservation, Role, RosterSettings, Shift, StatusConfig, Stay, VenueData } from '../domain/types';
+import type { BoardDef, Branding, Member, MenuChoice, ModuleKey, OnDuty, PublicRoster, QrWindow, Reservation, Role, RosterSettings, Shift, StatusConfig, Stay, VenueData } from '../domain/types';
 import { buildGuestMenu, cleanCounts, newQrToken, partyKey } from '../domain/guestMenu';
 import { moduleAllowed } from '../domain/modules';
 import { addDays, today } from '../lib/time';
@@ -379,6 +379,12 @@ export class DemoRepo implements Repo {
   async setQrToken(venueId: string, token: string) {
     this.guard(venueId, 'venue');
     this.mutate(venueId, d => { d.venue.qrToken = token; });
+  }
+  async setBoardConfig(venueId: string, cfg: BoardDef[]) {
+    this.guard(venueId, 'venue');
+    let name = '';
+    this.mutate(venueId, d => { d.venue.boardConfig = structuredClone(cfg); name = d.venue.name; });
+    this.emit([{ kind: 'venue', type: 'upsert', name, boardConfig: cfg }]);
   }
   async setStatusConfig(venueId: string, cfg: StatusConfig) {
     this.guard(venueId, 'venue');

@@ -3,7 +3,7 @@
  * und der Demo-Implementierung (Daten im Browser) erfüllt wird.
  */
 import type {
-  Absence, AuditEntry, Branding, Decor, Department, DiningTable, Dish, Ingredient, Layout, Member, Menu, MenuChoice, ModuleKey, OnDuty, Position, Publication,
+  BoardDef, Absence, AuditEntry, Branding, Decor, Department, DiningTable, Dish, Ingredient, Layout, Member, Menu, MenuChoice, ModuleKey, OnDuty, Position, Publication,
   PublicRoster, Reservation, Role, Room, RosterSettings, Service, Shift, ShiftTemplate, Staff, Station, StatusConfig, QrWindow, Stay, PassCall, Supplier, HotelResource, Therapy, Presence, Booking, SupplierOrder, SupplierProduct, TableBlock, TableCombo, VenueData
 } from '../domain/types';
 import type { GuestMenuData } from '../domain/guestMenu';
@@ -44,7 +44,7 @@ export type ChangeEvent =
   | { kind: 'reservations'; type: 'upsert'; row: Omit<Reservation, 'tableIds'> }
   | { kind: 'reservation_tables'; type: 'link' | 'unlink'; reservationId: string; tableId: string }
   | { kind: 'audit'; type: 'insert'; row: AuditEntry }
-  | { kind: 'venue'; type: 'upsert'; name: string; modules?: ModuleKey[]; rosterSettings?: Partial<RosterSettings>; branding?: Branding; statusConfig?: StatusConfig; moduleRoles?: Partial<Record<ModuleKey, Role[]>> };
+  | { kind: 'venue'; type: 'upsert'; name: string; modules?: ModuleKey[]; rosterSettings?: Partial<RosterSettings>; branding?: Branding; statusConfig?: StatusConfig; moduleRoles?: Partial<Record<ModuleKey, Role[]>>; boardConfig?: BoardDef[] };
 
 export type LiveState = 'connecting' | 'live' | 'down';
 
@@ -100,6 +100,8 @@ export interface Repo {
   setBranding(venueId: string, branding: Branding): Promise<void>;
   /** Eigene Reservierungs-Status (nur Admin) */
   setStatusConfig(venueId: string, cfg: StatusConfig): Promise<void>;
+  /** Verpflegungsarten (nur Admin) */
+  setBoardConfig(venueId: string, cfg: BoardDef[]): Promise<void>;
   /** QR-Code der Gäste-Speisekarte erneuern (nur Admin) – der alte Code gilt danach nicht mehr */
   setQrToken(venueId: string, token: string): Promise<void>;
   /** Zeitfenster der automatischen QR-Menüwahl (nur Admin) */

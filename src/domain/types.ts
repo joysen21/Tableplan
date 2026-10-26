@@ -5,7 +5,10 @@ export type ResStatus = 'angefragt' | 'bestaetigt' | 'eingetroffen' | 'platziert
 export type TableShape = 'round' | 'square' | 'rect' | 'bench';
 export type DecorKind = 'wall' | 'door' | 'bar' | 'buffet' | 'column' | 'plant' | 'label';
 export type ServiceKind = 'fruehstueck' | 'mittag' | 'abend';
-export type Board = 'UF' | 'HP' | 'VP' | 'AI';
+/** Kürzel der Verpflegungsart (Standard UF/HP/VP/AI, je Betrieb editierbar) */
+export type Board = string;
+/** Verpflegungsart: inbegriffene Mahlzeiten und Mahlzeiten mit automatischer Tischreservierung */
+export interface BoardDef { key: string; label: string; meals: ServiceKind[]; tables: ServiceKind[] }
 export type TableFeature = 'fenster' | 'rollstuhl' | 'hund' | 'kinder' | 'ruhig';
 /** Die 14 Hauptallergene nach VO (EU) 1169/2011 (LMIV), Anhang II */
 export type Allergen = 'gluten' | 'krebstiere' | 'eier' | 'fisch' | 'erdnuesse' | 'soja' | 'milch' | 'schalenfruechte'
@@ -27,7 +30,9 @@ export interface StatusConfig { builtIn?: Partial<Record<ResStatus, { label?: st
 /** qrToken = Schlüssel im QR-Code der Gäste-Speisekarte (ein Code für alle Tische) */
 export interface Venue { id: string; name: string; modules: ModuleKey[]; rosterSettings?: Partial<RosterSettings>; branding?: Branding; statusConfig?: StatusConfig; qrToken?: string; qrWindow?: QrWindow;
   /** Welche Rollen ein Modul sehen (Admin immer) – zuweisbar in Einstellungen → Module */
-  moduleRoles?: Partial<Record<ModuleKey, Role[]>> }
+  moduleRoles?: Partial<Record<ModuleKey, Role[]>>;
+  /** Verpflegungsarten (leer = Standard UF/HP/VP/AI) */
+  boardConfig?: BoardDef[] }
 
 /* ---------- Bestellliste (Modul) ---------- */
 /** Lieferant mit Telefonnummer für WhatsApp */

@@ -1,6 +1,6 @@
 /** Einstellungen (Admin): Betrieb, Services, Benutzer & Rollen, Daten, Protokoll */
 import { useEffect, useState, type ReactNode } from 'react';
-import { Building2, CalendarClock, CalendarDays, ChevronDown, ChevronsDownUp, ChevronsUpDown, Database, Download, History, Plus, QrCode, Upload, Users, X, type LucideIcon } from '../ui/icons';
+import { Building2, Coffee, CalendarClock, CalendarDays, ChevronDown, ChevronsDownUp, ChevronsUpDown, Database, Download, History, Plus, QrCode, Upload, Users, X, type LucideIcon } from '../ui/icons';
 import { repo } from '../data';
 import { demoVenueData, newId } from '../domain/demo';
 import { ROLES } from '../domain/constants';
@@ -15,6 +15,8 @@ import { confirmDialog, toast } from '../ui/notify';
 import { DienstplanModule, MODULE_GROUPS, ModulesPanel } from './RosterSettings';
 import { BrandingPanel } from '../forms/GuestMenuForms';
 import { StatusPanel } from '../forms/StatusSettings';
+import { BoardSettings } from '../forms/BoardSettings';
+import { boardsOf } from '../domain/boards';
 import { APP_NAME, EDITION } from '../lib/edition';
 
 function Field({ label, value, type = 'text', onCommit, placeholder }: { label: string; value: string | number; type?: string; placeholder?: string; onCommit: (v: string) => void }) {
@@ -141,6 +143,7 @@ export function SettingsView() {
         </>}
       </div></Group>
       {!roster && <Group {...g} title="Reservierungen" hint="Status umbenennen, eigene Status anlegen" icon={CalendarDays}><StatusPanel /></Group>}
+      {!roster && <Group {...g} title="Verpflegungsarten" hint={boardsOf(d.venue).map(b => b.key).join(', ') + ' · Mahlzeiten, Tischreservierung'} icon={Coffee}><BoardSettings /></Group>}
       {!roster && <Group {...g} title="Gäste-Speisekarte (QR)" hint="Logo, Titelbild, Farbe, Begrüßung" icon={QrCode}><BrandingPanel /></Group>}
         <Group {...g} title="Benutzer & Rollen" hint="Zugänge und Rechte" icon={Users}><div className="body"><Members /></div></Group>
         <Group {...g} title="Daten & Sicherung" hint="Sicherung exportieren/einspielen, Demo-Daten" icon={Database}><div className="body">

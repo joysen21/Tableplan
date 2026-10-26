@@ -76,11 +76,11 @@ describe('Gäste-Speisekarte (QR)', () => {
 
   it('Mahlzeiten je Verpflegung: Frühstück morgens nach jeder Nacht, Abendessen bis vor der Abreise', () => {
     const s = { arrival: '2026-10-10', departure: '2026-10-12' };
-    expect(['2026-10-10', '2026-10-11', '2026-10-12'].map(x => stayEats({ ...s, board: 'UF' }, 'fruehstueck', x))).toEqual([false, true, true]);
-    expect(['2026-10-10', '2026-10-11', '2026-10-12'].map(x => stayEats({ ...s, board: 'HP' }, 'abend', x))).toEqual([true, true, false]);
-    expect(stayEats({ ...s, board: 'UF' }, 'abend', '2026-10-10')).toBe(false);
-    expect(stayEats({ ...s, board: 'HP' }, 'mittag', '2026-10-10')).toBe(false);
-    expect(stayEats({ ...s, board: 'VP' }, 'mittag', '2026-10-10')).toBe(true);
+    expect(['2026-10-10', '2026-10-11', '2026-10-12'].map(x => stayEats({}, { ...s, board: 'UF' }, 'fruehstueck', x))).toEqual([false, true, true]);
+    expect(['2026-10-10', '2026-10-11', '2026-10-12'].map(x => stayEats({}, { ...s, board: 'HP' }, 'abend', x))).toEqual([true, true, false]);
+    expect(stayEats({}, { ...s, board: 'UF' }, 'abend', '2026-10-10')).toBe(false);
+    expect(stayEats({}, { ...s, board: 'HP' }, 'mittag', '2026-10-10')).toBe(false);
+    expect(stayEats({}, { ...s, board: 'VP' }, 'mittag', '2026-10-10')).toBe(true);
   });
 
   it('Live-Plan: gewähltes Menü eines Zimmers in Gang-Reihenfolge', () => {
