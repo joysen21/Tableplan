@@ -146,3 +146,38 @@ test('Fahrrad: verschieben und am Rand verlängern; Massage am Rand verlängern'
   await dragTo(page, { x: mb.x + mb.width - 3, y: mb.y + mb.height / 2 }, 'Lena 11:15 buchen');
   await expect(page.locator('.xlist')).toContainText('10:00–11:30');
 });
+
+test('Garage: ziehen mit Vorschau der neuen Zeit, am Rand verlängern', async ({ page }) => {
+  await loginDemo(page, 'Eva (Empfang)');
+  await goView(page, 'Garage');
+  const bar = page.locator('.xg-bar.m-garage', { hasText: 'I-AB 99' }).first();
+  const b = (await bar.boundingBox())!;
+  const target = (await page.getByRole('button', { name: /^Platz 6 / }).nth(3).boundingBox())!;
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(target.x + target.width / 2, target.y + target.height / 2, { steps: 10 });
+  // Vorschau an der neuen Stelle mit dem neuen Zeitraum
+  const pv = page.locator('.xg-bar.preview');
+  await expect(pv).toBeVisible();
+  await expect(pv).toContainText('–');
+  const pvBox = (await pv.boundingBox())!;
+  expect(Math.abs(pvBox.x - target.x)).toBeLessThan(8);
+  await page.screenshot({ path: 'test-results/garage-vorschau.png' });
+  await page.mouse.up();
+  await expect(pv).toHaveCount(0);
+  // Gast evtl. nicht so lange im Haus → Rückfrage bestätigen
+  const ok = page.getByRole('button', { name: 'Trotzdem speichern' });
+  await ok.waitFor({ timeout: 1500 }).then(() => ok.click(), () => undefined);
+  const moved = page.locator('.xg-bar.m-garage', { hasText: 'I-AB 99' }).first();
+  const m = (await moved.boundingBox())!;
+  expect(Math.abs(m.x - target.x)).toBeLessThan(8);
+  // rechten Rand auf ein späteres Feld ziehen → Ende dort
+  const far = (await page.getByRole('button', { name: /^Platz 6 / }).nth(8).boundingBox())!;
+  await page.mouse.move(m.x + m.width - 3, m.y + m.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(far.x + far.width / 2, far.y + far.height / 2, { steps: 10 });
+  await page.mouse.up();
+  await ok.waitFor({ timeout: 1500 }).then(() => ok.click(), () => undefined);
+  // rechtes Ende liegt jetzt am Zielfeld
+  await expect.poll(async () => { const x = (await moved.boundingBox())!; return Math.abs(x.x + x.width - (far.x + far.width)); }).toBeLessThan(8);
+});

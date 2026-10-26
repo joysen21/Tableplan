@@ -63,6 +63,21 @@ export function resizedMassage(b: Booking, edge: 'start' | 'end', col: Pick<Book
   return col.ends > b.starts ? { ...b, ends: col.ends } : null;
 }
 
+/* ---------- Garage: Spalten = Nächte ---------- */
+/** letzte gebuchte Nacht (bei Buchung am selben Tag dieser Tag) */
+const lastNight = (b: Pick<Booking, 'starts' | 'ends'>) => { const g = garageDays(b); return g.to > g.from ? addDays(g.to, -1) : g.from; };
+/** Garage verschieben: erste Nacht auf day, gleiche Anzahl Nächte */
+export function movedGarage(b: Booking, resourceId: string, day: string): Booking {
+  const g = garageDays(b), nights = g.to > g.from ? dayNo(g.to) - dayNo(g.from) : 0;
+  return { ...b, resourceId, ...garageRange(day, nights ? addDays(day, nights) : day) };
+}
+/** Garage am Rand ziehen: erste bzw. letzte Nacht auf day; null = ungültig */
+export function resizedGarage(b: Booking, edge: 'start' | 'end', day: string): Booking | null {
+  const from = garageDays(b).from, last = lastNight(b);
+  if (edge === 'start') return day <= last ? { ...b, ...garageRange(day, addDays(last, 1)) } : null;
+  return day >= from ? { ...b, ...garageRange(from, addDays(day, 1)) } : null;
+}
+
 /** Massage verschieben: neue Masseurin/Beginn, gleiche Dauer */
 export function movedMassage(b: Booking, resourceId: string, date: string, start: string): Booking {
   const duration = toMin(b.ends.slice(11)) - toMin(b.starts.slice(11));

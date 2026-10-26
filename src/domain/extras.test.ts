@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { emptyVenueData, newId } from './demo';
 import {
-  bikeCols, bikeRange, bookingConflicts, bookingWarnings, freeResources, garageCols, garageRange, bikeSpan, massageCols, massageRange, movedBike, movedMassage, presentFor, resizedBike, resizedMassage, spanOf, staysBetween, weekMonday
+  bikeCols, bikeRange, bookingConflicts, bookingWarnings, freeResources, garageCols, garageRange, bikeSpan, garageDays, massageCols, movedGarage, resizedGarage, massageRange, movedBike, movedMassage, presentFor, resizedBike, resizedMassage, spanOf, staysBetween, weekMonday
 } from './extras';
 import type { Booking, HotelResource, Stay } from './types';
 
@@ -28,6 +28,13 @@ describe('Garage, Massage, Fahrrad', () => {
     expect(freeResources(d, 'garage', garageRange('2026-10-11', '2026-10-12'), { ev: true }).map(r => r.name)).toEqual(['Platz 2']);
     expect(freeResources(d, 'garage', garageRange('2026-10-13', '2026-10-14'), { ev: true }).map(r => r.name)).toEqual(['Platz 1', 'Platz 2']);
     expect(bookingWarnings(d, { ...clash, resourceId: p2.id, ev: true })).toEqual(expect.arrayContaining(['Platz 2 ist kein Ladeplatz.', expect.stringContaining('nur vom')]));
+    // verschieben (gleiche Anzahl Nächte) und an den Rändern ziehen
+    const g0 = d.bookings[0];
+    expect(garageDays(movedGarage(g0, p2.id, '2026-10-20'))).toEqual({ from: '2026-10-20', to: '2026-10-23' });
+    expect(garageDays(resizedGarage(g0, 'end', '2026-10-14')!)).toEqual({ from: '2026-10-10', to: '2026-10-15' });
+    expect(garageDays(resizedGarage(g0, 'start', '2026-10-12')!)).toEqual({ from: '2026-10-12', to: '2026-10-13' });
+    expect(resizedGarage(g0, 'start', '2026-10-13')).toBeNull();
+    expect(resizedGarage(g0, 'end', '2026-10-09')).toBeNull();
     // Raster: 3 Nächte = 3 Spalten
     expect(spanOf(garageCols('2026-10-09', 14), d.bookings[0])).toEqual({ first: 1, n: 3 });
   });

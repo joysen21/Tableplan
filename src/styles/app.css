@@ -818,3 +818,10 @@ label.inline{display:inline-flex;align-items:center;gap:4px}
 .pass-served{align-items:center;gap:10px}
 @media (max-width:760px){.pass-call-btn{width:100%;justify-content:center}}
 .pass-party .pass-badge{font-size:14px;padding:3px 12px;font-weight:600}
+
+/* Belegungsraster: Ziehen mit Vorschau an der neuen Stelle (wie Outlook) */
+body.dragging .xg-bar,.xgrid.is-dragging .xg-bar{pointer-events:none}
+.xg-bar.drag-src{opacity:.35}
+.xg-bar.preview{pointer-events:none;z-index:3;opacity:.9;outline:2px dashed var(--text);outline-offset:-2px;display:flex;align-items:center;white-space:nowrap;font-size:12px}
+.xg-bar.preview.bad{background:var(--danger)!important;outline-color:var(--danger)}
+body.dragging,body.dragging *{cursor:grabbing!important}

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Trash2 } from '../ui/icons';
 import {
   BIKE_PARTS, EXTRA_LABEL, bikeCols, bikeRange, bookingConflicts, bookingWarnings, fmtDay, freeResources, garageCols, garageDays, garageRange,
-  bikeHalves, bikeSpan, massageCols, massageRange, movedBike, movedMassage, presentFor, resizedBike, resizedMassage, type Half, resourcesOf, spanOf, stayLabel, staysBetween, weekMonday, type GridCol
+  bikeHalves, bikeSpan, massageCols, massageRange, movedBike, movedGarage, movedMassage, presentFor, resizedBike, resizedGarage, resizedMassage, type Half, resourcesOf, spanOf, stayLabel, staysBetween, weekMonday, type GridCol
 } from '../domain/extras';
 import { byId } from '../domain/logic';
 import { newId } from '../domain/demo';
@@ -15,7 +15,7 @@ import { useData } from '../store/hooks';
 import { useUi } from '../store/ui';
 import { Modal } from '../ui/Modal';
 import { confirmDialog, toast } from '../ui/notify';
-import { dragState, startDragOrTap } from '../ui/drag';
+import { dragState } from '../ui/drag';
 
 /** Datum wählen: zurück/vor um step Tage, Heute */
 function DateBar({ step, label }: { step: number; label?: string }) {
@@ -37,18 +37,58 @@ interface GridProps {
   rowH?: number;
   sub?: (r: HotelResource) => string; cellClass?: (r: HotelResource, c: GridCol) => string;
   onEmpty: (r: HotelResource, c: GridCol) => void; onOpen: (b: Booking) => void; barText: (b: Booking) => string;
-  /** Balken per Drag & Drop auf ein anderes Feld ziehen (neue Zeile/Spalte = Ressource/Beginn) */
-  onMove?: (b: Booking, r: HotelResource, c: GridCol) => void;
-  /** Balken am linken/rechten Rand ziehen = Beginn/Ende ändern (wie im Outlook-Kalender) */
-  onResize?: (b: Booking, edge: 'start' | 'end', c: GridCol) => void;
+  /** Zeitraum als Text – in der Vorschau beim Ziehen */
+  rangeText: (b: Booking) => string;
+  /** Wie im Outlook-Kalender: Balken ziehen = verschieben (neue Zeile/Spalte = Ressource/Beginn), am Rand ziehen = Beginn/Ende ändern.
+   *  moveTo/resizeTo berechnen die neue Buchung (null = ungültig), onChange speichert sie. */
+  moveTo: (b: Booking, r: HotelResource, c: GridCol) => Booking | null;
+  resizeTo: (b: Booking, edge: 'start' | 'end', c: GridCol) => Booking | null;
+  onChange: (b: Booking, next: Booking, what: string) => void;
 }
+type Edge = 'start' | 'end';
 /** Belegungsraster: Zeilen = Ressourcen, Spalten = Zeitabschnitte, Buchungen als Balken */
 function ResourceGrid(p: GridProps) {
   const d = useData();
   const bookings = d.bookings.filter(b => b.module === p.mod);
+  // laufendes Ziehen: Original-Buchung und Vorschau an der neuen Stelle
+  const [drag, setDrag] = useState<{ b: Booking; next: Booking | null; edge?: Edge } | null>(null);
+
+  const cellAt = (x: number, y: number) => {
+    const [rid, key] = ((document.elementFromPoint(x, y)?.closest('[data-cell]') as HTMLElement | null)?.dataset.cell ?? '').split('|');
+    const r = p.rows.find(v => v.id === rid), c = p.cols.find(v => v.key === key);
+    return r && c ? { r, c } : null;
+  };
+  const begin = (e: React.PointerEvent, b: Booking) => {
+    if (e.button > 0) return;
+    const edge = (e.target as Element).closest('[data-edge]')?.getAttribute('data-edge') as Edge | undefined;
+    const sx = e.clientX, sy = e.clientY;
+    let moved = false, next: Booking | null = null;
+    const mv = (ev: PointerEvent) => {
+      if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 6) return;
+      if (!moved) { moved = true; dragState.active = true; document.body.classList.add('dragging'); window.getSelection()?.removeAllRanges(); }
+      const hit = cellAt(ev.clientX, ev.clientY);
+      if (!hit) return;
+      next = edge ? p.resizeTo(b, edge, hit.c) : p.moveTo(b, hit.r, hit.c);
+      setDrag({ b, next, edge });
+    };
+    const up = (ev: PointerEvent) => {
+      window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
+      document.body.classList.remove('dragging');
+      setTimeout(() => { dragState.active = false; }, 0);
+      setDrag(null);
+      if (!moved) { if (ev.type === 'pointerup') p.onOpen(b); return; }
+      if (ev.type === 'pointerup' && next) p.onChange(b, next, edge ? (edge === 'start' ? 'Beginn geändert' : 'Ende geändert') : 'verschoben');
+    };
+    window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+  };
+
+  // Vorschau: Zeile der (neuen) Ressource, Spalten des neuen Zeitraums; rot bei Überschneidung
+  const pv = drag?.next, pvRow = pv ? p.rows.findIndex(r => r.id === pv.resourceId) : -1, pvSpan = pv ? spanOf(p.cols, pv) : null;
+  const pvBad = pv ? bookingConflicts(d, pv).length > 0 : false;
+
   return (
     <div className="table-scroll">
-      <div className="xgrid" style={{ gridTemplateColumns: `minmax(110px,170px) repeat(${p.cols.length}, minmax(${p.colW}px,1fr))`, minWidth: 140 + p.cols.length * p.colW, gridTemplateRows: '30px', gridAutoRows: p.rowH ?? 44 }} role="grid" aria-label={`Belegung ${EXTRA_LABEL[p.mod]}`}>
+      <div className={'xgrid' + (drag ? ' is-dragging' : '')} style={{ gridTemplateColumns: `minmax(110px,170px) repeat(${p.cols.length}, minmax(${p.colW}px,1fr))`, minWidth: 140 + p.cols.length * p.colW, gridTemplateRows: '30px', gridAutoRows: p.rowH ?? 44 }} role="grid" aria-label={`Belegung ${EXTRA_LABEL[p.mod]}`}>
         <div className="xg-corner" style={{ gridRow: 1, gridColumn: 1 }} />
         {p.cols.map((c, j) => <div key={c.key} className={'xg-head' + (c.head ? ' start' : '')} style={{ gridRow: 1, gridColumn: j + 2 }}>{c.label}</div>)}
         {p.rows.map((r, i) => {
@@ -59,26 +99,22 @@ function ResourceGrid(p: GridProps) {
               style={{ gridRow: row, gridColumn: j + 2 }} aria-label={`${r.name} ${c.aria} buchen`} data-cell={`${r.id}|${c.key}`} onClick={() => !dragState.active && p.onEmpty(r, c)} />),
             ...bookings.filter(b => b.resourceId === r.id).flatMap(b => {
               const s = spanOf(p.cols, b);
-              return s ? [<button key={b.id} type="button" className={'xg-bar m-' + p.mod} style={{ gridRow: row, gridColumn: `${s.first + 2} / span ${s.n}` }}
-                title={p.barText(b)} {...(p.onMove ? { 'data-drag-handle': '' } : {})}
-                onPointerDown={e => {
-                  const edge = (e.target as Element).closest('[data-edge]')?.getAttribute('data-edge') as 'start' | 'end' | undefined;
-                  startDragOrTap(e, {
-                    label: edge ? (edge === 'start' ? '⇤ Beginn ändern' : 'Ende ändern ⇥') : p.barText(b).split('\n').join(' · '), onClick: () => p.onOpen(b),
-                    onDrop: el => {
-                      const [rid, key] = ((el?.closest('[data-cell]') as HTMLElement | null)?.dataset.cell ?? '').split('|');
-                      const r2 = p.rows.find(x => x.id === rid), c2 = p.cols.find(x => x.key === key);
-                      if (!r2 || !c2) return;
-                      if (edge) p.onResize?.(b, edge, c2); else p.onMove?.(b, r2, c2);
-                    }
-                  });
-                }}
+              return s ? [<button key={b.id} type="button" className={'xg-bar m-' + p.mod + (drag?.b.id === b.id ? ' drag-src' : '')}
+                style={{ gridRow: row, gridColumn: `${s.first + 2} / span ${s.n}` }}
+                title={`${p.barText(b).split('\n').join(' · ')} · ${p.rangeText(b)}`} data-drag-handle=""
+                onPointerDown={e => begin(e, b)}
                 // Tastatur (Enter/Leertaste): öffnen
                 onClick={e => { if (e.detail === 0) p.onOpen(b); }}>
-                {p.onResize && <span className="xg-edge l" data-edge="start" title="Beginn ziehen" />}{p.barText(b)}{p.onResize && <span className="xg-edge r" data-edge="end" title="Ende ziehen" />}</button>] : [];
+                <span className="xg-edge l" data-edge="start" title="Beginn ziehen" />{p.barText(b)}<span className="xg-edge r" data-edge="end" title="Ende ziehen" /></button>] : [];
             })
           ];
         })}
+        {pv && pvRow >= 0 && pvSpan && (
+          <div className={'xg-bar preview m-' + p.mod + (pvBad ? ' bad' : '')} aria-live="polite"
+            style={{ gridRow: pvRow + 2, gridColumn: `${pvSpan.first + 2} / span ${pvSpan.n}` }}>
+            {p.rangeText(pv)}{pvBad ? ' · belegt' : ''}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -95,6 +131,7 @@ export function GarageView() {
   const rows = resourcesOf(d, 'garage');
   const cols = garageCols(ui.date, 14);
   const tonight = cols[0];
+  const change = useBookingChange();
   const used = rows.filter(r => d.bookings.some(b => b.resourceId === r.id && b.starts < tonight.ends && tonight.starts < b.ends)).length;
   return (
     <div className="extras">
@@ -107,8 +144,10 @@ export function GarageView() {
           : <ResourceGrid mod="garage" rows={rows} cols={cols} colW={58} sub={r => (r.ev ? '⚡ Ladeplatz' : '')}
             onEmpty={(r, c) => setOpen({ b: blank('garage', { resourceId: r.id, ...garageRange(c.day, addDays(c.day, 1)) }), isNew: true })}
             onOpen={b => setOpen({ b, isNew: false })}
+            moveTo={(b, r, c) => movedGarage(b, r.id, c.day)} resizeTo={(b, edge, c) => resizedGarage(b, edge, c.day)} onChange={change}
+            rangeText={b => { const g = garageDays(b); return g.to > g.from ? `${fmtDay(g.from)} – ${fmtDay(g.to)}` : fmtDay(g.from); }}
             barText={b => `${byId(d.stays, b.stayId)?.roomNo ?? '?'}${b.plate ? ' · ' + b.plate : ''}${b.ev ? ' ⚡' : ''}`} />}
-        <p className="muted pad" style={{ fontSize: 12 }}>Je Spalte eine Nacht (12–12 Uhr). Freies Feld antippen = neue Buchung, Balken antippen = bearbeiten.</p>
+        <p className="muted pad" style={{ fontSize: 12 }}>Je Spalte eine Nacht (12–12 Uhr). Freies Feld antippen = neue Buchung, Balken antippen = bearbeiten, ziehen = verschieben, am Rand ziehen = verlängern/verkürzen.</p>
       </div>
       {open && <BookingDialog initial={open.b} isNew={open.isNew} onClose={() => setOpen(null)} />}
     </div>
@@ -116,13 +155,20 @@ export function GarageView() {
 }
 
 const halfOf = (c: GridCol): Half => (c.key.endsWith('vm') ? 'vm' : 'nm');
+const HALF_LABEL: Record<Half, string> = { vm: 'VM', nm: 'NM' };
+/** „Mo 26.10. VM – Mi 28.10. NM“ bzw. „Mo 26.10. ganzer Tag“ */
+const bikeText = (b: Booking) => {
+  const h = bikeHalves(b);
+  if (h.fromDay === h.toDay) return `${fmtDay(h.fromDay)} ${h.fromHalf === h.toHalf ? HALF_LABEL[h.fromHalf] : 'ganzer Tag'}`;
+  return `${fmtDay(h.fromDay)} ${HALF_LABEL[h.fromHalf]} – ${fmtDay(h.toDay)} ${HALF_LABEL[h.toHalf]}`;
+};
 
 /** Buchung nach Drag & Drop speichern: Doppelbuchung abweisen, Hinweise (Gast nicht im Haus, Masseurin nicht da) bestätigen lassen */
 function useBookingChange() {
   const d = useData();
   const store = useApp();
-  return async (b: Booking, next: Booking | null, what: string) => {
-    if (!next || (next.starts === b.starts && next.ends === b.ends && next.resourceId === b.resourceId)) return;
+  return async (b: Booking, next: Booking, what: string) => {
+    if (next.starts === b.starts && next.ends === b.ends && next.resourceId === b.resourceId) return;
     const res = byId(d.hotelResources, next.resourceId);
     const clash = bookingConflicts(d, next);
     if (clash.length) return toast(`${res?.name ?? 'Belegt'}: in diesem Zeitraum schon gebucht (${clash.map(x => stayLabel(byId(d.stays, x.stayId))).join(', ')}).`, 'err');
@@ -153,8 +199,8 @@ export function BikeView() {
           : <ResourceGrid mod="fahrrad" rows={rows} cols={cols} colW={38} sub={r => [r.art, r.size].filter(Boolean).join(' · ')}
             onEmpty={(r, c) => add(r, c.day, c.key.endsWith('vm') ? 'vm' : 'nm')}
             onOpen={b => setOpen({ b, isNew: false })}
-            onMove={(b, r, c) => change(b, movedBike(b, r.id, c.day, halfOf(c)), 'verschoben')}
-            onResize={(b, edge, c) => change(b, resizedBike(b, edge, c.day, halfOf(c)), edge === 'start' ? 'Beginn geändert' : 'Ende geändert')}
+            moveTo={(b, r, c) => movedBike(b, r.id, c.day, halfOf(c))} resizeTo={(b, edge, c) => resizedBike(b, edge, c.day, halfOf(c))} onChange={change}
+            rangeText={bikeText}
             barText={b => `${byId(d.stays, b.stayId)?.roomNo ?? '?'}`} />}
         <p className="muted pad" style={{ fontSize: 12 }}>Je Tag Vormittag (8–13 Uhr) und Nachmittag (13–18 Uhr). Buchung ziehen = verschieben, am linken/rechten Rand ziehen = verkürzen oder verlängern.</p>
       </div>
@@ -194,8 +240,8 @@ export function MassageView() {
               sub={r => { const p = d.presence.find(x => x.resourceId === r.id && x.date === ui.date); return p ? `${p.start}–${p.end}` : 'nicht da'; }}
               cellClass={(r, c) => (presentFor(d, r.id, c) ? 'on' : 'off')}
               onEmpty={(r, c) => add(r, c.key)} onOpen={b => setOpen({ b, isNew: false })}
-              onMove={(b, r, c) => change(b, movedMassage(b, r.id, c.day, c.key), 'verschoben')}
-              onResize={(b, edge, c) => change(b, resizedMassage(b, edge, c), edge === 'start' ? 'Beginn geändert' : 'Ende geändert')}
+              moveTo={(b, r, c) => movedMassage(b, r.id, c.day, c.key)} resizeTo={(b, edge, c) => resizedMassage(b, edge, c)} onChange={change}
+              rangeText={b => `${b.starts.slice(11)}–${b.ends.slice(11)}`}
               barText={b => [b.starts.slice(11), `Zi. ${byId(d.stays, b.stayId)?.roomNo ?? '?'}`, byId(d.therapies, b.therapyId)?.name ?? ''].filter(Boolean).join('\n')} />}
           {day.length > 0 && <ul className="xlist">{day.map(b => (
             <li key={b.id}><button className="btn ghost small" onClick={() => setOpen({ b, isNew: false })}>
