@@ -26,6 +26,49 @@ export function massageRange(date: string, start: string, duration: number) {
   return { starts: `${date}T${start}`, ends: `${date}T${fromMin(end)}` };
 }
 
+/* ---------- Fahrrad über mehrere Halbtage (Vormittag/Nachmittag), z. B. Mo Vormittag bis Mi Nachmittag ---------- */
+export type Half = 'vm' | 'nm';
+const HALF_START: Record<Half, string> = { vm: '08:00', nm: '13:00' }, HALF_END: Record<Half, string> = { vm: '13:00', nm: '18:00' };
+const dayNo = (day: string) => Math.round(Date.UTC(+day.slice(0, 4), +day.slice(5, 7) - 1, +day.slice(8, 10)) / 86400000);
+const halfIdx = (day: string, half: Half) => dayNo(day) * 2 + (half === 'nm' ? 1 : 0);
+const fromIdx = (i: number): { day: string; half: Half } => {
+  const dt = new Date(Math.floor(i / 2) * 86400000);
+  return { day: dt.toISOString().slice(0, 10), half: i % 2 ? 'nm' : 'vm' };
+};
+/** Zeitraum von (Tag, Halbtag) bis (Tag, Halbtag) einschließlich; part nur bei genau einem Tag/Halbtag */
+export function bikeSpan(fromDay: string, fromHalf: Half, toDay: string, toHalf: Half): { starts: string; ends: string; part: BikePart | null } {
+  if (halfIdx(toDay, toHalf) < halfIdx(fromDay, fromHalf)) { toDay = fromDay; toHalf = fromHalf; }
+  const part: BikePart | null = fromDay !== toDay ? null : fromHalf === toHalf ? fromHalf : 'tag';
+  return { starts: `${fromDay}T${HALF_START[fromHalf]}`, ends: `${toDay}T${HALF_END[toHalf]}`, part };
+}
+/** Beginn und Ende (einschließlich) einer Fahrradbuchung als Halbtage */
+export function bikeHalves(b: Pick<Booking, 'starts' | 'ends'>): { fromDay: string; fromHalf: Half; toDay: string; toHalf: Half } {
+  return { fromDay: b.starts.slice(0, 10), fromHalf: b.starts.slice(11) < '13:00' ? 'vm' : 'nm', toDay: b.ends.slice(0, 10), toHalf: b.ends.slice(11) <= '13:00' ? 'vm' : 'nm' };
+}
+/** Fahrrad verschieben: Beginn auf (Tag, Halbtag), gleiche Länge */
+export function movedBike(b: Booking, resourceId: string, day: string, half: Half): Booking {
+  const h = bikeHalves(b), len = halfIdx(h.toDay, h.toHalf) - halfIdx(h.fromDay, h.fromHalf);
+  const end = fromIdx(halfIdx(day, half) + len);
+  return { ...b, resourceId, ...bikeSpan(day, half, end.day, end.half) };
+}
+/** Fahrrad am Rand ziehen: Beginn oder Ende auf (Tag, Halbtag); null = ungültig (Ende vor Beginn) */
+export function resizedBike(b: Booking, edge: 'start' | 'end', day: string, half: Half): Booking | null {
+  const h = bikeHalves(b);
+  if (edge === 'start' ? halfIdx(day, half) > halfIdx(h.toDay, h.toHalf) : halfIdx(day, half) < halfIdx(h.fromDay, h.fromHalf)) return null;
+  return { ...b, ...(edge === 'start' ? bikeSpan(day, half, h.toDay, h.toHalf) : bikeSpan(h.fromDay, h.fromHalf, day, half)) };
+}
+/** Massage am Rand ziehen: Beginn oder Ende auf die Viertelstunde (Feld); null = ungültig */
+export function resizedMassage(b: Booking, edge: 'start' | 'end', col: Pick<Booking, 'starts' | 'ends'>): Booking | null {
+  if (edge === 'start') return col.starts < b.ends ? { ...b, starts: col.starts } : null;
+  return col.ends > b.starts ? { ...b, ends: col.ends } : null;
+}
+
+/** Massage verschieben: neue Masseurin/Beginn, gleiche Dauer */
+export function movedMassage(b: Booking, resourceId: string, date: string, start: string): Booking {
+  const duration = toMin(b.ends.slice(11)) - toMin(b.starts.slice(11));
+  return { ...b, resourceId, ...massageRange(date, start, duration) };
+}
+
 export const overlaps = (a: Pick<Booking, 'starts' | 'ends'>, b: Pick<Booking, 'starts' | 'ends'>) => a.starts < b.ends && b.starts < a.ends;
 
 /** Andere Buchungen derselben Ressource im selben Zeitraum (Doppelbuchung – sperrt auch die DB) */

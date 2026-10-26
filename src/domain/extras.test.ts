@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { emptyVenueData, newId } from './demo';
 import {
-  bikeCols, bikeRange, bookingConflicts, bookingWarnings, freeResources, garageCols, garageRange, massageCols, massageRange, presentFor, spanOf, staysBetween, weekMonday
+  bikeCols, bikeRange, bookingConflicts, bookingWarnings, freeResources, garageCols, garageRange, bikeSpan, massageCols, massageRange, movedBike, movedMassage, presentFor, resizedBike, resizedMassage, spanOf, staysBetween, weekMonday
 } from './extras';
 import type { Booking, HotelResource, Stay } from './types';
 
@@ -42,6 +42,16 @@ describe('Garage, Massage, Fahrrad', () => {
     const cols = bikeCols('2026-10-10', 7);
     expect(cols).toHaveLength(14);
     expect(spanOf(cols, bikeRange('2026-10-11', 'tag'))).toEqual({ first: 2, n: 2 });
+    // mehrere Halbtage, verschieben und an den Rändern ziehen
+    expect(bikeSpan('2026-10-11', 'nm', '2026-10-13', 'vm')).toEqual({ starts: '2026-10-11T13:00', ends: '2026-10-13T13:00', part: null });
+    const b = d.bookings[0];
+    const moved = movedBike({ ...b, ...bikeSpan('2026-10-11', 'vm', '2026-10-11', 'nm') }, bike.id, '2026-10-12', 'nm');
+    expect([moved.starts, moved.ends]).toEqual(['2026-10-12T13:00', '2026-10-13T13:00']);
+    const longer = resizedBike(b, 'end', '2026-10-13', 'nm')!;
+    expect([longer.starts, longer.ends, longer.part]).toEqual(['2026-10-11T08:00', '2026-10-13T18:00', null]);
+    expect(resizedBike(b, 'end', '2026-10-11', 'nm')!.part).toBe('tag');
+    expect(resizedBike(b, 'end', '2026-10-10', 'nm')).toBeNull();
+    expect(spanOf(cols, longer)).toEqual({ first: 2, n: 6 });
   });
 
   it('Massage: Dauer aus der Therapie, keine Überschneidung, Hinweis außerhalb der Anwesenheit', () => {
@@ -57,6 +67,12 @@ describe('Garage, Massage, Fahrrad', () => {
     expect(presentFor(d, lena.id, massageRange('2026-10-11', '16:30', 50))).toBe(false);
     expect(bookingWarnings(d, B({ module: 'massage', resourceId: lena.id, stayId: s.id, ...massageRange('2026-10-11', '16:30', 50) }))).toEqual(['Lena ist zu dieser Zeit nicht eingetragen.']);
     expect(massageCols('2026-10-11')).toHaveLength(52);
+    // verschieben: Dauer bleibt
+    const moved = movedMassage(d.bookings[0], lena.id, '2026-10-11', '13:15');
+    expect([moved.starts, moved.ends]).toEqual(['2026-10-11T13:15', '2026-10-11T14:05']);
+    const ext = resizedMassage(d.bookings[0], 'end', { starts: '2026-10-11T11:00', ends: '2026-10-11T11:15' })!;
+    expect([ext.starts, ext.ends]).toEqual(['2026-10-11T10:00', '2026-10-11T11:15']);
+    expect(resizedMassage(d.bookings[0], 'start', { starts: '2026-10-11T11:00', ends: '2026-10-11T11:15' })).toBeNull();
   });
 
   it('Gäste im Zeitraum und Wochenanfang', () => {
