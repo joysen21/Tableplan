@@ -222,7 +222,9 @@ test('Live-Plan: Zimmernummern am Tisch und in der Liste, Tisch dazunehmen nur i
     const hotel = v.reservations.find((r: any) => r.date === day && r.serviceId === svc.id && r.stayId && r.tableIds.length === 1);
     const tb = v.tables.find((t: any) => t.id === hotel.tableIds[0]);
     return { tableId: tb.id, roomId: tb.roomId, roomNo: v.stays.find((s: any) => s.id === hotel.stayId).roomNo,
-      otherRoomTables: v.tables.filter((t: any) => t.roomId !== tb.roomId).map((t: any) => t.name) };
+      otherRoomTables: v.tables.filter((t: any) => t.roomId !== tb.roomId).map((t: any) => t.name),
+      // Tische mit einer Reservierung in diesem Service – dürfen nicht zum Dazunehmen angeboten werden
+      reserved: v.tables.filter((t: any) => t.id !== tb.id && v.reservations.some((r: any) => r.date === day && r.serviceId === svc.id && !['storniert', 'noshow', 'abgeschlossen'].includes(r.status) && r.tableIds.includes(t.id))).map((t: any) => t.name) };
   });
   // Zimmernummer im Plan am Tisch
   await page.mouse.move(700, 400);
@@ -233,6 +235,8 @@ test('Live-Plan: Zimmernummern am Tisch und in der Liste, Tisch dazunehmen nur i
   await page.locator(`svg.plan .tb[data-table-id="${info.tableId}"]`).click();
   const opts = await page.getByLabel('Tisch dazunehmen').locator('option').allTextContents();
   for (const n of info.otherRoomTables) expect(opts.some(o => o.startsWith(n + ' '))).toBe(false);
+  for (const n of info.reserved) expect(opts.some(o => o.startsWith(n + ' '))).toBe(false);
+  expect(opts.length).toBeGreaterThan(1);
   await page.getByLabel('Tisch dazunehmen').selectOption({ index: 1 });
   const confirm = page.getByRole('button', { name: 'Trotzdem speichern' });
   if (await confirm.isVisible({ timeout: 1000 }).catch(() => false)) await confirm.click();
@@ -245,6 +249,16 @@ test('Live-Plan: Zimmernummern am Tisch und in der Liste, Tisch dazunehmen nur i
   await expect(g).toContainText('Reservierung');
   await expect(g.getByLabel('Menü summiert').or(g.getByText('Noch kein Menü gewählt'))).toBeVisible();
   await page.screenshot({ path: 'test-results/zusammengelegt.png' });
+  await page.keyboard.press('Escape');
+
+  // Pass: zusammengelegte Tische mit Summe der Menüauswahl
+  await goView(page, 'Pass');
+  await page.getByLabel('Service').first().selectOption({ label: 'Abendessen' });
+  await page.locator(`svg.plan .tb[data-table-id="${info.tableId}"]`).click();
+  const pg = page.getByRole('dialog').getByLabel('Zusammengelegte Tische');
+  await expect(pg).toContainText('Zusammengelegt:');
+  await expect(pg.getByLabel('Menü summiert').or(pg.getByText('Noch kein Menü gewählt'))).toBeVisible();
+  await page.screenshot({ path: 'test-results/pass-zusammengelegt.png' });
 });
 
 test('QR-Menüwahl: Abendmenü automatisch, Zeitfenster in den Einstellungen', async ({ page }) => {

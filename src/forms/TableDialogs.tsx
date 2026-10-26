@@ -7,7 +7,7 @@ import { newId } from '../domain/demo';
 import { canEdit, canStatus, SEATED_STATES } from '../domain/constants';
 import { pickableStatuses, statusInfo, statusKey, tableLook } from '../domain/statuses';
 import { StatusIcon } from '../ui/StatusIcon';
-import { byId, capacity, freeMinutes, isBlocked, occupies, persons, resEnd, resStart, suggestTables, tableConflicts, tableNames, tableStatusAt, untilEnd } from '../domain/logic';
+import { byId, capacity, freeMinutes, isBlocked, occupies, persons, resEnd, resStart, suggestTables, tableBusy, tableConflicts, tableNames, tableStatusAt, untilEnd } from '../domain/logic';
 import type { Reservation, ResStatus } from '../domain/types';
 import { t } from '../lib/i18n';
 import { fmtDate, fmtShort, fromMin, nowMin, today, toMin } from '../lib/time';
@@ -36,7 +36,7 @@ function StatusButtons({ r }: { r: Reservation }) {
 }
 
 /** Zusammengelegte Tische: Gesamtübersicht (Tische, Reservierungen/Zimmer, Personen, Menü summiert) – immer, auch ohne Menü */
-function GroupSummary({ r }: { r: Reservation }) {
+export function GroupSummary({ r }: { r: Reservation }) {
   const d = useData();
   const g = tableGroup(d, r);
   if (g.tableIds.length < 2 && g.reservations.length < 2) return null;
@@ -100,8 +100,8 @@ export function TablePopup({ tableId }: { tableId: string }) {
   const station = byId(d.stations, tb.stationId);
   const edit = canEdit(role);
   const freeT = r ? d.tables.filter(x => x.id !== tb.id && !r.tableIds.includes(x.id) && !tableConflicts(d, x.id, r.date, resStart(r), resEnd(r), r).length) : [];
-  // Tisch dazunehmen: nur Tische aus demselben Raum
-  const addT = freeT.filter(x => x.roomId === tb.roomId);
+  // Tisch dazunehmen: nur freie Tische aus demselben Raum – Tische mit einer Reservierung (auch geteilte Hotel-Tische) oder Sperre nicht
+  const addT = r ? freeT.filter(x => x.roomId === tb.roomId && !tableBusy(d, x.id, r.date, resStart(r), resEnd(r), r.id).length && !isBlocked(d, x.id, r.date, r.serviceId)) : [];
   // Reservierungen dieses Service ohne Tisch – lassen sich per Antippen hier platzieren (Alternative zum Ziehen)
   const waiting = !r && !block && edit ? d.reservations.filter(x => x.date === ui.date && x.serviceId === serviceId && occupies(x) && !x.tableIds.length)
     .sort((a, b) => resStart(a) - resStart(b)) : [];

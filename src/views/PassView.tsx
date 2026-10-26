@@ -4,12 +4,13 @@
  *  Chef (Küche): Abrufe je Kellner mit „Fertig“, fertige Gänge, demnächst kommende Gänge, Mengen je Gericht – alles live. */
 import { useMemo, useState } from 'react';
 import { BellRing, Check, ChefHat, Clock, CookingPot, Undo2 } from '../ui/icons';
-import { cleanCounts } from '../domain/guestMenu';
+import { cleanCounts, tableGroup } from '../domain/guestMenu';
+import { GroupSummary } from '../forms/TableDialogs';
 import { allergyText, hasAllergy } from '../domain/menu';
 import { byId, persons, tableStatusAt } from '../domain/logic';
 import { newId } from '../domain/demo';
 import {
-  PASS_LOOK, byWaiter, callNet, cancelPortion, chefOverview, minutesSince, netCount, newCall, partyLabel, passProgress, tablePass,
+  PASS_LOOK, byWaiter, callNet, cancelPortion, chefOverview, minutesSince, netCount, newCall, partyLabel, passProgress, passReservations, tablePass,
   type CallView, type CourseProgress, type CourseState, type DishProgress, type PassLook
 } from '../domain/pass';
 import type { TableLook } from '../domain/statuses';
@@ -74,10 +75,15 @@ function PassTable({ tableId, onClose }: { tableId: string; onClose: () => void 
   const ui = useUi();
   const serviceId = useServiceId();
   const tb = byId(d.tables, tableId);
-  const { reservations } = tablePass(d, tableId, ui.date, serviceId);
+  const own = tablePass(d, tableId, ui.date, serviceId).reservations;
+  // zusammengelegte Tische: alle Gäste der Tischgruppe, oben die Summe der Menüauswahl
+  const pass = passReservations(d, ui.date, serviceId);
+  const group = own.length ? tableGroup(d, own[0]).reservations.filter(x => pass.some(y => y.id === x.id)) : [];
+  const reservations = [...own, ...group.filter(x => !own.some(y => y.id === x.id))];
   return (
     <Modal title={'Pass · Tisch ' + (tb?.name ?? '')} onClose={onClose} width={900} footer={<><span className="spacer" /><button className="btn" onClick={onClose}>Schließen</button></>}>
       {!reservations.length && <p className="muted">An diesem Tisch ist in diesem Service niemand.</p>}
+      {own[0] && <GroupSummary r={own[0]} />}
       {reservations.map(r => <PassParty key={r.id} r={r} />)}
     </Modal>
   );
