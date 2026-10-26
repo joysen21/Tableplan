@@ -1,12 +1,12 @@
-/** Einstellungen (Admin): Zusatzmodule ein-/ausschalten, Bereiche & Bereichsleitungen des Dienstplans */
+/** Einstellungen (Admin): Module (je Modul eine Gruppe), Bereiche & Bereichsleitungen des Dienstplans */
 import { useEffect, useState } from 'react';
-import { Plus, Trash2 } from '../ui/icons';
+import { Bike, ConciergeBell, HandHeart, Plus, ShoppingCart, SquareParking, Trash2, type LucideIcon } from '../ui/icons';
 import { ModuleToggle, ResourceSettings, SupplierSettings, TherapySettings } from '../forms/ModuleSettings';
 import { repo } from '../data';
 import { newId } from '../domain/demo';
 import { ROSTER_COLORS } from '../domain/constants';
 import { departmentUsage, sortDepartments } from '../domain/roster';
-import type { Department, Member, RosterSettings } from '../domain/types';
+import type { Department, Member, ModuleKey, RosterSettings } from '../domain/types';
 import { DEFAULT_ROSTER_SETTINGS, rosterSettings } from '../domain/rosterPlan';
 import { useApp } from '../store/app';
 import { EDITION } from '../lib/edition';
@@ -14,30 +14,45 @@ import { useData } from '../store/hooks';
 import { confirmDialog, toast } from '../ui/notify';
 import { DeptIcon, DeptIconPicker } from '../ui/DeptIcon';
 
+/** Eigenständige Dienstplan-App: Modul ist immer an, nur Bereiche & Leitungen und Prüfregeln */
 export function ModulesPanel() {
-  const d = useData();
   // eigenständige Dienstplan-App: Modul ist immer an, nur Bereiche & Leitungen
   if (EDITION === 'dienstplan') return <>
     <div className="panel mt12"><h3>Bereiche & Leitungen</h3><div className="body"><DepartmentsAdmin heading={false} /></div></div>
     <div className="panel mt12"><h3>Prüfregeln</h3><div className="body"><RulesForm /></div></div>
   </>;
+  return null;
+}
+
+/** Modul Dienstplan (Tischplan): ein/aus, Bereiche & Leitungen, Prüfregeln */
+export function DienstplanModule() {
+  const d = useData();
   const setModules = useApp(s => s.setModules);
   const on = d.venue.modules.includes('dienstplan');
   return (
-    <div className="panel mt12"><h3>Module</h3><div className="body">
+    <div className="body">
       <label className="chk"><input type="checkbox" checked={on} onChange={e => setModules(e.target.checked ? [...d.venue.modules, 'dienstplan'] : d.venue.modules.filter(m => m !== 'dienstplan'))} />
         <b>Dienstplan</b></label>
       <p className="muted" style={{ fontSize: 12, margin: '4px 0 0' }}>Personalplanung je Bereich (Küche, Service …). Sichtbar für Admins und die Bereichsleitungen; ausschalten blendet das Modul nur aus, die Daten bleiben erhalten.</p>
       {on && <DepartmentsAdmin />}
       {on && <><h4 style={{ margin: '14px 0 6px' }}>Prüfregeln</h4><RulesForm /></>}
-      <ModuleToggle mod="pass" label="Pass + Chef" hint="Service ruft Gänge ab (Pass-Plan nach Gang-Stand eingefärbt), Küche meldet fertig, Service serviert. Chef-Ansicht mit Abrufen je Kellner, demnächst kommenden Gängen und Mengen je Gericht." />
-      <ModuleToggle mod="garage" label="Garage" hint="Stellplätze einzeln (mit Ladeplatz für E-Autos); Buchung je Hotelgast von–bis mit Kennzeichen, Belegungsplan über 14 Nächte."><ResourceSettings mod="garage" /></ModuleToggle>
-      <ModuleToggle mod="massage" label="Massage" hint="Masseurinnen mit Anwesenheit, Therapien mit Dauer und Preis; Tages-Zeitleiste je Masseurin, Buchung nur für Hotelgäste."><ResourceSettings mod="massage" /><TherapySettings /></ModuleToggle>
-      <ModuleToggle mod="fahrrad" label="Fahrrad" hint="Räder einzeln mit Art und Größe; Buchung ganzer Tag, Vormittag oder Nachmittag, Wochenplan."><ResourceSettings mod="fahrrad" /></ModuleToggle>
-      <ModuleToggle mod="bestellliste" label="Bestellliste" hint="Artikellisten je Lieferant, Bestellung per WhatsApp, Historie und Auswertung je Monat."><SupplierSettings /></ModuleToggle>
-    </div></div>
+    </div>
   );
 }
+
+/** Weitere Module: je Modul ein/aus, Sichtbarkeit je Rolle und die zugehörigen Einstellungen */
+export const MODULE_GROUPS: { mod: ModuleKey; title: string; icon: LucideIcon; hint: string; body: () => JSX.Element }[] = [
+  { mod: 'pass', title: 'Pass + Chef', icon: ConciergeBell, hint: 'Gänge abrufen, Küche meldet fertig',
+    body: () => <ModuleToggle mod="pass" label="Pass + Chef" hint="Service ruft Gänge ab (Pass-Plan nach Gang-Stand eingefärbt), Küche meldet fertig, Service serviert. Chef-Ansicht mit Abrufen je Kellner, demnächst kommenden Gängen und Mengen je Gericht." /> },
+  { mod: 'garage', title: 'Garage', icon: SquareParking, hint: 'Stellplätze, Ladeplätze',
+    body: () => <ModuleToggle mod="garage" label="Garage" hint="Stellplätze einzeln (mit Ladeplatz für E-Autos); Buchung je Hotelgast von–bis mit Kennzeichen, Belegungsplan über 14 Nächte."><ResourceSettings mod="garage" /></ModuleToggle> },
+  { mod: 'massage', title: 'Massage', icon: HandHeart, hint: 'Masseurinnen, Therapien',
+    body: () => <ModuleToggle mod="massage" label="Massage" hint="Masseurinnen mit Anwesenheit, Therapien mit Dauer und Preis; Tages-Zeitleiste je Masseurin, Buchung nur für Hotelgäste."><ResourceSettings mod="massage" /><TherapySettings /></ModuleToggle> },
+  { mod: 'fahrrad', title: 'Fahrrad', icon: Bike, hint: 'Räder mit Art und Größe',
+    body: () => <ModuleToggle mod="fahrrad" label="Fahrrad" hint="Räder einzeln mit Art und Größe; Buchung ganzer Tag, Vormittag oder Nachmittag, Wochenplan."><ResourceSettings mod="fahrrad" /></ModuleToggle> },
+  { mod: 'bestellliste', title: 'Bestellliste', icon: ShoppingCart, hint: 'Lieferanten, Bestellung per WhatsApp',
+    body: () => <ModuleToggle mod="bestellliste" label="Bestellliste" hint="Artikellisten je Lieferant, Bestellung per WhatsApp, Historie und Auswertung je Monat."><SupplierSettings /></ModuleToggle> }
+];
 
 /** Prüfregeln des Dienstplans (Warnungen, keine Sperren) */
 function RulesForm() {

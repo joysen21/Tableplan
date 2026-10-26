@@ -1,4 +1,4 @@
-import { expect, test, goView, loginDemo } from './helpers';
+import { expect, test, goView, loginDemo, openAllSettings } from './helpers';
 
 /** Gäste-Speisekarte per QR: Gast wählt am Tisch, die Küche sieht die Auswahl im Menü */
 test('Gast wählt per QR-Code sein Abendmenü, die Küche sieht die Auswahl', async ({ page }) => {
@@ -190,6 +190,7 @@ test('Ein QR-Code für alle Tische: Gast wählt Zimmer oder Tisch aus der Liste;
   // Personal: ein Code, mehrfach gedruckt; Editor ohne Tisch-QR
   await page.goto('/?demo');
   await goView(page, 'Einstellungen');
+  await openAllSettings(page);
   await page.getByRole('button', { name: 'QR-Code drucken' }).click();
   const cards = page.locator('.modal .qr-card');
   await expect(cards).toHaveCount(6);

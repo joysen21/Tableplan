@@ -1,4 +1,4 @@
-import { expect, test, goView, loginDemo } from './helpers';
+import { expect, test, goView, loginDemo, openAllSettings } from './helpers';
 import type { Page } from '@playwright/test';
 
 /** Eigene Status, Menü-Notiz per QR, Menüauswahl im Reservierungsformular, Mehrfachauswahl Gerichte, Bereichs-Icons */
@@ -22,6 +22,7 @@ async function hotelDinner(page: Page) {
 test('Eigenen Status anlegen und einer Reservierung geben', async ({ page }) => {
   await loginDemo(page);
   await goView(page, 'Einstellungen');
+  await openAllSettings(page);
   await page.getByRole('button', { name: 'Eigener Status' }).click();
   await page.getByLabel('Bezeichnung eigener Status').fill('Aperitif');
   // bestehende Status: Bezeichnung steht im Feld und ist direkt bearbeitbar, Symbol wählbar
@@ -126,6 +127,7 @@ test('Bereich bekommt ein Icon, das im Dienstplan vor Bereich und Mitarbeitenden
   // Demo-Bereiche haben schon Icons
   await expect(page.locator('.rg-name svg.dept-icon').first()).toBeVisible();
   await goView(page, 'Einstellungen');
+  await openAllSettings(page);
   const card = page.locator('.dept-card', { has: page.getByLabel('Name Bereich Bar') });
   await card.getByRole('radio', { name: 'Wein' }).click();
   await expect(card.getByRole('radio', { name: 'Wein' })).toHaveAttribute('aria-checked', 'true');
@@ -188,6 +190,7 @@ test('Externer Gast: Menüauswahl im Formular und per QR-Code am Tisch', async (
 test('Legende im Live-Plan = Reservierungs-Status aus den Einstellungen; nur noch „Personen“', async ({ page }) => {
   await loginDemo(page);
   await goView(page, 'Einstellungen');
+  await openAllSettings(page);
   await page.getByLabel('Bezeichnung Platziert').fill('Am Tisch');
   await page.getByRole('button', { name: 'Eigener Status' }).click();
   await page.getByLabel('Bezeichnung eigener Status').fill('Aperitif');
@@ -247,6 +250,7 @@ test('Live-Plan: Zimmernummern am Tisch und in der Liste, Tisch dazunehmen nur i
 test('QR-Menüwahl: Abendmenü automatisch, Zeitfenster in den Einstellungen', async ({ page }) => {
   await loginDemo(page);
   await goView(page, 'Einstellungen');
+  await openAllSettings(page);
   const open = page.getByLabel('Öffnet am Vorabend um');
   await expect(open).toHaveValue('21:00');
   await expect(page.getByLabel('Schließt am Tag um')).toHaveValue('10:00');

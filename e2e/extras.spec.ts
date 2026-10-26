@@ -1,4 +1,4 @@
-import { expect, test, goView, loginDemo } from './helpers';
+import { expect, test, goView, loginDemo, openAllSettings } from './helpers';
 import type { Page } from '@playwright/test';
 
 /** Module Garage, Massage, Fahrrad: Buchung nur für Hotelgäste, Doppelbuchung gesperrt */
@@ -78,6 +78,7 @@ test('Massage: Anwesenheit eintragen, Behandlung buchen; Fahrrad halber Tag', as
 test('Einstellungen: Stellplatz, Therapie und Fahrrad anlegen', async ({ page }) => {
   await loginDemo(page);
   await goView(page, 'Einstellungen');
+  await openAllSettings(page);
   await page.getByRole('button', { name: 'Stellplatz', exact: true }).click();
   await expect(page.getByLabel('Name Stellplatz Stellplatz 7')).toBeVisible();
   await page.getByRole('button', { name: 'Therapie', exact: true }).click();

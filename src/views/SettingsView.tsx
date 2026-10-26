@@ -1,7 +1,6 @@
 /** Einstellungen (Admin): Betrieb, Services, Benutzer & Rollen, Daten, Protokoll */
 import { useEffect, useState, type ReactNode } from 'react';
 import { Building2, CalendarClock, CalendarDays, ChevronDown, ChevronsDownUp, ChevronsUpDown, Database, Download, History, Plus, QrCode, Upload, Users, X, type LucideIcon } from '../ui/icons';
-import { MOBILE } from '../ui/media';
 import { repo } from '../data';
 import { demoVenueData, newId } from '../domain/demo';
 import { ROLES } from '../domain/constants';
@@ -13,7 +12,7 @@ import { today } from '../lib/time';
 import { useApp } from '../store/app';
 import { useData } from '../store/hooks';
 import { confirmDialog, toast } from '../ui/notify';
-import { ModulesPanel } from './RosterSettings';
+import { DienstplanModule, MODULE_GROUPS, ModulesPanel } from './RosterSettings';
 import { BrandingPanel } from '../forms/GuestMenuForms';
 import { StatusPanel } from '../forms/StatusSettings';
 import { APP_NAME, EDITION } from '../lib/edition';
@@ -96,7 +95,8 @@ type FoldCmd = { open: boolean; n: number };
 
 function Group({ title, hint, icon: I, children, cmd, onOpenChange }: { title: string; hint: string; icon: LucideIcon; children: ReactNode;
   cmd: FoldCmd | null; onOpenChange: (title: string, open: boolean) => void }) {
-  const [open, setOpen] = useState(() => !window.matchMedia(MOBILE).matches);
+  // standardmäßig eingeklappt (PC und Handy) – „Alle ausklappen“ öffnet alle
+  const [open, setOpen] = useState(false);
   useEffect(() => { if (cmd) setOpen(cmd.open); }, [cmd]);
   useEffect(() => { onOpenChange(title, open); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
@@ -130,6 +130,7 @@ export function SettingsView() {
     </div>
     <div className="settings">
       <div className="settings-col">
+      <h3 className="settings-colhead">Allgemein</h3>
       <Group {...g} title={roster ? 'Betrieb' : 'Betrieb & Services'} hint={roster ? 'Name des Betriebs' : 'Name, Frühstück/Mittag/Abend mit Beginn und Ende'} icon={Building2}><div className="body">
         <Field label="Name des Betriebs" value={d.venue.name} onCommit={v => v.trim() && store.renameVenue(v.trim())} />
         {!roster && <>
@@ -141,9 +142,6 @@ export function SettingsView() {
       </div></Group>
       {!roster && <Group {...g} title="Reservierungen" hint="Status umbenennen, eigene Status anlegen" icon={CalendarDays}><StatusPanel /></Group>}
       {!roster && <Group {...g} title="Gäste-Speisekarte (QR)" hint="Logo, Titelbild, Farbe, Begrüßung" icon={QrCode}><BrandingPanel /></Group>}
-      <Group {...g} title={roster ? 'Dienstplan' : 'Module & Dienstplan'} hint="Bereiche mit Icon und Leitung, Prüfregeln" icon={CalendarClock}><ModulesPanel /></Group>
-      </div>
-      <div className="settings-col">
         <Group {...g} title="Benutzer & Rollen" hint="Zugänge und Rechte" icon={Users}><div className="body"><Members /></div></Group>
         <Group {...g} title="Daten & Sicherung" hint="Sicherung exportieren/einspielen, Demo-Daten" icon={Database}><div className="body">
           <div className="row">
@@ -166,6 +164,11 @@ export function SettingsView() {
             <tbody>{d.audit.slice(0, 150).map(a => <tr key={a.id}><td style={{ whiteSpace: 'nowrap', fontSize: 12 }}>{new Date(a.ts).toLocaleString('de-DE')}</td><td>{a.userName}</td><td>{a.action}</td><td style={{ fontSize: 12 }}>{a.details}</td></tr>)}</tbody>
           </table></div>
         </Group>
+      </div>
+      <div className="settings-col">
+        <h3 className="settings-colhead">Module</h3>
+        <Group {...g} title="Dienstplan" hint={roster ? 'Bereiche mit Icon und Leitung, Prüfregeln' : `${d.venue.modules.includes('dienstplan') ? 'Eingeschaltet' : 'Ausgeschaltet'} · Bereiche, Leitungen, Prüfregeln`} icon={CalendarClock}>{roster ? <ModulesPanel /> : <DienstplanModule />}</Group>
+        {!roster && MODULE_GROUPS.map(m => <Group key={m.mod} {...g} title={m.title} hint={`${d.venue.modules.includes(m.mod) ? 'Eingeschaltet' : 'Ausgeschaltet'} · ${m.hint}`} icon={m.icon}><div className="body">{m.body()}</div></Group>)}
       </div>
     </div>
     </>

@@ -179,8 +179,11 @@ test('Seitenmenü am PC: klappt beim Darüberfahren auf und wieder zu, lässt si
 
   await page.getByRole('link', { name: 'Einstellungen' }).click();
   const groups = page.locator('details.settings-group');
-  await expect(groups.locator('summary')).toContainText(['Betrieb & Services', 'Reservierungen', 'Gäste-Speisekarte (QR)', 'Module & Dienstplan', 'Benutzer & Rollen', 'Daten & Sicherung', 'Protokoll']);
-  await expect(groups.first()).toHaveAttribute('open', '');
+  await expect(groups.locator('summary')).toContainText(['Betrieb & Services', 'Reservierungen', 'Gäste-Speisekarte (QR)', 'Benutzer & Rollen', 'Daten & Sicherung', 'Protokoll',
+    'Dienstplan', 'Pass + Chef', 'Garage', 'Massage', 'Fahrrad', 'Bestellliste']);
+  // standardmäßig eingeklappt
+  for (const g of await groups.all()) await expect(g).not.toHaveAttribute('open', '');
+  await expect(groups.filter({ hasText: 'Massage' }).locator('summary')).toContainText('Eingeschaltet');
   await page.screenshot({ path: 'test-results/einstellungen-pc.png' });
 });
 
@@ -188,8 +191,7 @@ test('Einstellungen am PC: alle Gruppen mit einem Knopf ein- und ausklappen', as
   await loginDemo(page);
   await page.getByRole('link', { name: 'Einstellungen' }).click();
   const groups = page.locator('details.settings-group');
-  await expect(groups).toHaveCount(7);
-  await page.getByRole('button', { name: 'Alle Einstellungen einklappen' }).click();
+  await expect(groups).toHaveCount(12);
   for (const g of await groups.all()) await expect(g).not.toHaveAttribute('open', '');
   await page.getByRole('button', { name: 'Alle Einstellungen ausklappen' }).click();
   for (const g of await groups.all()) await expect(g).toHaveAttribute('open', '');

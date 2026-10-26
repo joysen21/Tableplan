@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, test, goView, loginDemo } from './helpers';
+import { expect, test, goView, loginDemo, openAllSettings } from './helpers';
 
 /** Dienstplan Etappe 1 (Desktop): Modul-Schalter, Bereiche & Leitungen, Stammdaten, Rechte der Bereichsleitungen */
 
@@ -20,6 +20,7 @@ test('Admin: Bereich anlegen, Leitung zuweisen – die neue Leitung plant ihren 
   await loginDemo(page);
   await expect(nav(page).getByRole('link', { name: 'Dienstplan' })).toBeVisible();
   await goView(page, 'Einstellungen');
+  await openAllSettings(page);
   await page.getByLabel('Neuer Bereich').fill('Housekeeping');
   await page.getByRole('button', { name: 'Bereich', exact: true }).click();
   const leads = page.getByRole('group', { name: 'Leitung Housekeeping' });
@@ -93,6 +94,7 @@ test('Ohne Leitung kein Dienstplan; Modul ausschalten blendet ihn aus', async ({
   await expect(nav(page).getByRole('link', { name: 'Dienstplan' })).toHaveCount(0);
   await switchUser(page, 'Anna (Admin)');
   await goView(page, 'Einstellungen');
+  await openAllSettings(page);
   await page.getByRole('checkbox', { name: 'Dienstplan' }).uncheck();
   await expect(nav(page).getByRole('link', { name: 'Dienstplan' })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Bereiche & Leitungen' })).toHaveCount(0);

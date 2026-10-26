@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { goView, loginDemo } from './helpers';
+import { goView, loginDemo, openAllSettings } from './helpers';
 
 /** Dienstplan Etappen 2–6 (Desktop): Wochenplan, Prüfregeln, Abwesenheiten, Veröffentlichen, Mitarbeiter-Link, Heute im Dienst */
 
@@ -127,6 +127,7 @@ test('Live-Plan zeigt „Heute im Dienst“, Prüfregeln sind einstellbar', asyn
   await loginDemo(page);
   await expect(page.locator('.on-duty')).toContainText('Heute im Dienst');
   await goView(page, 'Einstellungen');
+  await openAllSettings(page);
   const rest = page.getByLabel('Ruhezeit (Std.)');
   await rest.fill('12'); await rest.blur();
   await expect(page.getByRole('button', { name: 'Standard wiederherstellen' })).toBeVisible();

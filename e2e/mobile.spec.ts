@@ -270,7 +270,7 @@ test('Einstellungen: am Handy eingeklappt, Antippen öffnet eine Gruppe', async 
   await expect(page.locator('aside.sidenav')).toBeHidden();
   await goView(page, 'Einstellungen');
   const groups = page.locator('details.settings-group');
-  await expect(groups).toHaveCount(7);
+  await expect(groups).toHaveCount(12);
   for (const g of await groups.all()) await expect(g).not.toHaveAttribute('open', '');
   await page.screenshot({ path: 'test-results/einstellungen-handy.png' });
   await page.locator('details.settings-group > summary', { hasText: /^Reservierungen/ }).click();

@@ -806,3 +806,5 @@ label.inline{display:inline-flex;align-items:center;gap:4px}
 .xg-edge.l{left:0;border-radius:7px 0 0 7px}
 .xg-edge.r{right:0;border-radius:0 7px 7px 0}
 .xg-bar:hover .xg-edge{background:rgba(255,255,255,.35)}
+.settings-group .module-block{border-top:0;margin-top:0;padding-top:0}
+.settings-colhead{margin:4px 2px -4px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}

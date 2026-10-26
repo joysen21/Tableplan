@@ -1,4 +1,4 @@
-import { expect, test, loginDemo } from './helpers';
+import { expect, test, loginDemo, openAllSettings } from './helpers';
 
 /** Eigenständige Dienstplan-App (Build mit VITE_APP=dienstplan, Port 4174) */
 
@@ -17,6 +17,7 @@ test('Admin: nur Dienstplan und Einstellungen, ohne Tischplan-Funktionen', async
   await page.screenshot({ path: 'test-results/dienstplan-app.png' });
 
   await page.getByRole('link', { name: 'Einstellungen' }).click();
+  await openAllSettings(page);
   await expect(page.getByRole('heading', { name: 'Bereiche & Leitungen' })).toBeVisible();
   await expect(page.getByRole('checkbox', { name: 'Dienstplan' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Service', exact: true })).toHaveCount(0);

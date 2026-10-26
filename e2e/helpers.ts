@@ -48,3 +48,8 @@ export async function goView(page: Page, name: string) {
   await page.getByRole('button', { name: 'Mehr' }).click();
   await page.getByRole('menuitem', { name, exact: true }).click();
 }
+
+/** Einstellungen sind standardmäßig eingeklappt – alle Gruppen öffnen */
+export async function openAllSettings(page: Page) {
+  await page.getByRole('button', { name: 'Alle Einstellungen ausklappen' }).click();
+}

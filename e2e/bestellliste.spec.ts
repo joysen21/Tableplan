@@ -1,4 +1,4 @@
-import { expect, test, goView, loginDemo } from './helpers';
+import { expect, test, goView, loginDemo, openAllSettings } from './helpers';
 
 /** Modul Bestellliste: Mengen eingeben → WhatsApp mit fertigem Text, Historie, Auswertung, Artikel, Einstellungen */
 test('Küche bestellt bei Agostini per WhatsApp; Historie und Auswertung', async ({ page, context }) => {
@@ -47,6 +47,7 @@ test('Küche bestellt bei Agostini per WhatsApp; Historie und Auswertung', async
 test('Admin: Modul-Sichtbarkeit je Rolle und Telefonnummer je Lieferant', async ({ page }) => {
   await loginDemo(page);
   await goView(page, 'Einstellungen');
+  await openAllSettings(page);
   const roles = page.getByRole('group', { name: 'Sichtbar für (Bestellliste)' });
   await expect(roles.getByRole('button', { name: 'Küche' })).toHaveAttribute('aria-pressed', 'true');
   await roles.getByRole('button', { name: 'Service' }).click();
