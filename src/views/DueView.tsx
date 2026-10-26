@@ -47,7 +47,7 @@ export function DueView() {
 }
 
 /** Flag: erledigen (bzw. bei einmaligen zurücknehmen) */
-function DueFlag({ x }: { x: DueItem }) {
+function DueFlag({ x, text }: { x: DueItem; text?: boolean }) {
   const store = useApp();
   const t0 = today();
   const toggle = async () => {
@@ -56,8 +56,8 @@ function DueFlag({ x }: { x: DueItem }) {
     if (await store.upsert('dueItems', [next], ['Fälligkeit erledigt', x.title]))
       toast(next.done ? 'Erledigt' : `Erledigt – nächster Termin ${fmtShort(next.dueDate)}`);
   };
-  return <button type="button" className={'btn small icon ghost due-flag' + (x.done ? ' on' : '')} aria-pressed={x.done}
-    aria-label={x.done ? `${x.title} wieder öffnen` : `${x.title} erledigt`} title={x.done ? 'Wieder öffnen' : x.intervalMonths ? 'Erledigt – nächster Termin wird gesetzt' : 'Erledigt'} onClick={toggle}><Flag /></button>;
+  return <button type="button" className={'btn small due-flag' + (text ? '' : ' icon ghost') + (x.done ? ' on' : '')} aria-pressed={x.done}
+    aria-label={x.done ? `${x.title} wieder öffnen` : `${x.title} erledigt`} title={x.done ? 'Wieder öffnen' : x.intervalMonths ? 'Erledigt – nächster Termin wird gesetzt' : 'Erledigt'} onClick={toggle}><Flag />{text && (x.done ? 'Wieder öffnen' : 'Erledigt')}</button>;
 }
 
 function DueRow({ x, onOpen }: { x: DueItem; onOpen: (x: DueItem) => void }) {
@@ -75,11 +75,27 @@ function DueRow({ x, onOpen }: { x: DueItem; onOpen: (x: DueItem) => void }) {
   );
 }
 
+/** Karte im Dashboard: zentriert, Datum gut sichtbar, darunter „Erledigt“ */
+function DueCard({ x, onOpen }: { x: DueItem; onOpen: (x: DueItem) => void }) {
+  const d = useData();
+  const t0 = today();
+  return (
+    <li className={'due-card st-' + dueState(x, t0)}>
+      <button type="button" className="due-card-main" onClick={() => onOpen(x)}>
+        <b className="due-title">{x.title}</b>
+        <span className="due-when"><b>{fmtShort(x.dueDate)}</b> · {dueRelative(x.dueDate, t0)}</span>
+        <small className="muted">{[byId(d.dueGroups, x.groupId)?.name, x.staffName, intervalText(x.intervalMonths)].filter(Boolean).join(' · ')}</small>
+      </button>
+      <DueFlag x={x} text />
+    </li>
+  );
+}
+
 function DueSection({ title, cls, icon, items, onOpen, empty }: { title: string; cls: string; icon: React.ReactNode; items: DueItem[]; onOpen: (x: DueItem) => void; empty: string }) {
   return (
     <section className={'panel due-sec ' + cls} aria-label={title}>
       <h3>{icon}{title} <span className="count">{items.length}</span></h3>
-      {!items.length ? <p className="muted pad">{empty}</p> : <ul className="due-rows">{items.map(x => <DueRow key={x.id} x={x} onOpen={onOpen} />)}</ul>}
+      {!items.length ? <p className="muted due-empty">{empty}</p> : <ul className="due-cards">{items.map(x => <DueCard key={x.id} x={x} onOpen={onOpen} />)}</ul>}
     </section>
   );
 }

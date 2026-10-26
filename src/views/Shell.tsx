@@ -37,7 +37,7 @@ function SyncIndicator() {
 /** Benutzermenü: am Desktop als Aufklappmenü oben rechts, am Handy als Blatt von unten („Mehr“) */
 type Anchor = { top: number; right: number };
 
-function UserMenu({ more, at, onClose }: { more: ViewKey[]; at: Anchor; onClose: () => void }) {
+function UserMenu({ more, at, onClose, badge }: { more: ViewKey[]; at: Anchor; onClose: () => void; badge: (v: ViewKey) => JSX.Element | null }) {
   const user = useApp(s => s.user)!;
   const logout = useApp(s => s.logout);
   const toggleTheme = useThemeStore(s => s.toggle), theme = useThemeStore(s => s.theme);
@@ -51,7 +51,7 @@ function UserMenu({ more, at, onClose }: { more: ViewKey[]; at: Anchor; onClose:
       <div className="menu" role="menu" aria-label="Menü" style={{ '--menu-top': at.top + 'px', '--menu-right': at.right + 'px' } as CSSProperties}>
         {more.length > 0 && (
           <div className="menu-views">
-            {more.map(v => { const I = VIEW_ICON[v]; return <NavLink key={v} to={PATHS[v]} role="menuitem" className="menu-item" onClick={onClose}><I />{t(v)}</NavLink>; })}
+            {more.map(v => { const I = VIEW_ICON[v]; return <NavLink key={v} to={PATHS[v]} role="menuitem" className="menu-item" onClick={onClose}><I />{t(v)}{badge(v)}</NavLink>; })}
           </div>
         )}
         <div className="menu-user"><b>{user.name}</b><small className="muted">{user.email} · {t(user.role)}</small></div>
@@ -141,7 +141,7 @@ export function Shell() {
           <button className={more.some(v => PATHS[v] === loc.pathname) ? 'active' : ''} aria-haspopup="menu" aria-expanded={menu !== null} onClick={toggleMenu}><Ellipsis /><span>Mehr</span>{more.includes('faellig') && badge('faellig')}</button>
         </nav>
       )}
-      {menu !== null && <UserMenu more={more} at={menu} onClose={() => setMenu(null)} />}
+      {menu !== null && <UserMenu more={more} at={menu} onClose={() => setMenu(null)} badge={badge} />}
       <Dialogs />
     </div>
   );

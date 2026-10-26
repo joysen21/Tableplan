@@ -318,3 +318,16 @@ test('Benutzer & Rollen am Handy: Name und E-Mail in voller Breite lesbar', asyn
   expect(nm!.y).toBeGreaterThan(em!.y + em!.height - 1);
   await page.locator('details.settings-group', { hasText: 'Benutzer' }).first().screenshot({ path: 'test-results/benutzer-handy.png' });
 });
+
+test('Fälligkeiten am Handy: Zahl am „Mehr“ und im Menü, Dashboard untereinander', async ({ page }) => {
+  await loginDemo(page);
+  const more = page.getByRole('button', { name: /^Mehr/ });
+  await expect(more.locator('.nav-badge')).toBeVisible();
+  await more.click();
+  await expect(page.getByRole('menuitem', { name: /Fälligkeiten/ }).locator('.nav-badge')).toBeVisible();
+  await page.getByRole('menuitem', { name: /Fälligkeiten/ }).click();
+  await expect(page.getByRole('region', { name: 'Überfällig' }).locator('.due-card')).toHaveCount(1);
+  const w = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  expect(w).toBeLessThanOrEqual(1);
+  await page.screenshot({ path: 'test-results/faelligkeiten-handy.png', fullPage: true });
+});
