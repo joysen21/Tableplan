@@ -53,3 +53,52 @@ export function dueRelative(dueDate: string, today: string): string {
 }
 
 export const intervalText = (n: number) => (!n ? 'einmalig' : n === 1 ? 'monatlich' : n === 12 ? 'jährlich' : n % 12 === 0 ? `alle ${n / 12} Jahre` : `alle ${n} Monate`);
+
+/* ---------- Liste: filtern, sortieren, gruppieren ---------- */
+/** aktiv = alle nicht erledigten; sonst ein bestimmter Stand */
+export type DueStateFilter = 'aktiv' | 'alle' | DueState;
+export interface DueFilter { q: string; groupId: string; staff: string; state: DueStateFilter }
+export type DueSort = 'datum' | 'datum-ab' | 'titel' | 'gruppe' | 'verantwortlich';
+export type DueGrouping = 'keine' | 'gruppe' | 'verantwortlich' | 'stand' | 'monat';
+
+export const DUE_SORT: Record<DueSort, string> = { datum: 'Fälligkeit ↑', 'datum-ab': 'Fälligkeit ↓', titel: 'Beschreibung A–Z', gruppe: 'Gruppe', verantwortlich: 'Verantwortlich' };
+export const DUE_GROUPING: Record<DueGrouping, string> = { keine: 'Nicht gruppieren', gruppe: 'nach Gruppe', verantwortlich: 'nach Verantwortlichem', stand: 'nach Stand', monat: 'nach Monat' };
+const STATE_ORDER: DueState[] = ['ueberfaellig', 'faellig', 'bald', 'offen', 'erledigt'];
+
+export function filterDue(items: DueItem[], f: DueFilter, today: string): DueItem[] {
+  const q = f.q.trim().toLowerCase();
+  return items.filter(x => {
+    const st = dueState(x, today);
+    if (f.state === 'aktiv' ? st === 'erledigt' : f.state !== 'alle' && st !== f.state) return false;
+    if (f.groupId && (f.groupId === '-' ? x.groupId : x.groupId !== f.groupId)) return false;
+    if (f.staff && (f.staff === '-' ? x.staffName : x.staffName !== f.staff)) return false;
+    return !q || `${x.title} ${x.staffName} ${x.note}`.toLowerCase().includes(q);
+  });
+}
+
+export function sortDue(items: DueItem[], sort: DueSort, groupName: (id: string | null) => string): DueItem[] {
+  const byDate = (a: DueItem, b: DueItem) => a.dueDate.localeCompare(b.dueDate) || a.title.localeCompare(b.title, 'de');
+  const cmp: Record<DueSort, (a: DueItem, b: DueItem) => number> = {
+    datum: byDate,
+    'datum-ab': (a, b) => -byDate(a, b),
+    titel: (a, b) => a.title.localeCompare(b.title, 'de', { numeric: true }),
+    // leere Gruppe/Verantwortliche ans Ende
+    gruppe: (a, b) => Number(!a.groupId) - Number(!b.groupId) || groupName(a.groupId).localeCompare(groupName(b.groupId), 'de') || byDate(a, b),
+    verantwortlich: (a, b) => Number(!a.staffName) - Number(!b.staffName) || a.staffName.localeCompare(b.staffName, 'de') || byDate(a, b)
+  };
+  return [...items].sort(cmp[sort]);
+}
+
+const MONTHS = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+/** Gruppen in sinnvoller Reihenfolge (Stand: dringend zuerst, Monat: chronologisch, sonst alphabetisch, „ohne“ am Ende); Einträge behalten die Sortierung */
+export function groupDue(items: DueItem[], by: DueGrouping, groupName: (id: string | null) => string, today: string): { key: string; label: string; items: DueItem[] }[] {
+  if (by === 'keine') return [{ key: 'alle', label: '', items }];
+  const keyOf = (x: DueItem) => by === 'gruppe' ? (x.groupId ?? '') : by === 'verantwortlich' ? x.staffName : by === 'stand' ? dueState(x, today) : x.dueDate.slice(0, 7);
+  const labelOf = (k: string) => by === 'gruppe' ? (k ? groupName(k) : 'Ohne Gruppe') : by === 'verantwortlich' ? (k || 'Ohne Verantwortlichen')
+    : by === 'stand' ? DUE_LABEL[k as DueState] : `${MONTHS[+k.slice(5, 7) - 1]} ${k.slice(0, 4)}`;
+  const map = new Map<string, DueItem[]>();
+  for (const x of items) { const k = keyOf(x); map.set(k, [...(map.get(k) ?? []), x]); }
+  const keys = [...map.keys()].sort((a, b) => by === 'stand' ? STATE_ORDER.indexOf(a as DueState) - STATE_ORDER.indexOf(b as DueState)
+    : by === 'monat' ? a.localeCompare(b) : Number(!a) - Number(!b) || labelOf(a).localeCompare(labelOf(b), 'de'));
+  return keys.map(k => ({ key: k || '-', label: labelOf(k), items: map.get(k)! }));
+}

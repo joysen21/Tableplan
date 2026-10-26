@@ -38,3 +38,29 @@ describe('Fälligkeiten', () => {
     expect([0, 1, 6, 12, 24].map(intervalText)).toEqual(['einmalig', 'monatlich', 'alle 6 Monate', 'jährlich', 'alle 2 Jahre']);
   });
 });
+
+describe('Fälligkeiten: Liste', () => {
+  it('filtern, sortieren, gruppieren', async () => {
+    const { filterDue, sortDue, groupDue } = await import('./due');
+    const items = [
+      X({ title: 'Brandschutz', groupId: 'g1', staffName: 'Eva', dueDate: '2026-10-20' }),
+      X({ title: 'Aufzug', groupId: 'g2', staffName: '', dueDate: '2026-11-30', reminderDays: 0 }),
+      X({ title: 'Versicherung', groupId: null, staffName: 'Karl', dueDate: '2026-11-02' }),
+      X({ title: 'Alt', groupId: 'g1', staffName: 'Eva', dueDate: '2026-09-01', done: true })
+    ];
+    const name = (id: string | null) => ({ g1: 'Wartung', g2: 'Behörden' } as Record<string, string>)[id ?? ''] ?? '';
+    const f = { q: '', groupId: '', staff: '', state: 'aktiv' as const };
+    expect(filterDue(items, f, T).map(x => x.title)).toEqual(['Brandschutz', 'Aufzug', 'Versicherung']);
+    expect(filterDue(items, { ...f, state: 'alle' }, T)).toHaveLength(4);
+    expect(filterDue(items, { ...f, state: 'ueberfaellig' }, T).map(x => x.title)).toEqual(['Brandschutz']);
+    expect(filterDue(items, { ...f, groupId: '-' }, T).map(x => x.title)).toEqual(['Versicherung']);
+    expect(filterDue(items, { ...f, staff: '-' }, T).map(x => x.title)).toEqual(['Aufzug']);
+    expect(filterDue(items, { ...f, q: 'aufz' }, T).map(x => x.title)).toEqual(['Aufzug']);
+    expect(sortDue(items, 'datum-ab', name).map(x => x.title)).toEqual(['Aufzug', 'Versicherung', 'Brandschutz', 'Alt']);
+    expect(sortDue(items, 'gruppe', name).map(x => x.title)).toEqual(['Aufzug', 'Alt', 'Brandschutz', 'Versicherung']);
+    expect(sortDue(items, 'verantwortlich', name).map(x => x.staffName)).toEqual(['Eva', 'Eva', 'Karl', '']);
+    expect(groupDue(sortDue(items, 'datum', name), 'stand', name, T).map(g => `${g.label}:${g.items.length}`)).toEqual(['Überfällig:1', 'Demnächst fällig:1', 'Geplant:1', 'Erledigt:1']);
+    expect(groupDue(items, 'monat', name, T).map(g => g.label)).toEqual(['September 2026', 'Oktober 2026', 'November 2026']);
+    expect(groupDue(items, 'gruppe', name, T).map(g => g.label)).toEqual(['Behörden', 'Wartung', 'Ohne Gruppe']);
+  });
+});

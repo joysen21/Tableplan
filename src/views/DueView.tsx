@@ -2,7 +2,10 @@
  *  Flag = erledigt (mit Intervall: nächster Termin), Formular mit Gruppe (erweiterbar), Verantwortlichem, Intervall und Erinnerung. */
 import { useEffect, useState } from 'react';
 import { AlarmClock, CalendarCheck, Flag, Plus, Trash2, TriangleAlert } from '../ui/icons';
-import { DUE_LABEL, completeDue, dueDashboard, dueRelative, dueState, intervalText, reminderDate, reopenDue } from '../domain/due';
+import {
+  DUE_GROUPING, DUE_LABEL, DUE_SORT, completeDue, dueDashboard, dueRelative, dueState, filterDue, groupDue, intervalText, reminderDate, reopenDue, sortDue,
+  type DueFilter, type DueGrouping, type DueSort, type DueStateFilter
+} from '../domain/due';
 import { newId } from '../domain/demo';
 import { byId } from '../domain/logic';
 import type { DueItem } from '../domain/types';
@@ -14,6 +17,8 @@ import { Modal } from '../ui/Modal';
 import { confirmDialog, toast } from '../ui/notify';
 
 type Tab = 'dashboard' | 'liste';
+/** „Mo 23.10.“ – in einem anderen Jahr mit Jahreszahl */
+const dueDay = (date: string) => fmtShort(date) + (date.slice(0, 4) !== today().slice(0, 4) ? date.slice(0, 4) : '');
 
 export function DueView() {
   const d = useData();
@@ -62,15 +67,18 @@ function DueFlag({ x, text }: { x: DueItem; text?: boolean }) {
 
 function DueRow({ x, onOpen }: { x: DueItem; onOpen: (x: DueItem) => void }) {
   const d = useData();
-  const t0 = today(), st = dueState(x, t0);
+  const t0 = today(), st = dueState(x, t0), g = byId(d.dueGroups, x.groupId)?.name;
   return (
     <li className={'due-row st-' + st}>
       <DueFlag x={x} />
       <button type="button" className="due-main" onClick={() => onOpen(x)}>
-        <b>{x.title}</b>
-        <small className="muted">{[byId(d.dueGroups, x.groupId)?.name, x.staffName, intervalText(x.intervalMonths)].filter(Boolean).join(' · ')}</small>
+        <b>{x.title}</b>{x.note && <small className="muted due-note">{x.note}</small>}
       </button>
-      <span className="due-date"><b>{fmtShort(x.dueDate)}</b><small>{x.done ? `erledigt ${x.doneAt ? fmtShort(x.doneAt) : ''}` : dueRelative(x.dueDate, t0)}</small></span>
+      <span className="due-col due-grp">{g ? <span className="badge">{g}</span> : <span className="muted">–</span>}</span>
+      <span className="due-col due-staff">{x.staffName || <span className="muted">–</span>}</span>
+      <span className="due-col due-int muted">{intervalText(x.intervalMonths)}</span>
+      <span className="due-date"><b>{dueDay(x.dueDate)}</b>
+        <span className={'due-state st-' + st}>{x.done ? `erledigt ${x.doneAt ? fmtShort(x.doneAt) : ''}` : st === 'offen' ? dueRelative(x.dueDate, t0) : `${DUE_LABEL[st]} · ${dueRelative(x.dueDate, t0)}`}</span></span>
     </li>
   );
 }
@@ -83,7 +91,7 @@ function DueCard({ x, onOpen }: { x: DueItem; onOpen: (x: DueItem) => void }) {
     <li className={'due-card st-' + dueState(x, t0)}>
       <button type="button" className="due-card-main" onClick={() => onOpen(x)}>
         <b className="due-title">{x.title}</b>
-        <span className="due-when"><b>{fmtShort(x.dueDate)}</b> · {dueRelative(x.dueDate, t0)}</span>
+        <span className="due-when"><b>{dueDay(x.dueDate)}</b> · {dueRelative(x.dueDate, t0)}</span>
         <small className="muted">{[byId(d.dueGroups, x.groupId)?.name, x.staffName, intervalText(x.intervalMonths)].filter(Boolean).join(' · ')}</small>
       </button>
       <DueFlag x={x} text />
@@ -100,23 +108,53 @@ function DueSection({ title, cls, icon, items, onOpen, empty }: { title: string;
   );
 }
 
+const LIST_KEY = 'tischplan.faellig.liste';
+interface ListPrefs { filter: DueFilter; sort: DueSort; grouping: DueGrouping }
+const DEFAULT_PREFS: ListPrefs = { filter: { q: '', groupId: '', staff: '', state: 'aktiv' }, sort: 'datum', grouping: 'keine' };
+const loadPrefs = (): ListPrefs => { try { const p = JSON.parse(localStorage.getItem(LIST_KEY) || 'null'); return p ? { ...DEFAULT_PREFS, ...p, filter: { ...DEFAULT_PREFS.filter, ...p.filter, q: '' } } : DEFAULT_PREFS; } catch { return DEFAULT_PREFS; } };
+const STATE_FILTER: [DueStateFilter, string][] = [['aktiv', 'Alle offenen'], ['alle', 'Alle (auch erledigte)'], ['ueberfaellig', 'Überfällig'], ['faellig', 'Heute fällig'], ['bald', 'Demnächst fällig'], ['offen', 'Geplant'], ['erledigt', 'Erledigt']];
+
+/** Liste aller Fälligkeiten: filtern (Text, Stand, Gruppe, Verantwortlich), sortieren, gruppieren – Einstellungen bleiben auf dem Gerät */
 function DueList({ onOpen }: { onOpen: (x: DueItem) => void }) {
   const d = useData();
-  const [group, setGroup] = useState('');
-  const [q, setQ] = useState('');
-  const [showDone, setShowDone] = useState(false);
-  const list = d.dueItems
-    .filter(x => (!group || x.groupId === group) && (showDone || !x.done) && (!q || `${x.title} ${x.staffName} ${x.note}`.toLowerCase().includes(q.toLowerCase())))
-    .sort((a, b) => Number(a.done) - Number(b.done) || a.dueDate.localeCompare(b.dueDate));
+  const t0 = today();
+  const [p, setP] = useState<ListPrefs>(loadPrefs);
+  useEffect(() => { try { localStorage.setItem(LIST_KEY, JSON.stringify(p)); } catch { /* egal */ } }, [p]);
+  const f = p.filter;
+  const setF = (x: Partial<DueFilter>) => setP(v => ({ ...v, filter: { ...v.filter, ...x } }));
+  const groupName = (id: string | null) => byId(d.dueGroups, id)?.name ?? '';
+  const staffNames = [...new Set(d.dueItems.map(x => x.staffName).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'de'));
+  const list = sortDue(filterDue(d.dueItems, f, t0), p.sort, groupName);
+  const groups = groupDue(list, p.grouping, groupName, t0);
+  const active = f.q || f.groupId || f.staff || f.state !== 'aktiv';
   return (
-    <section className="panel">
-      <div className="row pad due-filter">
-        <input type="search" placeholder="Suchen…" aria-label="Fälligkeiten suchen" value={q} onChange={e => setQ(e.target.value)} style={{ flex: 1, minWidth: 160 }} />
-        <select aria-label="Gruppe filtern" value={group} onChange={e => setGroup(e.target.value)} style={{ width: 'auto' }}>
-          <option value="">Alle Gruppen</option>{d.dueGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}</select>
-        <label className="chk"><input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} /> Erledigte zeigen</label>
+    <section className="panel due-list">
+      <div className="due-tools">
+        <input type="search" className="due-q" placeholder="Beschreibung, Verantwortlicher, Notiz suchen…" aria-label="Fälligkeiten suchen" value={f.q} onChange={e => setF({ q: e.target.value })} />
+        <label>Stand<select aria-label="Stand filtern" value={f.state} onChange={e => setF({ state: e.target.value as DueStateFilter })}>
+          {STATE_FILTER.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
+        <label>Gruppe<select aria-label="Gruppe filtern" value={f.groupId} onChange={e => setF({ groupId: e.target.value })}>
+          <option value="">Alle Gruppen</option>{d.dueGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}<option value="-">Ohne Gruppe</option></select></label>
+        <label>Verantwortlich<select aria-label="Verantwortlich filtern" value={f.staff} onChange={e => setF({ staff: e.target.value })}>
+          <option value="">Alle</option>{staffNames.map(n => <option key={n} value={n}>{n}</option>)}<option value="-">Ohne Verantwortlichen</option></select></label>
+        <label>Sortierung<select aria-label="Sortierung" value={p.sort} onChange={e => setP(v => ({ ...v, sort: e.target.value as DueSort }))}>
+          {(Object.keys(DUE_SORT) as DueSort[]).map(k => <option key={k} value={k}>{DUE_SORT[k]}</option>)}</select></label>
+        <label>Gruppierung<select aria-label="Gruppierung" value={p.grouping} onChange={e => setP(v => ({ ...v, grouping: e.target.value as DueGrouping }))}>
+          {(Object.keys(DUE_GROUPING) as DueGrouping[]).map(k => <option key={k} value={k}>{DUE_GROUPING[k]}</option>)}</select></label>
       </div>
-      {!list.length ? <p className="muted pad">Keine Fälligkeiten.</p> : <ul className="due-rows">{list.map(x => <DueRow key={x.id} x={x} onOpen={onOpen} />)}</ul>}
+      <div className="due-summary">
+        <span className="muted">{list.length} von {d.dueItems.length} Fälligkeiten</span>
+        {active && <button className="btn small ghost" onClick={() => setP(v => ({ ...v, filter: DEFAULT_PREFS.filter }))}>Filter zurücksetzen</button>}
+      </div>
+      {!list.length ? <p className="muted due-empty">Keine Fälligkeiten für diese Auswahl.</p> : <>
+        <div className="due-thead" aria-hidden="true"><span /><span>Beschreibung</span><span>Gruppe</span><span>Verantwortlich</span><span>Intervall</span><span>Fällig</span></div>
+        {groups.map(g => (
+          <div key={g.key} className="due-group" role="group" aria-label={g.label || 'Fälligkeiten'}>
+            {g.label && <h4 className="due-group-head">{g.label} <span className="count">{g.items.length}</span></h4>}
+            <ul className="due-rows">{g.items.map(x => <DueRow key={x.id} x={x} onOpen={onOpen} />)}</ul>
+          </div>
+        ))}
+      </>}
     </section>
   );
 }

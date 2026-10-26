@@ -41,4 +41,19 @@ test('Fälligkeiten: Dashboard, neue Fälligkeit mit neuer Gruppe, per Flag erle
   await page.getByRole('tab', { name: /Alle Fälligkeiten/ }).click();
   await page.getByLabel('Gruppe filtern').selectOption({ label: 'Hygiene' });
   await expect(page.locator('.due-row')).toHaveCount(1);
+  // Filter Stand, Sortierung, Gruppierung
+  await page.getByRole('button', { name: 'Filter zurücksetzen' }).click();
+  await page.getByLabel('Stand filtern').selectOption('ueberfaellig');
+  await expect(page.locator('.due-row')).toHaveCount(0); // Feuerlöscher wurde erledigt
+  await page.getByLabel('Stand filtern').selectOption('aktiv');
+  await page.getByLabel('Sortierung').selectOption('titel');
+  await expect(page.locator('.due-row').first()).toContainText('Aufzug TÜV');
+  await page.getByLabel('Gruppierung').selectOption('gruppe');
+  await expect(page.getByRole('group', { name: 'Hygiene' }).locator('.due-row')).toHaveCount(1);
+  await expect(page.locator('.due-group-head').first()).toContainText('Hygiene');
+  await page.screenshot({ path: 'test-results/faelligkeiten-liste.png', fullPage: true });
+  // Einstellungen bleiben nach dem Neuladen
+  await page.reload();
+  await page.getByRole('tab', { name: /Alle Fälligkeiten/ }).click();
+  await expect(page.getByLabel('Gruppierung')).toHaveValue('gruppe');
 });
