@@ -57,7 +57,7 @@ export function PassView() {
       )}
       <div className="panel">
         <div className="plan-wrap">
-          {room ? <FloorPlan data={d} room={room} mode="live" look={look} status={tb => tableStatusAt(d, tb, ui.date, serviceId, ui.time)}
+          {room ? <FloorPlan data={d} room={room} mode="live" look={look} nameOnly status={tb => tableStatusAt(d, tb, ui.date, serviceId, ui.time)}
             onTableDown={(_e, tb) => setSel(tb.id)} /> : <p className="muted">Kein Raum angelegt.</p>}
         </div>
         <div className="legend">
@@ -128,7 +128,7 @@ function PassParty({ r }: { r: Reservation }) {
 
   return (
     <section className="pass-party" aria-label={label}>
-      <h3>{label} <small className="muted">· {persons(r)} P</small></h3>
+      <h3>{label}</h3>
       {hasAllergy(r) && <p className="warnbox">⚠ {allergyText(r)}</p>}
       {p.choice?.note && <p className="muted" style={{ margin: '4px 0' }}>📝 {p.choice.note}</p>}
       {!p.menu ? <p className="muted">Für diesen Service ist kein Menü angelegt.</p>
@@ -236,6 +236,7 @@ function CallCard({ c, action }: { c: CallView; action: React.ReactNode }) {
       <div className="pc-head"><b>{c.tables}</b><span className="muted"><Clock /> {min} min</span></div>
       <div className="muted" style={{ fontSize: 12 }}>{c.label} · {t(c.call.course)}</div>
       {hasAllergy(c.res) && <div className="danger" style={{ fontSize: 12 }}>⚠ {allergyText(c.res)}</div>}
+      {c.note && <div className="chef-note">📝 {c.note}</div>}
       <ul>
         {c.lines.map(l => <li key={l.dishId}>
           {l.n - l.cancelled > 0 && <span><b>{l.n - l.cancelled}×</b> {l.name}</span>}

@@ -825,3 +825,4 @@ body.dragging .xg-bar,.xgrid.is-dragging .xg-bar{pointer-events:none}
 .xg-bar.preview{pointer-events:none;z-index:3;opacity:.9;outline:2px dashed var(--text);outline-offset:-2px;display:flex;align-items:center;white-space:nowrap;font-size:12px}
 .xg-bar.preview.bad{background:var(--danger)!important;outline-color:var(--danger)}
 body.dragging,body.dragging *{cursor:grabbing!important}
+.chef-note{font-size:13px;background:var(--accent-soft);border-radius:6px;padding:3px 6px}

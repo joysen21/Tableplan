@@ -13,6 +13,8 @@ interface Props {
   status?: (tb: DiningTable) => TableStatus;
   /** eigene Einfärbung statt des Reservierungs-Status (z. B. Gang-Stand im Pass-Plan) */
   look?: (tb: DiningTable) => TableLook;
+  /** nur Name und Zimmernummer (Pass) – ohne Uhrzeit und Personenzahl */
+  nameOnly?: boolean;
   sel?: string | null; highlight?: Set<string>; showStations?: boolean;
   onTableDown?: (e: RPE, tb: DiningTable) => void;
   onDecorDown?: (e: RPE, d: Decor) => void;
@@ -99,13 +101,13 @@ export function FloorPlan(p: Props) {
           lineEls.push(<tspan key="a" x={0} dy={14} fontSize={11}>{nm.length > len ? nm.slice(0, len - 1) + '…' : nm}{more}</tspan>);
           // Zimmernummern der Hotelgäste am Tisch (zusätzlich zum Namen)
           const nos = mode === 'live' ? roomNosAt(data, tb.id, r) : [];
-          if (nos.length) lineEls.push(<tspan key="z" x={0} dy={13} fontSize={small ? 10 : 11} fontWeight={700}>Zi. {nos.join('/')}</tspan>);
-          lineEls.push(small
+          if (nos.length) lineEls.push(<tspan key="z" x={0} dy={13} fontSize={small ? 10 : 11} fontWeight={700}>Zi. {nos.join('/')}{p.nameOnly && hasAllergy(r) ? ' ⚠' : ''}</tspan>);
+          if (!p.nameOnly) lineEls.push(small
             ? <tspan key="b" x={0} dy={13} fontSize={10}>{persons(r)}P{r.stayId ? '⌂' : ''}{hasAllergy(r) ? '⚠' : ''}</tspan>
             : <tspan key="b" x={0} dy={13} fontSize={11}>{r.time} · {persons(r)}P{r.stayId ? ' ⌂' : ''}{hasAllergy(r) ? ' ⚠' : ''}{r.vip ? ' ★' : ''}</tspan>);
         } else if (mode !== 'edit' && s.next) {
           lineEls.push(<tspan key="a" x={0} dy={14} fontSize={11} opacity={0.8}>ab {s.next.time}</tspan>);
-        } else lineEls.push(<tspan key="a" x={0} dy={14} fontSize={11} opacity={0.7}>{tb.minPersons}–{tb.maxPersons} P</tspan>);
+        } else if (!p.nameOnly) lineEls.push(<tspan key="a" x={0} dy={14} fontSize={11} opacity={0.7}>{tb.minPersons}–{tb.maxPersons} P</tspan>);
         const dy = -((lineEls.length - 1) * 13) / 2 + 4;
         const outline = p.showStations && station ? (tb.shape === 'round'
           ? <ellipse rx={w / 2 + 3} ry={h / 2 + 3} fill="none" stroke={station.color} strokeWidth={4} />

@@ -78,6 +78,9 @@ describe('Pass + Chef', () => {
     d.stations.push({ id: 's1', name: 'Revier A', color: '#000' });
     d.tables[0].stationId = 's1';
     expect(chefOverview(d, DAY, svc).active[0].label).toBe('Rossi · Revier A');
+    // Notiz des Gasts zur Menüauswahl
+    d.menuChoices[0].note = 'Fleisch medium';
+    expect(chefOverview(d, DAY, svc).active[0].note).toBe('Fleisch medium');
   });
 
   it('ohne Menüauswahl: Tisch „ohne“, nichts abrufbar', () => {

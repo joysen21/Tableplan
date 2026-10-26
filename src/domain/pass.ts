@@ -87,7 +87,7 @@ export const stationNames = (d: VenueData, r: Reservation) =>
 
 /* ---------- Küche (Chef) ---------- */
 export interface ChefDish { dishId: string; name: string; course: Course; total: number; open: number; inKitchen: number; ready: number; served: number }
-export interface CallView { call: PassCall; res: Reservation; label: string; tables: string; lines: { dishId: string; name: string; n: number; cancelled: number }[] }
+export interface CallView { call: PassCall; res: Reservation; label: string; tables: string; /** Notiz des Gasts zur Menüauswahl */ note: string; lines: { dishId: string; name: string; n: number; cancelled: number }[] }
 export interface ChefOverview { menu?: Menu; dishes: ChefDish[]; active: CallView[]; ready: CallView[] }
 
 export function chefOverview(d: VenueData, date: string, serviceId: string): ChefOverview {
@@ -96,7 +96,7 @@ export function chefOverview(d: VenueData, date: string, serviceId: string): Che
   const list = passReservations(d, date, serviceId).map(r => ({ r, p: passProgress(d, r) }));
   const dishes = new Map<string, ChefDish>();
   for (const it of menu.items) dishes.set(it.dishId, { dishId: it.dishId, name: dishName(d, menu, it.dishId), course: it.course, total: 0, open: 0, inKitchen: 0, ready: 0, served: 0 });
-  const view = (call: PassCall, r: Reservation): CallView => ({
+  const view = (call: PassCall, r: Reservation, note = ''): CallView => ({ note,
     call, res: r, label: partyLabel(d, r, true), tables: tableNames(d, r.tableIds),
     lines: Object.keys(call.counts).filter(k => call.counts[k] > 0).map(k => ({ dishId: k, name: dishName(d, menu, k), n: call.counts[k], cancelled: call.cancelled[k] ?? 0 }))
   });
@@ -113,8 +113,8 @@ export function chefOverview(d: VenueData, date: string, serviceId: string): Che
           if (call.state === 'abgerufen') e.inKitchen += n; else if (call.state === 'fertig') e.ready += n; else e.served += n;
         }
         // abgerufene Gänge zeigen auch stornierte Portionen (durchgestrichen), solange etwas offen ist oder storniert wurde
-        if (call.state === 'abgerufen') active.push(view(call, r));
-        else if (call.state === 'fertig' && callNet(call) > 0) ready.push(view(call, r));
+        if (call.state === 'abgerufen') active.push(view(call, r, p.choice?.note ?? ''));
+        else if (call.state === 'fertig' && callNet(call) > 0) ready.push(view(call, r, p.choice?.note ?? ''));
       }
     }
   }
