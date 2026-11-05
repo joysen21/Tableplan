@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { demoVenueData, emptyVenueData, newId } from './demo';
 import {
-  absenceErrors, changedSince, copyWeek, DEFAULT_ROSTER_SETTINGS, easter, expectedGuests, holidayName, hoursCsv, hoursRows, isoWeek, monthDays,
+  absenceErrors, changedSince, copyWeek, DEFAULT_ROSTER_SETTINGS, easter, expectedGuests, holidayName, hoursCsv, hoursRows, isoWeek, monthDays, monthGrid, shiftMonth,
   plannedCount, rosterSettings, rosterWarnings, shiftBlocks, shiftsOverlap, shiftWarnings, staffForDepartment, staffNeeded, vacationUsed, weekDays, weekStart
 } from './rosterPlan';
 import type { Shift, Staff, VenueData } from './types';
@@ -170,5 +170,18 @@ describe('Besetzung, Veröffentlichen, Woche übernehmen, Export', () => {
     expect(d.shifts.length).toBeGreaterThan(40);
     const w = rosterWarnings(d, weekStart(d.shifts[0].date), S);
     expect(w.filter(x => x.kind === 'overlap' || x.kind === 'rest' || x.kind === 'absence')).toEqual([]);
+  });
+});
+
+describe('Monatskalender (Mitarbeiter-Link)', () => {
+  it('volle Wochen Mo–So um den Monat', () => {
+    const g = monthGrid('2026-11'); // 1.11.2026 = Sonntag, 30.11. = Montag
+    expect(g[0]).toBe('2026-10-26');
+    expect(g.at(-1)).toBe('2026-12-06');
+    expect(g.length % 7).toBe(0);
+  });
+  it('Monat verschieben über den Jahreswechsel', () => {
+    expect(shiftMonth('2026-12', 1)).toBe('2027-01');
+    expect(shiftMonth('2026-01', -1)).toBe('2025-12');
   });
 });

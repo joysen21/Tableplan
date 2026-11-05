@@ -331,3 +331,26 @@ test('Fälligkeiten am Handy: Zahl am „Mehr“ und im Menü, Dashboard unterei
   expect(w).toBeLessThanOrEqual(1);
   await page.screenshot({ path: 'test-results/faelligkeiten-handy.png', fullPage: true });
 });
+
+test('Mitarbeiter-Link am Handy: Woche als Tagesliste, Monat als Kalender ohne seitliches Scrollen', async ({ page }) => {
+  await loginDemo(page);
+  const token = await page.evaluate(() => {
+    const v = Object.values(JSON.parse(localStorage.getItem('tischplan.demo.v2')!).data)[0] as any;
+    const mon = (d: Date) => { const x = new Date(d); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x.toLocaleDateString('sv-SE'); };
+    const wk = mon(new Date());
+    const pub = new Set(v.publications.filter((p: any) => p.weekStart === wk).map((p: any) => p.departmentId));
+    const sh = v.shifts.find((s: any) => s.staffId && pub.has(s.departmentId) && mon(new Date(s.date + 'T12:00:00')) === wk);
+    return v.staff.find((s: any) => s.id === sh.staffId).shareToken as string;
+  });
+  await page.goto('/p/' + token);
+  await expect(page.locator('.pub-days > li')).toHaveCount(7);
+  await expect(page.locator('table.pub-team')).toBeHidden();
+  await expect(page.locator('.pub-days .pub-shift.big').first()).toBeVisible();
+  const noScroll = async () => expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
+  await noScroll();
+  await page.screenshot({ path: 'test-results/dienstplan-link-woche-handy.png', fullPage: true });
+  await page.getByRole('button', { name: 'Monat' }).click();
+  await expect(page.locator('.pub-cal-d.today')).toHaveCount(1);
+  await noScroll();
+  await page.screenshot({ path: 'test-results/dienstplan-link-monat-handy.png', fullPage: true });
+});

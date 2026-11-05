@@ -114,11 +114,19 @@ test('Abwesenheit mit Urlaubskonto, Veröffentlichen und Mitarbeiter-Link (DE/IT
   expect(url).toMatch(/\/p\/[0-9a-f-]{36}$/);
   await page.goto(url);
   await expect(page.getByRole('heading', { name: /Dienstplan · Hotel Sonnenhof/ })).toBeVisible();
-  await expect(page.locator('.pub-mine li').first()).toBeVisible();
+  await expect(page.getByText('Meine Dienste')).toHaveCount(0);
+  await expect(page.locator('table.pub-team tr.me')).toContainText('Paul Steiner');
+  // Monatsansicht: eigene Dienste im Kalender, Auswahl bleibt gespeichert
+  await page.getByRole('button', { name: 'Monat' }).click();
+  await expect(page.locator('.pub-cal-s').first()).toBeVisible();
+  await expect(page.locator('.pub-cal-d.today')).toHaveCount(1);
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Monat' })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Woche' }).click();
   await expect(page.getByRole('link', { name: 'Kalender abonnieren' })).toHaveAttribute('href', /^webcal:\/\/.*\/api\/ical\//);
   await page.screenshot({ path: 'test-results/dienstplan-link.png', fullPage: true });
-  await page.getByRole('button', { name: 'IT' }).click();
-  await expect(page.getByRole('heading', { name: 'I miei turni' })).toBeVisible();
+  await page.getByRole('button', { name: 'IT', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Settimana' })).toBeVisible();
   await page.goto('/p/00000000-0000-0000-0000-000000000000');
   await expect(page.getByText('non è valido')).toBeVisible(); // Sprache bleibt gespeichert
 });

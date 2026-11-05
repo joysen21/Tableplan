@@ -180,7 +180,8 @@ table.list tr.clickable:hover td{background:var(--panel2)}
 .report-groups .btn svg{width:18px;height:18px}
 .report-types{min-height:34px;flex-wrap:wrap}
 .room-chip{display:inline-flex;gap:2px}
-@media print{.print-room+.print-room{break-before:page}}
+@media print{
+  .pub-team-wrap{display:block!important}.pub-days{display:none!important}table.pub-team{min-width:0}.print-room+.print-room{break-before:page}}
 @media (max-width:760px){.seg.report-groups{display:grid;grid-template-columns:repeat(2,1fr)}.seg.report-groups .btn{min-width:0}}
 /* Bestellliste */
 .orders-head{padding:10px 14px;border-bottom:1px solid var(--line);gap:10px}
@@ -634,25 +635,63 @@ table.roster-month td.sum{white-space:nowrap;font-weight:600}
 .dept-staffing label{flex:1}
 .dept-staffing input{margin-top:2px}
 /* öffentliche Seite (Mitarbeiter-Link) */
-.pub-page{max-width:980px;margin:0 auto;padding:16px}
+.pub-page{max-width:1280px;margin:0 auto;padding:16px}
 .pub-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .pub-head .login-logo{height:30px;width:auto;margin:0}
 .pub-title{font-size:22px;margin:0 0 4px}
-.pub-mine{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
-.pub-mine li{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:6px 8px;border-radius:8px;background:var(--panel2)}
-.pub-mine li.today{background:var(--accent-soft)}
-.pub-mine .d{min-width:70px}
-.pub-mine .tm{border-left:4px solid;padding-left:8px;font-weight:600}
-.pub-weekbar{padding:10px 12px;border-bottom:1px solid var(--line)}
-table.pub-team td,table.pub-team th{font-size:13px}
-table.pub-team th.today{background:var(--accent-soft)}
-table.pub-team tr.me td{background:var(--accent-soft)}
-.pub-shift{display:block;border-left:3px solid;padding-left:5px;margin:1px 0;white-space:nowrap}
+.pub-top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px 16px;margin-bottom:12px}
+.pub-actions{display:flex;flex-wrap:wrap;align-items:center;gap:6px;position:relative}
+.pub-help summary{list-style:none;cursor:pointer;width:28px;height:28px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;font-weight:700;color:var(--muted)}
+.pub-help summary::-webkit-details-marker{display:none}
+.pub-help p{position:absolute;right:0;top:34px;z-index:5;width:min(320px,90vw);margin:0;padding:10px 12px;font-size:12px;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.12)}
+.pub-mode{max-width:280px;margin-bottom:12px}
+.pub-weekbar{padding:10px 12px;border-bottom:1px solid var(--line);justify-content:space-between;flex-wrap:nowrap}
+.pub-weekbar h3{margin:0;border:0;padding:0;font-size:17px;text-align:center;flex:1}
+table.pub-team{table-layout:fixed;min-width:860px}
+table.pub-team td,table.pub-team th{font-size:14px;padding:10px 8px;vertical-align:top}
+table.pub-team th:first-child,table.pub-team td.nm{width:150px}
+table.pub-team th{font-weight:500;text-align:left}
+table.pub-team th.today,table.pub-team td.today{background:var(--accent-soft)}
+table.pub-team tr.me td{background:var(--accent-soft);border-top:2px solid var(--accent);border-bottom:2px solid var(--accent)}
+table.pub-team tr.open td.nm{color:var(--muted);font-style:italic}
+.pub-shift{display:block;border-left:4px solid;padding:2px 0 2px 7px;margin:2px 0;white-space:nowrap}
+.pub-shift small{display:block;color:var(--muted);font-size:11px;white-space:normal}
+.pub-shift .badge{margin-left:6px;font-size:10px}
+.pub-shift.big{font-size:16px}
+.pub-abs{display:inline-block;font-size:12px;font-weight:600;padding:1px 7px;border-radius:999px;background:var(--panel2);color:var(--muted);margin:1px 0}
+.pub-abs.urlaub{background:rgba(45,164,78,.14);color:#1f7a3a}
+.pub-abs.krank{background:rgba(207,34,46,.12);color:#b42330}
+.pub-days{display:none;list-style:none;margin:0;padding:8px;gap:8px;flex-direction:column}
+.pub-days>li{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--panel)}
+.pub-days>li.today{border-color:var(--accent);background:var(--accent-soft)}
+.pub-day-h{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.pub-day-me{display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+.pub-day-team{list-style:none;margin:8px 0 0;padding:8px 0 0;border-top:1px dashed var(--line);display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-size:13px}
+.pub-day-team li{display:contents}
+.pub-day-team .nm{color:var(--muted)}
+.pub-cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;padding:10px}
+.pub-cal-h{text-align:center;font-size:12px;font-weight:600;color:var(--muted);padding:2px 0}
+.pub-cal-d{min-height:92px;border:1px solid var(--line);border-radius:8px;padding:5px 6px;display:flex;flex-direction:column;gap:3px;background:var(--panel);min-width:0}
+.pub-cal-d .n{font-size:13px;font-weight:600}
+.pub-cal-d.other{opacity:.45}
+.pub-cal-d.out{background:var(--panel2)}
+.pub-cal-d.today{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.pub-cal-d.today .n{color:var(--accent)}
+.pub-cal-s{border-left:4px solid;padding-left:5px;font-size:13px;font-weight:600;line-height:1.25;overflow-wrap:anywhere}
+.pub-cal-s.changed{color:#9a6700}
 @media (max-width:760px){
   .roster-plan{padding:8px}
   .roster-title{min-width:0;flex:1}
   .rd-row{grid-template-columns:100px 1fr}
   .pub-page{padding:10px}
+  .pub-team-wrap{display:none}
+  .pub-days{display:flex}
+  .pub-cal{gap:2px;padding:6px}
+  .pub-cal-d{min-height:64px;padding:3px;border-radius:6px}
+  .pub-cal-d .n{font-size:11px}
+  .pub-cal-s{font-size:10px;border-left-width:3px;padding-left:3px}
+  .pub-cal-d .pub-abs{font-size:9px;padding:0 3px}
+  .pub-mode{max-width:none}
 }
 @media print{
   .print-only{display:block;font-size:16px;margin:0 0 8px}

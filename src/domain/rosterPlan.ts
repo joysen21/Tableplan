@@ -242,3 +242,18 @@ export function staffForDepartment(d: VenueData, departmentId: string, from: str
   return d.staff.filter(s => d.shifts.some(x => x.staffId === s.id && x.departmentId === departmentId && inRange(x.date, from, to))
     || (s.active && (s.departmentId === departmentId || s.positionIds.some(p => d.positions.find(x => x.id === p)?.departmentId === departmentId))));
 }
+
+/** Monatskalender: alle Tage der vollen Wochen (Mo–So), die den Monat 'YYYY-MM' abdecken */
+export function monthGrid(month: string): string[] {
+  const first = `${month}-01`;
+  const [y, m] = [+month.slice(0, 4), +month.slice(5, 7)];
+  const last = `${month}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, '0')}`;
+  const out: string[] = [];
+  for (let d = weekStart(first); d <= addDays(weekStart(last), 6); d = addDays(d, 1)) out.push(d);
+  return out;
+}
+/** Monat verschieben: '2026-11' + 1 → '2026-12' */
+export function shiftMonth(month: string, n: number): string {
+  const i = +month.slice(0, 4) * 12 + +month.slice(5, 7) - 1 + n;
+  return `${Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, '0')}`;
+}
