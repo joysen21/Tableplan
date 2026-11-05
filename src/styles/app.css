@@ -1050,3 +1050,9 @@ table.pub-team th.closed,table.pub-team td.closed,.pub-cal-d.closed,.pub-days>li
 .roster-tabs .nav-badge{margin-left:6px}
 .pub-shift .pub-swap,.pub-shift .pub-swap-state{display:flex;width:fit-content}
 table.pub-team .pub-shift{white-space:normal}
+/* Bestellliste: Historie löschen */
+.order-hist-tools{margin-bottom:8px;gap:8px}
+.order-hist-row{display:flex;align-items:stretch;background:var(--panel2)}
+.order-hist-pick{margin:0 0 0 12px;align-self:center;width:18px;height:18px;flex:none}
+.order-hist.picked{border-color:var(--danger)}
+.order-hist-row .order-hist-head{flex:1;width:auto;min-width:0}

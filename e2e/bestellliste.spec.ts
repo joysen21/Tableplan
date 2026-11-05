@@ -76,3 +76,41 @@ async function loginDemoKeep(page: import('@playwright/test').Page, who: string)
   await page.getByRole('button', { name: new RegExp(who.replace(/[()]/g, '.')) }).click();
   await expect(page.locator('header')).toBeVisible();
 }
+
+test('Historie: einzelne und mehrere Bestellungen löschen', async ({ page }) => {
+  await loginDemo(page, 'Karl (Küche)');
+  // drei Bestellungen an Agostini anlegen
+  await page.evaluate(() => {
+    const db = JSON.parse(localStorage.getItem('tischplan.demo.v2')!);
+    const v = Object.values(db.data)[0] as any;
+    const sup = v.suppliers.find((s: any) => s.name === 'Agostini');
+    const p = v.supplierProducts.find((x: any) => x.supplierId === sup.id);
+    [1, 2, 3].forEach(n => v.supplierOrders.push({ id: crypto.randomUUID(), supplierId: sup.id, createdAt: new Date(Date.now() - n * 86400000).toISOString(),
+      createdBy: 'Karl', items: [{ productId: p.id, name: p.name, unit: p.unit ?? '', qty: n }], note: '' }));
+    localStorage.setItem('tischplan.demo.v2', JSON.stringify(db));
+  });
+  await page.reload();
+  await goView(page, 'Bestellliste');
+  await page.getByRole('tab', { name: 'Historie' }).click();
+  await expect(page.locator('.order-hist')).toHaveCount(3);
+
+  // einzeln: in der aufgeklappten Bestellung, mit Rückfrage
+  await page.locator('.order-hist-body').getByRole('button', { name: 'Löschen' }).click();
+  const dlg = page.getByRole('dialog');
+  await expect(dlg).toContainText('Bestellung löschen?');
+  await expect(dlg).toContainText('1 Artikel');
+  await dlg.getByRole('button', { name: 'Löschen' }).click();
+  await expect(page.locator('.toast')).toContainText('Bestellung gelöscht');
+  await expect(page.locator('.order-hist')).toHaveCount(2);
+
+  // mehrere: Auswahlmodus
+  await page.getByRole('button', { name: 'Mehrere löschen…' }).click();
+  await expect(page.getByRole('button', { name: /Ausgewählte löschen/ })).toBeDisabled();
+  await page.getByLabel('Alle auswählen').check();
+  await page.screenshot({ path: 'test-results/bestell-auswahl.png' });
+  await page.getByRole('button', { name: 'Ausgewählte löschen (2)' }).click();
+  await expect(page.getByRole('dialog')).toContainText('2 Bestellungen löschen?');
+  await page.getByRole('dialog').getByRole('button', { name: 'Löschen' }).click();
+  await expect(page.getByText('Noch keine Bestellungen an diesen Lieferanten.')).toBeVisible();
+  await page.screenshot({ path: 'test-results/bestell-historie-leer.png' });
+});

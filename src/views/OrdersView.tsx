@@ -148,7 +148,24 @@ function OrderForm({ supplierId }: { supplierId: string }) {
 function History({ supplierId, onReuse }: { supplierId: string; onReuse: () => void }) {
   const d = useData();
   const orders = d.supplierOrders.filter(o => o.supplierId === supplierId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const store = useApp();
   const [open, setOpen] = useState<string | null>(orders[0]?.id ?? null);
+  // Auswahlmodus: mehrere Bestellungen auf einmal löschen
+  const [picking, setPicking] = useState(false);
+  const [sel, setSel] = useState<Set<string>>(new Set());
+  const when = (iso: string) => new Date(iso).toLocaleString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const toggle = (id: string) => setSel(s => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  async function remove(ids: string[]) {
+    const list = orders.filter(o => ids.includes(o.id));
+    if (!list.length) return;
+    const lines = list.length === 1 ? [`${when(list[0].createdAt)} – ${list[0].items.length} Artikel`] : [`${list.length} Bestellungen`];
+    if (!(await confirmDialog(list.length === 1 ? 'Bestellung löschen?' : `${list.length} Bestellungen löschen?`, [...lines, 'Sie fehlen danach auch in der Auswertung.'], 'Löschen', true))) return;
+    const sup = d.suppliers.find(s => s.id === supplierId)?.name ?? '';
+    if (await store.remove('supplierOrders', list.map(o => o.id), [list.length === 1 ? 'Bestellung gelöscht' : 'Bestellungen gelöscht', `${sup}: ${list.map(o => when(o.createdAt)).join(', ')}`])) {
+      toast(list.length === 1 ? 'Bestellung gelöscht' : `${list.length} Bestellungen gelöscht`);
+      setSel(new Set()); setPicking(false);
+    }
+  }
   function reuse(items: { productId: string; qty: number }[]) {
     saveDraft(draftKey(d.venue.id, supplierId), Object.fromEntries(items.filter(i => d.supplierProducts.some(p => p.id === i.productId)).map(i => [i.productId, i.qty])));
     toast('Mengen übernommen');
@@ -157,16 +174,33 @@ function History({ supplierId, onReuse }: { supplierId: string; onReuse: () => v
   if (!orders.length) return <div className="body"><p className="muted">Noch keine Bestellungen an diesen Lieferanten.</p></div>;
   return (
     <div className="body">
+      <div className="row order-hist-tools">
+        {picking ? <>
+          <label className="chk"><input type="checkbox" aria-label="Alle auswählen" checked={sel.size === orders.length}
+            onChange={e => setSel(e.target.checked ? new Set(orders.map(o => o.id)) : new Set())} /> Alle ({orders.length})</label>
+          <span className="spacer" />
+          <button className="btn small danger" disabled={!sel.size} onClick={() => remove([...sel])}><Trash2 />Ausgewählte löschen{sel.size ? ` (${sel.size})` : ''}</button>
+          <button className="btn small ghost" onClick={() => { setPicking(false); setSel(new Set()); }}>Abbrechen</button>
+        </> : <><span className="muted">{orders.length} {orders.length === 1 ? 'Bestellung' : 'Bestellungen'}</span><span className="spacer" />
+          <button className="btn small ghost" onClick={() => setPicking(true)}>Mehrere löschen…</button></>}
+      </div>
       {orders.map(o => (
-        <div key={o.id} className="order-hist">
-          <button className="order-hist-head" aria-expanded={open === o.id} onClick={() => setOpen(open === o.id ? null : o.id)}>
-            <b>{new Date(o.createdAt).toLocaleString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</b>
-            <span className="muted">{o.items.length} Artikel · {o.items.reduce((a, l) => a + l.qty, 0)} Stück · {o.createdBy}</span>
-          </button>
-          {open === o.id && <div className="order-hist-body">
+        <div key={o.id} className={'order-hist' + (sel.has(o.id) ? ' picked' : '')}>
+          <div className="order-hist-row">
+            {picking && <input type="checkbox" className="order-hist-pick" aria-label={`Bestellung ${when(o.createdAt)} auswählen`} checked={sel.has(o.id)} onChange={() => toggle(o.id)} />}
+            <button className="order-hist-head" aria-expanded={open === o.id} onClick={() => (picking ? toggle(o.id) : setOpen(open === o.id ? null : o.id))}>
+              <b>{when(o.createdAt)}</b>
+              <span className="muted">{o.items.length} Artikel · {o.items.reduce((a, l) => a + l.qty, 0)} Stück · {o.createdBy}</span>
+            </button>
+          </div>
+          {open === o.id && !picking && <div className="order-hist-body">
             {o.items.map(l => <div key={l.productId} className="ml-dish"><b>{l.qty}×</b><span>{l.name}{l.unit ? ` (${l.unit})` : ''}</span></div>)}
             {o.note && <p className="muted" style={{ margin: '6px 0 0' }}>📝 {o.note}</p>}
-            <button className="btn small mt8" onClick={() => reuse(o.items)}>Als neue Bestellung übernehmen</button>
+            <div className="row mt8">
+              <button className="btn small" onClick={() => reuse(o.items)}>Als neue Bestellung übernehmen</button>
+              <span className="spacer" />
+              <button className="btn small ghost danger" onClick={() => remove([o.id])}><Trash2 />Löschen</button>
+            </div>
           </div>}
         </div>
       ))}
