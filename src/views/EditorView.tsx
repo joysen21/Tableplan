@@ -15,6 +15,7 @@ import { useUi } from '../store/ui';
 import { svgPoint } from '../ui/drag';
 import { confirmDialog, toast } from '../ui/notify';
 import { FloorPlan } from '../ui/FloorPlan';
+import { RoomPlanExport, RoomPlanImport } from './RoomPlanTransfer';
 
 const SHAPES: TableShape[] = ['round', 'square', 'rect', 'bench'];
 const DECOR: DecorKind[] = ['wall', 'door', 'bar', 'buffet', 'column', 'plant', 'label'];
@@ -166,6 +167,7 @@ export function EditorView() {
           </>}
           <button className="btn mt12" onClick={addRoom}><Plus />Neuer Raum</button>
           {room && <button className="btn danger" onClick={() => deleteRoom(room)}><Trash2 />Raum löschen</button>}
+          <div className="rp-transfer mt12"><RoomPlanExport /><RoomPlanImport /></div>
         </div>
         <h3>Tisch hinzufügen</h3>
         <div className="body">{SHAPES.map(s => <button key={s} className="btn" onClick={() => addTable(s)}>{t(s)}</button>)}

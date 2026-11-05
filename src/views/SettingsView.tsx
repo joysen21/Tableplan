@@ -5,6 +5,7 @@ import { repo } from '../data';
 import { demoVenueData, newId } from '../domain/demo';
 import { ROLES } from '../domain/constants';
 import { remapIds } from '../domain/remap';
+import { RoomPlanExport, RoomPlanImport } from './RoomPlanTransfer';
 import type { Member, Role, Service, ServiceKind, VenueData } from '../domain/types';
 import { t } from '../lib/i18n';
 import { downloadBlob } from '../lib/download';
@@ -157,6 +158,7 @@ export function SettingsView() {
                 await replace(remapIds({ ...j.data, venue: d.venue }, newId), 'Sicherung einspielen');
               } catch (err: any) { toast(err.message, 'err'); }
             }} /></label>
+            <RoomPlanExport /><RoomPlanImport />
             <button className="btn" onClick={() => replace(demoVenueData(d.venue.id, d.venue.name), 'Demo-Daten erzeugen')}>Demo-Daten neu erzeugen</button>
             <button className="btn danger" onClick={() => replace({ ...d, stays: [], reservations: [], audit: [] }, 'Alle Reservierungen & Gäste löschen')}>Reservierungen & Gäste löschen</button></>}
           </div>
