@@ -93,7 +93,9 @@ begin
   perform pg_advisory_xact_lock(hashtext('request:' || st.id::text));
   if p_kind not in ('frei', 'urlaub', 'krank') then raise exception 'roster_request: Unbekannte Art der Anfrage.'; end if;
   if p_from is null or p_to is null or p_to < p_from then raise exception 'roster_request: Das Bis-Datum liegt vor dem Von-Datum.'; end if;
-  if p_from < current_date - case when p_kind = 'krank' then 7 else 0 end then
+  -- Krankmeldung bis 7 Tage rückwirkend, Frei/Urlaub ab heute
+  -- (kein CASE in der IF-Bedingung: PL/pgSQL beendet die Bedingung beim ersten THEN)
+  if (p_kind = 'krank' and p_from < current_date - 7) or (p_kind <> 'krank' and p_from < current_date) then
     raise exception 'roster_request: Dieser Zeitraum liegt zu weit in der Vergangenheit.'; end if;
   if p_to > current_date + 400 then raise exception 'roster_request: Bitte höchstens ein Jahr im Voraus anfragen.'; end if;
   if not public.roster_in_season(st.venue_id, p_from, p_to) then
