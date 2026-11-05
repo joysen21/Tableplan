@@ -12,12 +12,15 @@ import type { BoardDef, Branding, Member, MenuChoice, ModuleKey, OnDuty, PublicR
 import { decideRequest as decideRequestFx, inSeason, REQUEST_ERROR_TEXT, requestErrors, sickEffects, takeError } from '../domain/requests';
 import { buildGuestMenu, cleanCounts, newQrToken, partyKey } from '../domain/guestMenu';
 import { moduleAllowed } from '../domain/modules';
+import { codeError, FIRM_RE, loginEmail, passwordError } from '../domain/logins';
 import { addDays, today } from '../lib/time';
 import { ORDER_KEYS, ROSTER_KEYS, RepoError, type AuthUser, type ChangeEvent, type EntityKey, type EntityMap, type LiveState, type Membership, type Repo } from './repo';
 
 const KEY = 'tischplan.demo.v2';
 const SESSION = 'tischplan.demo.user';
-interface DemoDb { venues: { id: string; name: string }[]; members: (Member & { venueId: string })[]; data: Record<string, VenueData> }
+/** Code-Benutzer haben im Demo-Modus ein (Klartext-)Passwort – nur im Browser, nur zum Ausprobieren */
+type DemoMember = Member & { venueId: string; password?: string; pwChange?: boolean };
+interface DemoDb { venues: { id: string; name: string }[]; members: DemoMember[]; data: Record<string, VenueData> }
 
 export const DEMO_USERS: { email: string; name: string; role: Role }[] = [
   { email: 'admin@demo.local', name: 'Anna (Admin)', role: 'admin' },
@@ -126,16 +129,23 @@ export class DemoRepo implements Repo {
 
   /* ---------- Anmeldung ---------- */
   async getUser(): Promise<AuthUser | null> { const u = this.user(); return u ? { id: u.userId, email: u.email } : null; }
-  async signIn(email: string): Promise<AuthUser> {
+  async signIn(email: string, password?: string): Promise<AuthUser> {
     const db = this.read();
     const m = db.members.find(x => x.email.toLowerCase() === email.toLowerCase());
     if (!m) throw new RepoError('auth', 'Unbekannter Demo-Benutzer');
+    if (m.password !== undefined && m.password !== password) throw new RepoError('auth', 'Invalid login credentials');
     sessionStorage.setItem(SESSION, JSON.stringify(m));
     return { id: m.userId, email: m.email };
   }
   async signOut() { sessionStorage.removeItem(SESSION); this.signedOut.forEach(cb => cb()); }
   async resetPassword() { /* im Demo-Modus nicht nötig */ }
-  async updatePassword() { /* im Demo-Modus nicht nötig */ }
+  async updatePassword(password: string) {
+    const u = this.user(); if (!u) return;
+    const db = this.read();
+    for (const m of db.members) if (m.email === u.email && m.password !== undefined) { m.password = password; m.pwChange = false; }
+    this.write(db);
+  }
+  async mustChangePassword() { const u = this.user(); return !!u && this.read().members.some(m => m.email === u.email && m.pwChange); }
   needsPasswordSetup() { return false; }
   onSignedOut(cb: () => void) { this.signedOut.push(cb); }
 
@@ -308,7 +318,7 @@ export class DemoRepo implements Repo {
       .map(({ s, dep }) => ({ staffName: n.staff.find(x => x.id === s.staffId)?.name ?? '', departmentName: dep.name,
         color: n.shiftTemplates.find(t => t.id === s.templateId)?.color ?? dep.color, start: s.start, end: s.end, start2: s.start2, end2: s.end2 }));
   }
-  async members(venueId: string) { return this.read().members.filter(m => m.venueId === venueId).map(({ venueId: _v, ...m }) => m); }
+  async members(venueId: string) { return this.read().members.filter(m => m.venueId === venueId).map(({ venueId: _v, password: _p, pwChange: _c, ...m }) => m); }
   async addMember(venueId: string, email: string, role: Role, name: string) {
     this.guard(venueId, 'members');
     const db = this.read();
@@ -319,6 +329,46 @@ export class DemoRepo implements Repo {
   async updateMember(venueId: string, userId: string, patch: { role?: Role; name?: string }) {
     this.guard(venueId, 'members');
     const db = this.read(); const m = db.members.find(x => x.venueId === venueId && x.userId === userId); if (m) Object.assign(m, patch); this.write(db);
+  }
+  /* ---------- Benutzer mit Benutzercode ---------- */
+  async venueByLoginCode(code: string) {
+    const c = code.trim().toLowerCase();
+    const v = Object.values(this.read().data).find(d => d.venue.loginCode === c);
+    return v ? { id: v.venue.id, name: v.venue.name } : null;
+  }
+  async setVenueLoginCode(venueId: string, code: string | null) {
+    this.guard(venueId, 'venue');
+    if (code && !FIRM_RE.test(code)) throw new RepoError('other', 'Ungültiges Firmenkürzel');
+    if (code && Object.values(this.read().data).some(d => d.venue.id !== venueId && d.venue.loginCode === code)) throw new RepoError('other', `Das Firmenkürzel „${code}“ ist schon vergeben.`);
+    this.mutate(venueId, d => { d.venue.loginCode = code; });
+  }
+  private codeAdmin(venueId: string) {
+    const u = this.user(); const db = this.read();
+    if (!u || !db.members.some(m => m.venueId === venueId && m.email === u.email && m.role === 'admin')) throw new RepoError('forbidden', 'Nur der Admin darf Benutzer verwalten');
+    return u;
+  }
+  async createCodeUser(venueId: string, u: { code: string; name: string; role: Role; password: string }) {
+    this.codeAdmin(venueId);
+    const code = u.code.trim().toLowerCase();
+    const err = codeError(code) ?? passwordError(u.password); if (err) throw new RepoError('other', err);
+    const db = this.read();
+    if (db.members.some(m => m.venueId === venueId && m.loginCode === code)) throw new RepoError('other', `Der Benutzercode „${code}“ ist in diesem Betrieb schon vergeben`);
+    db.members.push({ venueId, userId: newId(), email: loginEmail(code, venueId), role: u.role, name: u.name.trim() || code, loginCode: code, password: u.password, pwChange: true });
+    this.write(db);
+  }
+  async setCodeUserPassword(venueId: string, userId: string, password: string) {
+    this.codeAdmin(venueId);
+    const err = passwordError(password); if (err) throw new RepoError('other', err);
+    const db = this.read(); const m = db.members.find(x => x.venueId === venueId && x.userId === userId && x.loginCode);
+    if (!m) throw new RepoError('other', 'Nur bei Benutzern mit Benutzercode möglich');
+    m.password = password; m.pwChange = true; this.write(db);
+  }
+  async deleteCodeUser(venueId: string, userId: string) {
+    const me = this.codeAdmin(venueId);
+    const db = this.read(); const m = db.members.find(x => x.venueId === venueId && x.userId === userId && x.loginCode);
+    if (!m) throw new RepoError('other', 'Nur bei Benutzern mit Benutzercode möglich');
+    if (m.email === me.email) throw new RepoError('other', 'Sich selbst entfernen geht nicht');
+    db.members = db.members.filter(x => x.email !== m.email); this.write(db);
   }
   async removeMember(venueId: string, userId: string) {
     this.guard(venueId, 'members');

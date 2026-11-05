@@ -98,6 +98,15 @@ export interface Repo {
   addMember(venueId: string, email: string, role: Role, name: string): Promise<void>;
   updateMember(venueId: string, userId: string, patch: Partial<Pick<Member, 'role' | 'name'>>): Promise<void>;
   removeMember(venueId: string, userId: string): Promise<void>;
+  // Benutzer mit Benutzercode (Anlegen/Passwort/Löschen über die Edge Function „benutzer“)
+  /** Anmeldemaske: Firmenkürzel → Betrieb */
+  venueByLoginCode(code: string): Promise<{ id: string; name: string } | null>;
+  setVenueLoginCode(venueId: string, code: string | null): Promise<void>;
+  createCodeUser(venueId: string, u: { code: string; name: string; role: Role; password: string }): Promise<void>;
+  setCodeUserPassword(venueId: string, userId: string, password: string): Promise<void>;
+  deleteCodeUser(venueId: string, userId: string): Promise<void>;
+  /** Code-Benutzer muss nach erster Anmeldung bzw. nach Zurücksetzen ein eigenes Passwort wählen */
+  mustChangePassword(): Promise<boolean>;
   // Laden
   loadVenue(venueId: string, venueName: string, historyDays: number): Promise<VenueData>;
   // Schreiben

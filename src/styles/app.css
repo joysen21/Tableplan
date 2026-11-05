@@ -1063,3 +1063,12 @@ table.pub-team .pub-shift{white-space:normal}
 .rp-note{font-size:12px;margin-top:2px}
 .rp-warn{color:var(--warn)}
 .rp-import-row .seg .btn{white-space:nowrap;flex:none}
+/* Benutzer mit Benutzercode */
+.pw-input{display:flex;gap:6px;align-items:center}
+.pw-input input{flex:1;min-width:0;font-family:ui-monospace,monospace}
+.cred-slip{border:2px dashed var(--ok);border-radius:12px;padding:12px 14px;margin:12px 0;background:var(--panel2)}
+.cred-slip dl{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:8px 0}
+.cred-slip dt{color:var(--muted);font-size:13px}
+.cred-slip dd{margin:0}
+.cred-slip code{font-size:15px;font-weight:600}
+.firm-line{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}

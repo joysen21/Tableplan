@@ -95,7 +95,7 @@ export const fromDb = {
     start2: r.start2 ? hhmm(r.start2) : null, end2: r.end2 ? hhmm(r.end2) : null, breakMin: r.break_min ?? 0, color: r.color ?? '#4F7BD1', sort: r.sort ?? 0
   }),
   audit: (r: Row): AuditEntry => ({ id: String(r.id), ts: r.ts, userName: r.user_name ?? '', action: r.action, details: r.details ?? '' }),
-  member: (r: Row): Member => ({ userId: r.user_id, role: r.role, name: r.name ?? '', email: r.email ?? '' })
+  member: (r: Row): Member => ({ userId: r.user_id, role: r.role, name: r.name ?? '', email: r.email ?? '', loginCode: r.login_code ?? null })
 };
 
 export function entityFromDb<K extends EntityKey>(kind: K, r: Row): EntityMap[K] {

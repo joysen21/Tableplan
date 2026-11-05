@@ -77,7 +77,8 @@ export class SupabaseRepo implements Repo {
   }
   async signOut() { await this.sb.auth.signOut(); }
   async resetPassword(email: string) { await run(this.sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + '/' })); }
-  async updatePassword(password: string) { await run(this.sb.auth.updateUser({ password })); }
+  async updatePassword(password: string) { await run(this.sb.auth.updateUser({ password, data: { pw_change: false } })); }
+  async mustChangePassword() { const { data } = await this.sb.auth.getSession(); return !!data.session?.user?.user_metadata?.pw_change; }
   needsPasswordSetup() { return /type=(invite|recovery)/.test(INITIAL_URL); }
   onSignedOut(cb: () => void) { this.signedOutCbs.push(cb); }
 
@@ -125,7 +126,7 @@ export class SupabaseRepo implements Repo {
     return (await run<OnDuty[]>(this.sb.rpc('on_duty', { p_venue: venueId, p_date: date }))) ?? [];
   }
   async members(venueId: string) {
-    const rows = await run(this.sb.from('members').select('user_id, role, name, email').eq('venue_id', venueId).order('name'));
+    const rows = await run(this.sb.from('members').select('*').eq('venue_id', venueId).order('name'));
     return (rows as any[]).map(fromDb.member);
   }
   async addMember(venueId: string, email: string, role: Role, name: string) {
@@ -134,6 +135,36 @@ export class SupabaseRepo implements Repo {
   async updateMember(venueId: string, userId: string, patch: { role?: Role; name?: string }) {
     await run(this.sb.from('members').update(patch).eq('venue_id', venueId).eq('user_id', userId));
   }
+  /* ---------- Benutzer mit Benutzercode ---------- */
+  async venueByLoginCode(code: string) {
+    try { return (await run<{ id: string; name: string } | null>(this.sb.rpc('venue_by_login_code', { p_code: code }))) ?? null; }
+    catch (e: any) {
+      if (/PGRST202|42883|Could not find the function/.test(String(e?.message) + (e?.code ?? ''))) throw new RepoError('other', 'Anmeldung mit Benutzercode ist noch nicht eingerichtet.');
+      throw e;
+    }
+  }
+  async setVenueLoginCode(venueId: string, code: string | null) {
+    const { error } = await this.sb.from('venues').update({ login_code: code }).eq('id', venueId);
+    if (error) {
+      if (/login_code/.test(error.message) && /column|schema cache/i.test(error.message)) throw new RepoError('other', 'Benutzercodes sind in der Datenbank noch nicht eingerichtet (Migration 20261106000000_benutzercode.sql im Supabase SQL Editor ausführen).');
+      if (error.code === '23505') throw new RepoError('other', `Das Firmenkürzel „${code}“ ist schon vergeben.`);
+      throw new RepoError('other', error.message);
+    }
+  }
+  private async userFn(body: Record<string, unknown>) {
+    const { data, error } = await this.sb.functions.invoke('benutzer', { body });
+    if (error) {
+      let msg = '';
+      try { msg = (await (error as any).context?.json())?.error ?? ''; } catch { /* keine JSON-Antwort */ }
+      if (!msg && /FunctionsFetchError|Failed to send|404/i.test(String(error.name) + String(error.message)))
+        msg = 'Die Edge Function „benutzer“ ist in Supabase noch nicht eingerichtet (Anleitung: supabase/functions/benutzer/ANLEITUNG.md).';
+      throw new RepoError('other', msg || error.message);
+    }
+    return data;
+  }
+  async createCodeUser(venueId: string, u: { code: string; name: string; role: Role; password: string }) { await this.userFn({ action: 'create', venueId, ...u }); }
+  async setCodeUserPassword(venueId: string, userId: string, password: string) { await this.userFn({ action: 'password', venueId, userId, password }); }
+  async deleteCodeUser(venueId: string, userId: string) { await this.userFn({ action: 'delete', venueId, userId }); }
   async removeMember(venueId: string, userId: string) { await run(this.sb.from('members').delete().eq('venue_id', venueId).eq('user_id', userId)); }
 
   /* ---------- Laden ---------- */
@@ -160,7 +191,7 @@ export class SupabaseRepo implements Repo {
       this.loadRoster(venueId, cutoff), this.loadChoices(venueId), this.loadOrders(venueId), this.loadPass(venueId), this.loadExtras(venueId, cutoff), this.loadDue(venueId)
     ]);
     return {
-      venue: { id: venueId, name: venue?.name ?? venueName, modules: this.rosterReady ? venue?.modules ?? [] : [], rosterSettings: venue?.roster_settings ?? {}, branding: venue?.branding ?? undefined, statusConfig: venue?.status_config ?? {}, qrToken: venue?.qr_token ?? undefined, qrWindow: venue?.qr_window ?? undefined, moduleRoles: venue?.module_roles ?? undefined, boardConfig: venue?.board_config ?? undefined },
+      venue: { id: venueId, name: venue?.name ?? venueName, modules: this.rosterReady ? venue?.modules ?? [] : [], rosterSettings: venue?.roster_settings ?? {}, branding: venue?.branding ?? undefined, statusConfig: venue?.status_config ?? {}, qrToken: venue?.qr_token ?? undefined, qrWindow: venue?.qr_window ?? undefined, moduleRoles: venue?.module_roles ?? undefined, boardConfig: venue?.board_config ?? undefined, loginCode: venue?.login_code ?? null },
       rooms: rooms.map(fromDb.rooms).sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name)),
       stations: stations.map(fromDb.stations), tables: tables.map(fromDb.tables), decor: decor.map(fromDb.decor),
       combos: combos.map(fromDb.combos), layouts: layouts.map(fromDb.layouts),

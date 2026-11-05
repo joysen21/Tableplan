@@ -1,11 +1,12 @@
 /** Einstellungen (Admin): Betrieb, Services, Benutzer & Rollen, Daten, Protokoll */
 import { useEffect, useState, type ReactNode } from 'react';
-import { Building2, Coffee, CalendarClock, CalendarDays, ChevronDown, ChevronsDownUp, ChevronsUpDown, Database, Download, History, Plus, QrCode, Upload, Users, X, type LucideIcon } from '../ui/icons';
+import { Building2, Coffee, CalendarClock, CalendarDays, ChevronDown, ChevronsDownUp, ChevronsUpDown, Database, Download, History, KeyRound, Plus, QrCode, Upload, Users, X, type LucideIcon } from '../ui/icons';
 import { repo } from '../data';
 import { demoVenueData, newId } from '../domain/demo';
 import { ROLES } from '../domain/constants';
 import { remapIds } from '../domain/remap';
 import { RoomPlanExport, RoomPlanImport } from './RoomPlanTransfer';
+import { CodeUserForm, CredentialSlip, FirmCode, ResetPassword, type Credentials } from './CodeUsers';
 import type { Member, Role, Service, ServiceKind, VenueData } from '../domain/types';
 import { t } from '../lib/i18n';
 import { downloadBlob } from '../lib/download';
@@ -61,6 +62,8 @@ function Members() {
   const switchVenue = useApp(s => s.switchVenue);
   const [list, setList] = useState<Member[] | null>(null);
   const [nm, setNm] = useState({ email: '', name: '', role: 'service' as Role });
+  const [cred, setCred] = useState<{ c: Credentials; title?: string } | null>(null);
+  const [reset, setReset] = useState<Member | null>(null);
   const load = () => repo.members(d.venue.id).then(setList).catch(e => toast(e.message, 'err'));
   useEffect(() => { load(); }, [d.venue.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const act = async (fn: () => Promise<void>, ok = 'Gespeichert') => { try { await fn(); toast(ok); } catch (e: any) { toast(e.message, 'err'); } load(); };
@@ -70,15 +73,25 @@ function Members() {
       {list.map(m => (
         <div key={m.userId} className="row mb8 member-row">
           <div className="m-name"><Field label="" value={m.name} onCommit={v => act(() => repo.updateMember(d.venue.id, m.userId, { name: v }))} /></div>
-          <span className="muted m-email" title={m.email}>{m.email}</span>
+          {m.loginCode
+            ? <span className="muted m-email" title="Benutzercode">Code: <code>{m.loginCode}</code></span>
+            : <span className="muted m-email" title={m.email}>{m.email}</span>}
+          {m.loginCode && <button className="btn small icon" aria-label={`Passwort neu setzen ${m.name}`} title="Passwort neu setzen" onClick={() => setReset(m)}><KeyRound /></button>}
           <select className="m-role" aria-label={`Rolle ${m.name}`} value={m.role} disabled={m.userId === user.id} onChange={e => act(() => repo.updateMember(d.venue.id, m.userId, { role: e.target.value as Role }))}>
             {ROLES.map(r => <option key={r} value={r}>{t(r)}</option>)}</select>
           <button className="btn small icon danger" disabled={m.userId === user.id} aria-label="Benutzer entfernen" title="Benutzer entfernen" onClick={async () => {
-            if (await confirmDialog('Benutzer entfernen?', [`${m.name} (${m.email}) verliert den Zugriff auf diesen Betrieb.`], 'Entfernen', true)) act(() => repo.removeMember(d.venue.id, m.userId), 'Entfernt');
+            if (m.loginCode) {
+              if (await confirmDialog('Benutzer löschen?', [`${m.name} (Code ${m.loginCode}) wird gelöscht und kann sich nicht mehr anmelden.`], 'Löschen', true)) act(() => repo.deleteCodeUser(d.venue.id, m.userId), 'Gelöscht');
+            } else if (await confirmDialog('Benutzer entfernen?', [`${m.name} (${m.email}) verliert den Zugriff auf diesen Betrieb.`], 'Entfernen', true)) act(() => repo.removeMember(d.venue.id, m.userId), 'Entfernt');
           }}><X /></button>
         </div>
       ))}
-      <h4 style={{ margin: '14px 0 6px' }}>Benutzer hinzufügen</h4>
+      {cred && <CredentialSlip c={cred.c} title={cred.title} onClose={() => setCred(null)} />}
+      {reset && <ResetPassword m={reset} onClose={() => setReset(null)} onDone={c => { setReset(null); setCred({ c, title: 'Neues Passwort gesetzt – bitte weitergeben' }); toast('Passwort neu gesetzt'); }} />}
+      <h4 style={{ margin: '14px 0 6px' }}>Benutzer mit Benutzercode anlegen</h4>
+      <FirmCode />
+      <div className="mt8"><CodeUserForm members={list} onCreated={c => { setCred({ c }); toast('Benutzer angelegt'); load(); }} /></div>
+      <h4 style={{ margin: '18px 0 6px' }}>Benutzer per E-Mail hinzufügen</h4>
       <div className="grid3 member-add">
         <label>E-Mail<input type="email" value={nm.email} onChange={e => setNm({ ...nm, email: e.target.value })} /></label>
         <label>Name<input value={nm.name} onChange={e => setNm({ ...nm, name: e.target.value })} /></label>

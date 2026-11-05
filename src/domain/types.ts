@@ -32,7 +32,9 @@ export interface Venue { id: string; name: string; modules: ModuleKey[]; rosterS
   /** Welche Rollen ein Modul sehen (Admin immer) – zuweisbar in Einstellungen → Module */
   moduleRoles?: Partial<Record<ModuleKey, Role[]>>;
   /** Verpflegungsarten (leer = Standard UF/HP/VP/AI) */
-  boardConfig?: BoardDef[] }
+  boardConfig?: BoardDef[];
+  /** Firmenkürzel für die Anmeldung mit Benutzercode */
+  loginCode?: string | null }
 
 /* ---------- Bestellliste (Modul) ---------- */
 /** Lieferant mit Telefonnummer für WhatsApp */
@@ -79,7 +81,8 @@ export interface PassCall {
   calledAt: string; readyAt: string | null; servedAt: string | null; updatedAt?: string;
 }
 
-export interface Member { userId: string; role: Role; name: string; email: string }
+/** loginCode gesetzt = Benutzer mit Benutzercode + Passwort (vom Admin angelegt) */
+export interface Member { userId: string; role: Role; name: string; email: string; loginCode?: string | null }
 
 export interface Room { id: string; name: string; width: number; height: number; backgroundUrl: string | null; sort: number }
 

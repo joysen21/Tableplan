@@ -8,6 +8,7 @@ import { RepoError, type ChangeEvent, type EntityKey, type EntityMap, type LiveS
 import { demoVenueData, emptyVenueData, newId, normalizeVenueData } from '../domain/demo';
 import { OPEN_STATES } from '../domain/constants';
 import { planStay } from '../domain/logic';
+import { loginEmail } from '../domain/logins';
 import type { BoardDef, Branding, ModuleKey, QrWindow, Reservation, Role, RosterSettings, SessionUser, StatusConfig, Stay, VenueData } from '../domain/types';
 import { resolveStatus, statusInfo } from '../domain/statuses';
 import { EDITION } from '../lib/edition';
@@ -21,6 +22,8 @@ interface AppState {
   user: SessionUser | null; data: VenueData | null; live: LiveState; saving: number;
   init(): Promise<void>;
   login(email: string, password: string): Promise<void>;
+  /** Anmeldung mit Firma (aus dem Firmenkürzel) + Benutzercode */
+  loginCode(venueId: string, code: string, password: string): Promise<void>;
   logout(): Promise<void>;
   setPassword(pw: string): Promise<void>;
   selectVenue(m: Membership): Promise<void>;
@@ -143,7 +146,7 @@ export const useApp = create<AppState>((set, get) => {
       const user = await repo.getUser();
       if (!user) { set({ phase: 'login' }); return; }
       set({ authEmail: user.email });
-      if (repo.needsPasswordSetup() && !sessionStorage.getItem('tischplan.pwset')) { set({ phase: 'setpw' }); return; }
+      if ((repo.needsPasswordSetup() && !sessionStorage.getItem('tischplan.pwset')) || (await repo.mustChangePassword())) { set({ phase: 'setpw' }); return; }
       const ms = await repo.memberships();
       set({ memberships: ms });
       if (!ms.length) { set({ phase: 'novenue' }); return; }
@@ -164,6 +167,10 @@ export const useApp = create<AppState>((set, get) => {
     async login(email, password) {
       try { await repo.signIn(email, password); await afterLogin(); }
       catch (e) { toast('Anmeldung fehlgeschlagen: ' + errorMessage(e), 'err'); }
+    },
+    async loginCode(venueId, code, password) {
+      try { await repo.signIn(loginEmail(code, venueId), password); await afterLogin(); }
+      catch (e) { toast(/invalid login|credentials|unbekannt/i.test(errorMessage(e)) ? 'Anmeldung fehlgeschlagen: Benutzercode oder Passwort falsch' : 'Anmeldung fehlgeschlagen: ' + errorMessage(e), 'err'); }
     },
     async logout() { unsubscribe?.(); unsubscribe = null; await repo.signOut(); set({ phase: 'login', user: null, data: null }); },
     async setPassword(pw) {

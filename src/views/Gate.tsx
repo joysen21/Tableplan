@@ -1,11 +1,12 @@
 /** Masken vor der eigentlichen App: Anmeldung, Passwort, Betriebswahl, Einrichtung, Fehler */
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { repo } from '../data';
 import { DEMO_USERS } from '../data/demoRepo';
 import { APP_NAME, EDITION } from '../lib/edition';
 import { t } from '../lib/i18n';
 import { useApp } from '../store/app';
 import { toast } from '../ui/notify';
+import { isCodeEmail } from '../domain/logins';
 
 function Box({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -33,6 +34,54 @@ export function NoAccess() {
   );
 }
 
+/** gemerkte Firma für die Anmeldung mit Benutzercode */
+type Firm = { id: string; name: string; code: string };
+const FIRM_KEY = 'tischplan.firma';
+function loadFirm(): Firm | null { try { const j = JSON.parse(localStorage.getItem(FIRM_KEY) ?? 'null'); return j?.id ? j : null; } catch { return null; } }
+function saveFirm(f: Firm | null) { try { if (f) localStorage.setItem(FIRM_KEY, JSON.stringify(f)); else localStorage.removeItem(FIRM_KEY); } catch { /* egal */ } }
+/** Anmeldelink /login/<firmenkürzel> */
+const LINK_FIRM = /^\/login\/([a-z0-9-]{3,32})\/?$/i.exec(location.pathname)?.[1]?.toLowerCase() ?? null;
+
+/** Anmeldung mit Firma + Benutzercode + Passwort */
+function CodeLogin({ onEmail }: { onEmail?: () => void }) {
+  const s = useApp();
+  const [firm, setFirm] = useState<Firm | null>(loadFirm);
+  const [firmCode, setFirmCode] = useState(LINK_FIRM ?? '');
+  const [code, setCode] = useState('');
+  const [pw, setPw] = useState('');
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (!LINK_FIRM) return;
+    history.replaceState(null, '', '/');
+    repo.venueByLoginCode(LINK_FIRM).then(v => { if (v) { const f = { ...v, code: LINK_FIRM }; saveFirm(f); setFirm(f); } else toast(`Firma „${LINK_FIRM}“ nicht gefunden`, 'err'); }).catch(e => toast(e.message, 'err'));
+  }, []);
+  const submit = async (e: FormEvent) => {
+    e.preventDefault(); setBusy(true);
+    try {
+      let f = firm;
+      if (!f) {
+        const c = firmCode.trim().toLowerCase();
+        const v = await repo.venueByLoginCode(c);
+        if (!v) { toast(`Firma „${c}“ nicht gefunden – Kürzel steht auf dem Zugangszettel`, 'err'); return; }
+        f = { ...v, code: c }; saveFirm(f); setFirm(f);
+      }
+      await s.loginCode(f.id, code.trim().toLowerCase(), pw);
+    } catch (err: any) { toast(err.message, 'err'); } finally { setBusy(false); }
+  };
+  return (
+    <form onSubmit={submit} aria-label="Anmeldung mit Benutzercode">
+      {firm
+        ? <p className="firm-line" style={{ marginTop: 0 }}>Firma: <b>{firm.name}</b> <button type="button" className="link" onClick={() => { saveFirm(null); setFirm(null); setFirmCode(''); }}>Firma ändern</button></p>
+        : <label>Firma (Kürzel)<input autoComplete="organization" required value={firmCode} placeholder="z. B. sonnenhof" onChange={e => setFirmCode(e.target.value)} /></label>}
+      <label className={firm ? '' : 'mt8'}>Benutzercode<input autoComplete="username" autoCapitalize="none" spellCheck={false} required value={code} onChange={e => setCode(e.target.value)} /></label>
+      <label className="mt8">Passwort<input type="password" autoComplete="current-password" required value={pw} onChange={e => setPw(e.target.value)} /></label>
+      <button className="btn primary mt12" style={{ width: '100%', justifyContent: 'center' }} disabled={busy}>Anmelden</button>
+      <p className="muted" style={{ margin: '12px 0 0', fontSize: 13 }}>Passwort vergessen? Bitte beim Admin melden.
+        {onEmail && <> · <button type="button" className="link" onClick={onEmail}>Mit E-Mail anmelden</button></>}</p>
+    </form>
+  );
+}
+
 export function Gate() {
   const s = useApp();
   const [email, setEmail] = useState('');
@@ -40,6 +89,7 @@ export function Gate() {
   const [pw2, setPw2] = useState('');
   const [venueName, setVenueName] = useState('');
   const [busy, setBusy] = useState(false);
+  const [byCode, setByCode] = useState(() => !!LINK_FIRM || !!loadFirm());
   const run = async (fn: () => Promise<void>) => { setBusy(true); try { await fn(); } finally { setBusy(false); } };
 
   if (s.phase === 'init' || s.phase === 'loading') return <Box title={APP_NAME}><p className="muted">Daten werden geladen…</p></Box>;
@@ -51,8 +101,10 @@ export function Gate() {
         <div className="userbtns">{DEMO_USERS.map(u => (
           <button key={u.email} className="btn" disabled={busy} onClick={() => run(() => s.login(u.email, 'demo'))}><b>{u.name}</b><small className="muted">{t(u.role)}</small></button>
         ))}</div>
+        <details className="mt12" open={byCode}><summary className="muted">Mit Benutzercode anmelden</summary><div className="mt8"><CodeLogin /></div></details>
       </Box>
     );
+    if (byCode) return <Box title={`${APP_NAME} – Anmeldung`}><CodeLogin onEmail={() => setByCode(false)} /></Box>;
     const submit = (e: FormEvent) => { e.preventDefault(); run(() => s.login(email.trim(), pw)); };
     return (
       <Box title={`${APP_NAME} – Anmeldung`}>
@@ -65,7 +117,7 @@ export function Gate() {
           <button className="link" onClick={async () => {
             if (!email.trim()) return toast('Bitte zuerst die E-Mail-Adresse eintragen', 'err');
             try { await repo.resetPassword(email.trim()); toast('E-Mail zum Zurücksetzen wurde gesendet'); } catch (e: any) { toast(e.message, 'err'); }
-          }}>Passwort vergessen?</button>
+          }}>Passwort vergessen?</button> · <button className="link" onClick={() => setByCode(true)}>Mit Benutzercode anmelden</button>
         </p>
       </Box>
     );
@@ -81,7 +133,7 @@ export function Gate() {
     return (
       <Box title="Passwort festlegen">
         <form onSubmit={submit}>
-          <p className="muted" style={{ marginTop: 0 }}>{s.authEmail}</p>
+          <p className="muted" style={{ marginTop: 0 }}>{isCodeEmail(s.authEmail) ? 'Bitte wählen Sie jetzt ein eigenes Passwort. Das vom Admin vergebene gilt danach nicht mehr.' : s.authEmail}</p>
           <label>Neues Passwort (mind. 8 Zeichen)<input type="password" autoComplete="new-password" value={pw} onChange={e => setPw(e.target.value)} /></label>
           <label className="mt8">Wiederholen<input type="password" autoComplete="new-password" value={pw2} onChange={e => setPw2(e.target.value)} /></label>
           <button className="btn primary mt12" style={{ width: '100%', justifyContent: 'center' }} disabled={busy}>Speichern</button>
