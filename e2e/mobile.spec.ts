@@ -348,9 +348,17 @@ test('Mitarbeiter-Link am Handy: Woche als Tagesliste, Monat als Kalender ohne s
   await expect(page.locator('.pub-days .pub-shift.big').first()).toBeVisible();
   const noScroll = async () => expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
   await noScroll();
-  await page.screenshot({ path: 'test-results/dienstplan-link-woche-handy.png', fullPage: true });
+  await page.screenshot({ path: 'test-results/dienstplan-link-woche-handy.png' });
   await page.getByRole('button', { name: 'Monat' }).click();
   await expect(page.locator('.pub-cal-d.today')).toHaveCount(1);
   await noScroll();
-  await page.screenshot({ path: 'test-results/dienstplan-link-monat-handy.png', fullPage: true });
+  await page.screenshot({ path: 'test-results/dienstplan-link-monat-handy.png' });
+  // Anfrage stellen: Blatt von unten, Felder in voller Breite
+  await page.getByRole('button', { name: 'Anfrage stellen' }).click();
+  const dlg = page.getByRole('dialog', { name: 'Anfrage stellen' });
+  await expect(dlg.getByRole('button', { name: 'Senden' })).toBeInViewport();
+  await noScroll();
+  await page.screenshot({ path: 'test-results/dienstplan-anfrage-handy.png' });
+  await dlg.getByRole('button', { name: 'Abbrechen' }).click();
+  await expect(dlg).toHaveCount(0);
 });

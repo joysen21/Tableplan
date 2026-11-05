@@ -5,7 +5,7 @@ import { Check, ChevronLeft, ChevronRight, Copy, Download, Pencil, Printer, Tria
 import { newId } from '../domain/demo';
 import { canPlanDept, fmtHours, plannableDepartments, sortDepartments, templateTimes } from '../domain/roster';
 import {
-  ABSENCE_LABEL, ABSENCE_SHORT, absenceOn, changedSince, copyWeek, expectedGuests, holidayName, hoursCsv, hoursRows, isoWeek, monthDays,
+  ABSENCE_LABEL, ABSENCE_SHORT, absenceOn, changedSince, copyWeek, expectedGuests, holidayName, hoursCsv, hoursRows, inSeason, isoWeek, monthDays,
   plannedCount, publicationFor, rosterSettings, rosterWarnings, shiftFromTemplate, shiftsOverlap, shiftWorkMin, sortShifts, staffForDepartment,
   staffMinutes, staffNeeded, weekDays, weekStart, type RosterWarning
 } from '../domain/rosterPlan';
@@ -19,6 +19,7 @@ import { useUi } from '../store/ui';
 import { openDialog } from '../store/dialogs';
 import { confirmDialog, toast } from '../ui/notify';
 import { DeptIcon, StaffMark } from '../ui/DeptIcon';
+import { REQUEST_LABEL } from '../domain/requests';
 
 const MONTHS = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
 const dmy = (s: string) => s.split('-').reverse().join('.');
@@ -199,11 +200,17 @@ function WeekGrid({ days, rows, open, scope, dept, warnings, canPlan, onCell, dr
   const cols = { '--days': days.length } as React.CSSProperties;
   const cell = (staffId: string | null, day: string, list: Shift[]) => {
     const ab = staffId ? absenceOn(d, staffId, day) : undefined;
+    // offene Frei-/Urlaubs-Anfrage vom Mitarbeiter-Link als Hinweis (Klick → Reiter „Anfragen“)
+    const wish = staffId && !ab ? (d.requests ?? []).find(r => r.staffId === staffId && r.status === 'offen' && (r.kind === 'frei' || r.kind === 'urlaub') && day >= r.from && day <= r.to) : undefined;
+    const closed = !inSeason(settings.seasons, day);
     return (
-      <div key={day} className={'rg-cell' + (day === t0 ? ' today' : '') + (holidayName(day) ? ' holiday' : '')} {...dropProps(staffId, day)}
-        role="gridcell" aria-label={`${staffId ? d.staff.find(x => x.id === staffId)?.name : 'Offene Schichten'} ${fmtShort(day)}`}>
+      <div key={day} className={'rg-cell' + (day === t0 ? ' today' : '') + (holidayName(day) ? ' holiday' : '') + (closed ? ' off-season' : '')} {...dropProps(staffId, day)}
+        role="gridcell" aria-label={`${staffId ? d.staff.find(x => x.id === staffId)?.name : 'Offene Schichten'} ${fmtShort(day)}`} title={closed ? 'Außerhalb der Saison' : undefined}>
         {ab && <button className={'abs-chip ' + ab.kind} onClick={() => openDialog({ type: 'absence', absence: ab })} title={`${ABSENCE_LABEL[ab.kind]} ${dmy(ab.from)}–${dmy(ab.to)}${ab.note ? ' · ' + ab.note : ''}`}>
           {ABSENCE_SHORT[ab.kind]} <span>{ABSENCE_LABEL[ab.kind]}</span></button>}
+        {wish && <button className="wish-chip no-print" onClick={e => { e.stopPropagation(); useUi.getState().set({ rosterTab: 'requests' }); }}
+          title={`Anfrage ${REQUEST_LABEL[wish.kind]} ${dmy(wish.from)}–${dmy(wish.to)}${wish.note ? ' · ' + wish.note : ''} – noch nicht entschieden`}>
+          Wunsch: {wish.kind === 'urlaub' ? 'Urlaub' : 'frei'}</button>}
         {sortShifts(list).map(s => {
           const other = !scope.includes(s.departmentId) || (!!dept && s.departmentId !== dept);
           return (
@@ -228,8 +235,9 @@ function WeekGrid({ days, rows, open, scope, dept, warnings, canPlan, onCell, dr
       {days.map((day, i) => {
         const hol = holidayName(day), g = guests[i];
         return (
-          <div key={day} className={'rg-head' + (day === t0 ? ' today' : '')}>
+          <div key={day} className={'rg-head' + (day === t0 ? ' today' : '') + (inSeason(settings.seasons, day) ? '' : ' off-season')}>
             <b>{fmtShort(day)}</b>{hol && <span className="badge" title="Feiertag">{hol}</span>}
+            {!inSeason(settings.seasons, day) && <small className="muted">geschlossen</small>}
             {g.peak.guests > 0 && <small className="muted" title={g.services.map(s => `${s.name}: ${s.guests}`).join('\n')}>{g.peak.guests} Gäste ({g.peak.name})</small>}
             {scope.map(depId => {
               const dep = d.departments.find(x => x.id === depId)!, need = staffNeeded(dep, g.peak.guests), have = plannedCount(d, depId, day);

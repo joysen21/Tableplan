@@ -1,7 +1,7 @@
 /** Datenzugriff über Supabase (Postgres + Auth + Realtime + Storage) */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { MAX_ROOMS_PER_TABLE } from '../domain/constants';
-import type { BoardDef, Branding, ModuleKey, OnDuty, PublicRoster, QrWindow, Reservation, Role, RosterSettings, StatusConfig, Stay, VenueData } from '../domain/types';
+import type { BoardDef, Branding, ModuleKey, OnDuty, PublicRoster, QrWindow, RequestKind, Reservation, Role, RosterSettings, StatusConfig, Stay, VenueData } from '../domain/types';
 import type { GuestMenuData } from '../domain/guestMenu';
 import { addDays, today } from '../lib/time';
 import { entityFromDb, entityToDb, fromDb, KIND_OF, TABLE_OF, toDb } from './mapping';
@@ -20,6 +20,8 @@ function wrap(e: any): RepoError {
     return new RepoError('overlap', `An diesem Tisch sitzen in diesem Zeitraum bereits ${MAX_ROOMS_PER_TABLE} Zimmer. Bitte anderen Tisch wählen.`);
   // Gäste-Speisekarte: verständlicher Text steht hinter dem Präfix
   if (msg.includes('guest_menu: ')) return new RepoError('other', msg.slice(msg.indexOf('guest_menu: ') + 12));
+  // Anfragen vom Mitarbeiter-Link / Entscheidung der Leitung
+  if (msg.includes('roster_request: ')) return new RepoError(code === '42501' ? 'forbidden' : 'other', msg.slice(msg.indexOf('roster_request: ') + 16));
   if (msg.includes('resource_bookings_no_overlap'))
     return new RepoError('overlap', 'Dieser Platz bzw. diese Ressource ist in diesem Zeitraum bereits gebucht (eventuell gerade auf einem anderen Gerät). Bitte anders wählen.');
   if (code === '23P01' || msg.includes('reservation_tables_no_overlap'))
@@ -53,6 +55,7 @@ export class SupabaseRepo implements Repo {
   private passReady = true;
   private extrasReady = true;
   private dueReady = true;
+  private requestsReady = true;
 
   constructor(url: string, key: string, headers?: Record<string, string>) {
     this.sb = createClient(url, key, {
@@ -99,6 +102,23 @@ export class SupabaseRepo implements Repo {
   async publicRoster(token: string): Promise<PublicRoster | null> {
     if (!/^[0-9a-f-]{36}$/i.test(token)) return null;
     return (await run<PublicRoster | null>(this.sb.rpc('public_roster', { p_token: token }))) ?? null;
+  }
+  /* ---------- Anfragen über den Mitarbeiter-Link ---------- */
+  private needRequests<T>(p: PromiseLike<{ data: T; error: any }>) {
+    return run<T>(p).catch((e: any) => {
+      if (/PGRST202|42883|Could not find the function/.test(String(e?.message) + (e?.code ?? '')))
+        throw new RepoError('other', 'Anfragen sind in der Datenbank noch nicht eingerichtet (Migration 20261105000000_dienstplan_anfragen.sql).');
+      throw e;
+    });
+  }
+  async requestCreate(token: string, kind: Exclude<RequestKind, 'tausch'>, from: string, to: string, note: string) {
+    await this.needRequests(this.sb.rpc('roster_request', { p_token: token, p_kind: kind, p_from: from, p_to: to, p_note: note }));
+  }
+  async requestCancel(token: string, id: string) { await this.needRequests(this.sb.rpc('roster_request_cancel', { p_token: token, p_id: id })); }
+  async swapOffer(token: string, shiftId: string, note: string) { await this.needRequests(this.sb.rpc('roster_swap_offer', { p_token: token, p_shift: shiftId, p_note: note })); }
+  async swapTake(token: string, id: string, take: boolean) { await this.needRequests(this.sb.rpc('roster_swap_take', { p_token: token, p_id: id, p_take: take })); }
+  async decideRequest(_venueId: string, id: string, approve: boolean, answer: string) {
+    await this.needRequests(this.sb.rpc('roster_request_decide', { p_id: id, p_approve: approve, p_answer: answer }));
   }
   async onDuty(venueId: string, date: string): Promise<OnDuty[]> {
     if (!this.planReady) return [];
@@ -229,7 +249,7 @@ export class SupabaseRepo implements Repo {
     const byVenue = (q: any) => q.eq('venue_id', venueId).order('id');
     // 42P01 / PGRST205: Tabelle unbekannt (Migration fehlt)
     const missing = (e: any) => /42P01|PGRST205|does not exist|Could not find the table/.test(String(e?.message) + (e?.code ?? ''));
-    const empty = { departments: [], positions: [], staff: [], shiftTemplates: [], shifts: [], absences: [], publications: [] };
+    const empty = { departments: [], positions: [], staff: [], shiftTemplates: [], shifts: [], absences: [], publications: [], requests: [] };
     let base;
     try { base = await Promise.all(ROSTER_BASE_KEYS.map(k => this.all(TABLE_OF[k], byVenue))); this.rosterReady = true; }
     catch (e) { if (!missing(e)) throw e; this.rosterReady = false; this.planReady = false; return empty; }
@@ -241,11 +261,18 @@ export class SupabaseRepo implements Repo {
       ]);
       this.planReady = true;
     } catch (e) { if (!missing(e)) throw e; this.planReady = false; plan = [[], [], []]; }
+    // Anfragen vom Mitarbeiter-Link (Migration 20261105000000); fehlt sie, bleibt die Liste leer
+    let requests: any[] = [];
+    if (this.planReady) {
+      try { requests = await this.all('roster_requests', q => byVenue(q).gte('date_to', cutoff)); this.requestsReady = true; }
+      catch (e) { if (!missing(e)) throw e; this.requestsReady = false; }
+    } else this.requestsReady = false;
     const [departments, positions, staff, shiftTemplates] = base;
     return {
       departments: departments.map(fromDb.departments), positions: positions.map(fromDb.positions),
       staff: staff.map(fromDb.staff), shiftTemplates: shiftTemplates.map(fromDb.shiftTemplates),
-      shifts: plan[0].map(fromDb.shifts), absences: plan[1].map(fromDb.absences), publications: plan[2].map(fromDb.publications)
+      shifts: plan[0].map(fromDb.shifts), absences: plan[1].map(fromDb.absences), publications: plan[2].map(fromDb.publications),
+      requests: requests.map(fromDb.requests)
     };
   }
 
@@ -351,7 +378,7 @@ export class SupabaseRepo implements Repo {
     const ch = this.sb.channel(`venue-${venueId}-${crypto.randomUUID()}`);
     const skip = [...(this.rosterReady ? this.planReady ? [] : ROSTER_PLAN_KEYS : ROSTER_KEYS).map(k => TABLE_OF[k]), ...(this.choicesReady ? [] : ['menu_choices']),
       ...(this.ordersReady ? [] : ORDER_KEYS.map(k => TABLE_OF[k])), ...(this.passReady ? [] : ['pass_calls']),
-      ...(this.extrasReady ? [] : EXTRA_KEYS.map(k => TABLE_OF[k])), ...(this.dueReady ? [] : DUE_KEYS.map(k => TABLE_OF[k]))];
+      ...(this.extrasReady ? [] : EXTRA_KEYS.map(k => TABLE_OF[k])), ...(this.dueReady ? [] : DUE_KEYS.map(k => TABLE_OF[k])), ...(this.requestsReady ? [] : ['roster_requests'])];
     const tables = Object.values(TABLE_OF).filter(t => !skip.includes(t)).concat('venues');
     const handle = (p: any) => {
       const table: string = p.table;

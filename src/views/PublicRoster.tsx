@@ -2,13 +2,13 @@
  *  Umschalter Woche (Teamplan, groß; am Handy als Tagesliste) / Monat (Kalender mit eigenen Diensten und Abwesenheiten),
  *  Kalender-Abo, Link kopieren, Drucken – Deutsch/Italienisch. */
 import { useEffect, useState } from 'react';
-import { CalendarDays, ChevronLeft, ChevronRight, Printer } from '../ui/icons';
+import { ArrowRightLeft, CalendarDays, ChevronLeft, ChevronRight, Plus, Printer } from '../ui/icons';
 import { repo } from '../data';
-import { isoWeek, monthGrid, shiftMonth, weekDays, weekStart } from '../domain/rosterPlan';
+import { inSeason, isoWeek, monthGrid, shiftMonth, weekDays, weekStart } from '../domain/rosterPlan';
 import type { PublicRoster as Data } from '../domain/types';
 import { addDays, today } from '../lib/time';
+import { MyRequests, OfferDialog, Offers, REQ_TXT, RequestDialog, type Lang } from './PublicRequests';
 
-type Lang = 'de' | 'it';
 type Mode = 'woche' | 'monat';
 const TXT = {
   de: {
@@ -16,14 +16,14 @@ const TXT = {
     free: 'frei', changed: 'geändert', subscribe: 'Kalender abonnieren', print: 'Drucken', stand: 'Stand', invalid: 'Dieser Link ist ungültig oder wurde erneuert. Bitte bei der Bereichsleitung nachfragen.',
     loading: 'Wird geladen…', open: 'Offene Schicht', abs: { urlaub: 'Urlaub', krank: 'Krank', frei: 'Frei', sonstiges: 'Abwesend' },
     days: ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'], hint: 'Kalender-Abo: Link in Google Kalender („Per URL hinzufügen“) oder auf dem iPhone (Einstellungen → Kalender → Accounts → Abonnierter Kalender) eintragen.',
-    copy: 'Link kopieren', copied: 'Kopiert', help: 'Hilfe zum Kalender-Abo', me: 'Meine Dienste im', nothing: 'Kein Dienst', outside: 'Noch nicht veröffentlicht', prev: 'Zurück', next: 'Weiter'
+    copy: 'Link kopieren', copied: 'Kopiert', help: 'Hilfe zum Kalender-Abo', me: 'Meine Dienste im', nothing: 'Kein Dienst', outside: 'Noch nicht veröffentlicht', prev: 'Zurück', next: 'Weiter', closed: 'geschlossen', closedLong: 'Außerhalb der Saison – Betrieb geschlossen'
   },
   it: {
     title: 'Turni', hello: 'Ciao', team: 'Squadra', week: 'Sett.', weekView: 'Settimana', monthView: 'Mese', today: 'Oggi', none: 'Nessun turno pubblicato in questo periodo.',
     free: 'libero', changed: 'modificato', subscribe: 'Abbonarsi al calendario', print: 'Stampa', stand: 'Aggiornato', invalid: 'Questo link non è valido o è stato rinnovato. Chiedi al tuo responsabile.',
     loading: 'Caricamento…', open: 'Turno libero', abs: { urlaub: 'Ferie', krank: 'Malattia', frei: 'Libero', sonstiges: 'Assente' },
     days: ['Lu', 'Ma', 'Me', 'Gi', 'Ve', 'Sa', 'Do'], hint: 'Abbonamento: inserire il link in Google Calendar („Da URL“) o su iPhone (Impostazioni → Calendario → Account → Calendario sottoscritto).',
-    copy: 'Copia link', copied: 'Copiato', help: 'Aiuto abbonamento', me: 'I miei turni –', nothing: 'Nessun turno', outside: 'Non ancora pubblicato', prev: 'Indietro', next: 'Avanti'
+    copy: 'Copia link', copied: 'Copiato', help: 'Aiuto abbonamento', me: 'I miei turni –', nothing: 'Nessun turno', outside: 'Non ancora pubblicato', prev: 'Indietro', next: 'Avanti', closed: 'chiuso', closedLong: 'Fuori stagione – struttura chiusa'
   }
 };
 const dm = (s: string) => `${s.slice(8, 10)}.${s.slice(5, 7)}.`;
@@ -36,10 +36,16 @@ export function PublicRoster({ token }: { token: string }) {
   const [wk, setWk] = useState(weekStart(today()));
   const [mon, setMon] = useState(today().slice(0, 7));
   const [copied, setCopied] = useState(false);
-  const T = TXT[lang];
+  const [dlg, setDlg] = useState<null | 'request' | Data['shifts'][number]>(null);
+  const [msg, setMsg] = useState('');
+  const T = TXT[lang], R = REQ_TXT[lang];
   useEffect(() => { document.title = TXT[lang].title; try { localStorage.setItem('dienstplan.lang', lang); } catch { /* egal */ } }, [lang]);
   useEffect(() => { try { localStorage.setItem(MODE_KEY, mode); } catch { /* egal */ } }, [mode]);
-  useEffect(() => { repo.publicRoster(token).then(setData).catch(() => setData(null)); }, [token]);
+  const load = () => repo.publicRoster(token).then(setData).catch(() => setData(null));
+  useEffect(() => { load(); }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!msg) return; const t = setTimeout(() => setMsg(''), 4000); return () => clearTimeout(t); }, [msg]);
+  /** nach einer Anfrage: Dialog zu, Meldung zeigen, Stand neu laden */
+  const done = (m: string) => { setDlg(null); setMsg(m); load(); };
 
   const head = (
     <div className="pub-head no-print">
@@ -64,6 +70,15 @@ export function PublicRoster({ token }: { token: string }) {
   const absOn = (day: string) => data.absences.find(a => day >= a.from && day <= a.to);
   const inRange = (day: string) => day >= data.from && day <= data.to;
   const nameOf = (n: string) => (n === 'Offene Schicht' ? T.open : n);
+  const reqOn = data.requests !== undefined; // Migration für Anfragen vorhanden?
+  const closed = (day: string) => !inSeason(data.seasons, day);
+  /** Tausch beim eigenen künftigen Dienst: anbieten bzw. Stand des Angebots */
+  const swapCtl = (s: S) => {
+    if (!reqOn || !s.mine || s.date < t0 || closed(s.date)) return null;
+    const o = data.requests!.find(r => r.shiftId === s.id && (r.status === 'offen' || r.status === 'uebernommen'));
+    if (o) return <span className="pub-swap-state no-print"><ArrowRightLeft aria-hidden="true" />{o.status === 'uebernommen' ? `${o.takerName ?? ''} ${R.takes}` : R.offered}</span>;
+    return <button className="pub-swap no-print" aria-label={`${R.swapTitle} ${dm(s.date)}`} onClick={() => setDlg(s)}><ArrowRightLeft aria-hidden="true" />{R.swap}</button>;
+  };
 
   /* ---------- Woche ---------- */
   const days = weekDays(wk);
@@ -74,8 +89,9 @@ export function PublicRoster({ token }: { token: string }) {
   const chip = (s: S, big = false) => (
     <span key={s.id} className={'pub-shift' + (big ? ' big' : '') + (s.changed ? ' changed' : '')} style={{ borderColor: s.color }}
       title={s.changed ? T.changed : undefined}>
-      <b>{time(s)}</b>{s.changed && <span className="badge warn">{T.changed}</span>}
+      <b>{s.start}–{s.end}{s.start2 && <><br />{s.start2}–{s.end2}</>}</b>{s.changed && <span className="badge warn">{T.changed}</span>}
       {(big || s.note) && <small>{big ? s.departmentName : ''}{big && s.note ? ' · ' : ''}{s.note}</small>}
+      {swapCtl(s)}
     </span>
   );
   const weekView = (
@@ -87,13 +103,14 @@ export function PublicRoster({ token }: { token: string }) {
       </div>
       {/* PC / Druck: Tabelle */}
       <div className="table-scroll pub-team-wrap"><table className="list pub-team">
-        <thead><tr><th />{days.map(day => <th key={day} className={day === t0 ? 'today' : ''}><b>{wdName(day)}</b> {dm(day)}</th>)}</tr></thead>
+        <thead><tr><th />{days.map(day => <th key={day} className={(day === t0 ? 'today ' : '') + (closed(day) ? 'closed' : '')} title={closed(day) ? T.closedLong : undefined}>
+          <b>{wdName(day)}</b> {dm(day)}{closed(day) && <small className="muted"> · {T.closed}</small>}</th>)}</tr></thead>
         <tbody>{names.map(n => (
           <tr key={n} className={n === data.staffName ? 'me' : n === 'Offene Schicht' ? 'open' : ''}><td className="nm">{n === data.staffName ? <b>{n}</b> : nameOf(n)}</td>
             {days.map(day => {
               const list = team.filter(s => s.staffName === n && s.date === day);
               const ab = n === data.staffName ? absOn(day) : undefined;
-              return <td key={day} className={day === t0 ? 'today' : ''}>{ab && <span className={'pub-abs ' + ab.kind}>{T.abs[ab.kind]}</span>}
+              return <td key={day} className={(day === t0 ? 'today ' : '') + (closed(day) ? 'closed' : '')}>{ab && <span className={'pub-abs ' + ab.kind}>{T.abs[ab.kind]}</span>}
                 {list.map(s => chip(s))}</td>;
             })}</tr>
         ))}</tbody>
@@ -104,8 +121,8 @@ export function PublicRoster({ token }: { token: string }) {
         const mine = list.filter(s => s.mine), others = list.filter(s => !s.mine);
         const ab = absOn(day);
         return (
-          <li key={day} className={day === t0 ? 'today' : ''}>
-            <div className="pub-day-h"><b>{wdName(day)} {dm(day)}</b>{day === t0 && <span className="badge">{T.today}</span>}</div>
+          <li key={day} className={(day === t0 ? 'today ' : '') + (closed(day) ? 'closed' : '')}>
+            <div className="pub-day-h"><b>{wdName(day)} {dm(day)}</b>{day === t0 && <span className="badge">{T.today}</span>}{closed(day) && <span className="muted">{T.closedLong}</span>}</div>
             <div className="pub-day-me">{ab && <span className={'pub-abs ' + ab.kind}>{T.abs[ab.kind]}</span>}
               {mine.map(s => chip(s, true))}{!ab && !mine.length && <span className="muted">{T.nothing}</span>}</div>
             {!!others.length && <ul className="pub-day-team">{others.map(s => (
@@ -133,9 +150,9 @@ export function PublicRoster({ token }: { token: string }) {
         {grid.map(day => {
           const list = data.shifts.filter(s => s.mine && s.date === day);
           const ab = absOn(day);
-          const cls = ['pub-cal-d', day.startsWith(mon) ? '' : 'other', day === t0 ? 'today' : '', inRange(day) ? '' : 'out'].filter(Boolean).join(' ');
+          const cls = ['pub-cal-d', day.startsWith(mon) ? '' : 'other', day === t0 ? 'today' : '', inRange(day) ? '' : 'out', closed(day) ? 'closed' : ''].filter(Boolean).join(' ');
           return (
-            <div key={day} className={cls} role="gridcell" aria-label={`${wdName(day)} ${dm(day)}`} title={inRange(day) ? undefined : T.outside}>
+            <div key={day} className={cls} role="gridcell" aria-label={`${wdName(day)} ${dm(day)}`} title={closed(day) ? T.closedLong : inRange(day) ? undefined : T.outside}>
               <span className="n">{+day.slice(8, 10)}</span>
               {ab && <span className={'pub-abs ' + ab.kind}>{T.abs[ab.kind]}</span>}
               {list.map(s => <span key={s.id} className={'pub-cal-s' + (s.changed ? ' changed' : '')} style={{ borderColor: s.color }} title={`${s.departmentName}${s.note ? ` · ${s.note}` : ''}`}>
@@ -163,11 +180,19 @@ export function PublicRoster({ token }: { token: string }) {
           <details className="pub-help"><summary aria-label={T.help}>?</summary><p className="muted">{T.hint}</p></details>
         </div>
       </div>
-      <div className="seg pub-mode no-print" role="group" aria-label="Ansicht">
-        <button className="btn" aria-pressed={mode === 'woche'} onClick={() => setMode('woche')}>{T.weekView}</button>
-        <button className="btn" aria-pressed={mode === 'monat'} onClick={() => setMode('monat')}>{T.monthView}</button>
+      <div className="row pub-bar no-print">
+        <div className="seg pub-mode" role="group" aria-label="Ansicht">
+          <button className="btn" aria-pressed={mode === 'woche'} onClick={() => setMode('woche')}>{T.weekView}</button>
+          <button className="btn" aria-pressed={mode === 'monat'} onClick={() => setMode('monat')}>{T.monthView}</button>
+        </div>
+        {reqOn && <button className="btn primary pub-ask" onClick={() => setDlg('request')}><Plus />{R.request}</button>}
       </div>
+      {msg && <p className="pub-msg no-print" role="status">{msg}</p>}
       {mode === 'woche' ? weekView : monthView}
+      {reqOn && <Offers token={token} data={data} lang={lang} onDone={done} wdName={wdName} />}
+      {reqOn && <MyRequests token={token} data={data} lang={lang} onDone={done} />}
+      {dlg === 'request' && <RequestDialog token={token} data={data} lang={lang} onClose={() => setDlg(null)} onDone={done} />}
+      {dlg && dlg !== 'request' && <OfferDialog token={token} shift={dlg} lang={lang} onClose={() => setDlg(null)} onDone={done} wdName={wdName} />}
     </div>
   );
 }

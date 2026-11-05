@@ -39,6 +39,8 @@ interface AppState {
   setModules(modules: ModuleKey[]): Promise<boolean>;
   setModuleRoles(roles: Partial<Record<ModuleKey, Role[]>>): Promise<boolean>;
   setRosterSettings(settings: Partial<RosterSettings>): Promise<boolean>;
+  /** Anfrage vom Mitarbeiter-Link genehmigen/ablehnen (Abwesenheit bzw. Umtragung macht die DB) */
+  decideRequest(id: string, approve: boolean, answer: string, logText: [string, string]): Promise<boolean>;
   /** Erscheinungsbild der Gäste-Speisekarte (QR) speichern */
   setBranding(branding: Branding): Promise<boolean>;
   setStatusConfig(cfg: StatusConfig): Promise<boolean>;
@@ -275,6 +277,13 @@ export const useApp = create<AppState>((set, get) => {
       if (!ok) return false;
       set(s => (s.data ? { data: { ...s.data, venue: { ...s.data.venue, rosterSettings: settings } } } : {}));
       get().log('Prüfregeln Dienstplan geändert');
+      return true;
+    },
+    async decideRequest(id, approve, answer, logText) {
+      const ok = await write(async () => { await repo.decideRequest(venueId(), id, approve, answer); return true; });
+      if (!ok) return false;
+      await get().reload(); // Anfrage, Abwesenheit und Dienst aus der DB übernehmen
+      get().log(...logText);
       return true;
     },
     async setQrWindow(w) {

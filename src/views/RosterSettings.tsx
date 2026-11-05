@@ -6,8 +6,10 @@ import { repo } from '../data';
 import { newId } from '../domain/demo';
 import { ROSTER_COLORS } from '../domain/constants';
 import { departmentUsage, sortDepartments } from '../domain/roster';
-import type { Department, Member, ModuleKey, RosterSettings } from '../domain/types';
+import type { Department, Member, ModuleKey, RosterSettings, Season } from '../domain/types';
 import { DEFAULT_ROSTER_SETTINGS, rosterSettings } from '../domain/rosterPlan';
+import { seasonErrors, seasonsByYear } from '../domain/requests';
+import { addDays, fmtShort, today } from '../lib/time';
 import { useApp } from '../store/app';
 import { EDITION } from '../lib/edition';
 import { useData } from '../store/hooks';
@@ -20,6 +22,7 @@ export function ModulesPanel() {
   // eigenständige Dienstplan-App: Modul ist immer an, nur Bereiche & Leitungen
   if (EDITION === 'dienstplan') return <>
     <div className="panel mt12"><h3>Bereiche & Leitungen</h3><div className="body"><DepartmentsAdmin heading={false} /></div></div>
+    <div className="panel mt12"><h3>Saison</h3><div className="body"><SeasonSettings /></div></div>
     <div className="panel mt12"><h3>Prüfregeln</h3><div className="body"><RulesForm /></div></div>
   </>;
   return null;
@@ -36,6 +39,7 @@ export function DienstplanModule() {
         <b>Dienstplan</b></label>
       <p className="muted" style={{ fontSize: 12, margin: '4px 0 0' }}>Personalplanung je Bereich (Küche, Service …). Sichtbar für Admins und die Bereichsleitungen; ausschalten blendet das Modul nur aus, die Daten bleiben erhalten.</p>
       {on && <DepartmentsAdmin />}
+      {on && <><h4 style={{ margin: '14px 0 6px' }}>Saison</h4><SeasonSettings /></>}
       {on && <><h4 style={{ margin: '14px 0 6px' }}>Prüfregeln</h4><RulesForm /></>}
     </div>
   );
@@ -57,16 +61,72 @@ export const MODULE_GROUPS: { mod: ModuleKey; title: string; icon: LucideIcon; h
     body: () => <ModuleToggle mod="bestellliste" label="Bestellliste" hint="Artikellisten je Lieferant, Bestellung per WhatsApp, Historie und Auswertung je Monat."><SupplierSettings /></ModuleToggle> }
 ];
 
+/** Saisonzeiträume je Jahr (mehrere möglich, z. B. Winter und Sommer): außerhalb grau im Planer und auf dem Mitarbeiter-Link,
+ *  Hinweis bei Diensten außerhalb, keine Anfragen */
+export function SeasonSettings() {
+  const d = useData();
+  const setRosterSettings = useApp(s => s.setRosterSettings);
+  const seasons = d.venue.rosterSettings?.seasons ?? [];
+  const thisYear = +today().slice(0, 4);
+  const years = [...new Set([...seasonsByYear(seasons).map(([y]) => y), thisYear])].sort((a, b) => a - b);
+  const save = (list: Season[], text: string) => setRosterSettings({ ...(d.venue.rosterSettings ?? {}), seasons: list })
+    .then(ok => { if (ok) useApp.getState().log('Saison geändert', text); });
+  const change = (s: Season, p: Partial<Season>) => {
+    const next = { ...s, ...p };
+    const err = seasonErrors(next, seasons);
+    if (err.length) { toast(err[0], 'err'); return; }
+    save(seasons.map(x => (x.id === s.id ? next : x)), `${next.name || 'Saison'} ${fmtShort(next.from)} – ${fmtShort(next.to)}`);
+  };
+  const add = (y: number) => {
+    const taken = seasons.filter(s => s.from.startsWith(String(y)));
+    const from = taken.length ? addDays(taken.map(s => s.to).sort().at(-1)!, 1) : `${y}-05-01`;
+    const s: Season = { id: newId(), name: taken.length ? 'Wintersaison' : 'Sommersaison', from, to: from.slice(0, 4) === String(y) && from <= `${y}-10-31` ? `${y}-10-31` : addDays(from, 30) };
+    const err = seasonErrors(s, seasons);
+    if (err.length) { toast(err[0], 'err'); return; }
+    save([...seasons, s], `${s.name} angelegt`);
+  };
+  const remove = async (s: Season) => {
+    if (await confirmDialog('Saison löschen?', [`${s.name || 'Saison'}: ${fmtShort(s.from)} – ${fmtShort(s.to)}`], 'Löschen', true))
+      save(seasons.filter(x => x.id !== s.id), `${s.name || 'Saison'} gelöscht`);
+  };
+  return (
+    <div className="season-settings">
+      <p className="muted" style={{ fontSize: 12, marginTop: 0 }}>Zeiträume, in denen der Betrieb geöffnet hat – für jedes Jahr neu, auch mehrere (z. B. Winter und Sommer).
+        Tage außerhalb sind im Dienstplan und auf dem Mitarbeiter-Link grau, Dienste dort erhalten einen Hinweis und Anfragen sind nicht möglich. Ohne Eintrag gilt: ganzjährig geöffnet.</p>
+      {years.map(y => {
+        const list = seasons.filter(s => +s.from.slice(0, 4) === y).sort((a, b) => a.from.localeCompare(b.from));
+        return (
+          <section key={y} className="season-year" aria-label={`Saison ${y}`}>
+            <div className="row"><h4 style={{ margin: 0 }}>{y}</h4><span className="spacer" />
+              <button className="btn small" onClick={() => add(y)}><Plus />Saison {y}</button></div>
+            {!list.length && <p className="muted" style={{ fontSize: 12, margin: '4px 0 0' }}>Keine Saison eingetragen{seasons.length ? ' – das Jahr gilt als geschlossen.' : '.'}</p>}
+            {list.map(s => (
+              <div key={s.id + s.from + s.to + s.name} className="row season-row">
+                <input aria-label="Name der Saison" defaultValue={s.name} placeholder="z. B. Sommersaison" onBlur={e => { const v = e.target.value.trim(); if (v !== s.name) change(s, { name: v }); }} />
+                <label>Von<input type="date" aria-label="Saisonbeginn" defaultValue={s.from} onBlur={e => { if (e.target.value && e.target.value !== s.from) change(s, { from: e.target.value }); }} /></label>
+                <label>Bis<input type="date" aria-label="Saisonende" defaultValue={s.to} onBlur={e => { if (e.target.value && e.target.value !== s.to) change(s, { to: e.target.value }); }} /></label>
+                <button className="btn small icon ghost danger" aria-label={`Saison ${s.name} löschen`} title="Löschen" onClick={() => remove(s)}><Trash2 /></button>
+              </div>
+            ))}
+          </section>
+        );
+      })}
+      <button className="btn small ghost mt8" onClick={() => add(years.at(-1)! + 1)}><Plus />Jahr {years.at(-1)! + 1}</button>
+    </div>
+  );
+}
+
 /** Prüfregeln des Dienstplans (Warnungen, keine Sperren) */
 function RulesForm() {
   const d = useData();
   const setRosterSettings = useApp(s => s.setRosterSettings);
   const cur = rosterSettings(d.venue);
-  const field = (key: keyof RosterSettings, label: string, max: number) => (
+  const field = (key: Exclude<keyof RosterSettings, 'seasons'>, label: string, max: number) => (
     <label>{label}<input type="number" min={0} max={max} step={key === 'minBreakMin' ? 5 : 1} key={key + cur[key]} defaultValue={cur[key]} aria-label={label}
       onBlur={e => { const v = Math.max(0, Math.min(max, +e.target.value || 0)); if (v !== cur[key]) setRosterSettings({ ...(d.venue.rosterSettings ?? {}), [key]: v }); }} /></label>
   );
-  const changed = JSON.stringify(cur) !== JSON.stringify(DEFAULT_ROSTER_SETTINGS);
+  const { seasons, ...rules } = cur;
+  const changed = JSON.stringify(rules) !== JSON.stringify(DEFAULT_ROSTER_SETTINGS);
   return (
     <>
       <div className="grid3 rules-grid">
@@ -77,7 +137,7 @@ function RulesForm() {
         {field('minBreakMin', 'Mindestpause (Min.)', 120)}
       </div>
       <p className="muted" style={{ fontSize: 12, margin: '6px 0 0' }}>Standard nach D.Lgs. 66/2003 und CCNL Turismo: 11 h Ruhezeit, max. 48 h, 1 freier Tag, Pause ab 6 h (mind. 10 Min.). Abweichungen erscheinen im Dienstplan als Hinweis.
-        {changed && <> <button className="link" onClick={() => setRosterSettings({})}>Standard wiederherstellen</button></>}</p>
+        {changed && <> <button className="link" onClick={() => setRosterSettings(seasons?.length ? { seasons } : {})}>Standard wiederherstellen</button></>}</p>
     </>
   );
 }

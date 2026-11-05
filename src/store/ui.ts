@@ -13,7 +13,7 @@ interface UiState {
   /** Menüverwaltung: Reiter und angezeigte Woche (irgendein Tag der Woche) */
   menuTab: 'plan' | 'gerichte' | 'zutaten'; menuWeek: string;
   /** Dienstplan: Reiter und Bereichsfilter ('' = alle Bereiche) */
-  rosterTab: 'plan' | 'absences' | 'staff' | 'positions' | 'templates'; rosterDept: string;
+  rosterTab: 'plan' | 'requests' | 'absences' | 'staff' | 'positions' | 'templates'; rosterDept: string;
   /** Dienstplan: angezeigter Tag/Woche/Monat, Ansicht und gewählte Vorlage („Pinsel“, null = aus) */
   rosterDate: string; rosterMode: 'woche' | 'tag' | 'monat'; rosterBrush: string | null;
   set: (p: Partial<UiState>) => void;

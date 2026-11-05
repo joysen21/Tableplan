@@ -29,7 +29,7 @@ export function emptyVenueData(venueId: string, name: string): VenueData {
     venue: { id: venueId, name, modules: [], qrToken: newQrToken() },
     rooms: [{ id: newId(), name: 'Restaurant', width: 1000, height: 650, backgroundUrl: null, sort: 0 }],
     stations: [], tables: [], decor: [], combos: [], layouts: [], services: defaultServices(), blocks: [], stays: [], reservations: [], audit: [],
-    ingredients: [], dishes: [], menus: [], menuChoices: [], departments: [], positions: [], staff: [], shiftTemplates: [], shifts: [], absences: [], publications: [],
+    ingredients: [], dishes: [], menus: [], menuChoices: [], departments: [], positions: [], staff: [], shiftTemplates: [], shifts: [], absences: [], publications: [], requests: [],
     suppliers: [], supplierProducts: [], supplierOrders: [], passCalls: [], hotelResources: [], therapies: [], presence: [], bookings: [], dueGroups: [], dueItems: []
   };
 }
@@ -37,7 +37,7 @@ export function emptyVenueData(venueId: string, name: string): VenueData {
 /** Fehlende Listen/Felder ergänzen (ältere Sicherungen, Demo-Daten aus früheren Versionen) */
 export function normalizeVenueData(d: VenueData): VenueData {
   const L = ['rooms', 'stations', 'tables', 'decor', 'combos', 'layouts', 'services', 'blocks', 'stays', 'reservations', 'audit', 'ingredients', 'dishes', 'menus', 'menuChoices',
-    'departments', 'positions', 'staff', 'shiftTemplates', 'shifts', 'absences', 'publications', 'suppliers', 'supplierProducts', 'supplierOrders', 'passCalls', 'hotelResources', 'therapies', 'presence', 'bookings', 'dueGroups', 'dueItems'] as const;
+    'departments', 'positions', 'staff', 'shiftTemplates', 'shifts', 'absences', 'publications', 'requests', 'suppliers', 'supplierProducts', 'supplierOrders', 'passCalls', 'hotelResources', 'therapies', 'presence', 'bookings', 'dueGroups', 'dueItems'] as const;
   const out = { ...d } as VenueData;
   for (const k of L) (out as any)[k] = (d as any)[k] ?? [];
   out.venue = { ...d.venue, modules: d.venue?.modules ?? [], qrToken: d.venue?.qrToken || newQrToken() };
@@ -64,7 +64,7 @@ export function demoVenueData(venueId: string, name: string): VenueData {
     ],
     stations: [{ id: sA, name: 'Revier A', color: '#1f6feb' }, { id: sB, name: 'Revier B', color: '#e36209' }, { id: sC, name: 'Revier Stube', color: '#1a7f37' }],
     tables: [], decor: [], combos: [], layouts: [], services: defaultServices(), blocks: [], stays: [], reservations: [], audit: [],
-    ingredients: [], dishes: [], menus: [], menuChoices: [], departments: [], positions: [], staff: [], shiftTemplates: [], shifts: [], absences: [], publications: [],
+    ingredients: [], dishes: [], menus: [], menuChoices: [], departments: [], positions: [], staff: [], shiftTemplates: [], shifts: [], absences: [], publications: [], requests: [],
     suppliers: [], supplierProducts: [], supplierOrders: [], passCalls: [], hotelResources: [], therapies: [], presence: [], bookings: [], dueGroups: [], dueItems: []
   };
   const T = (roomId: string, nm: string, shape: TableShape, x: number, y: number, w: number, h: number, min: number, max: number, stationId: string, features: TableFeature[] = []) =>

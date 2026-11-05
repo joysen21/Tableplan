@@ -4,7 +4,7 @@
  */
 import type {
   BoardDef, Absence, AuditEntry, Branding, Decor, Department, DiningTable, Dish, Ingredient, Layout, Member, Menu, MenuChoice, ModuleKey, OnDuty, Position, Publication,
-  PublicRoster, Reservation, Role, Room, RosterSettings, Service, Shift, ShiftTemplate, Staff, Station, StatusConfig, QrWindow, Stay, PassCall, Supplier, HotelResource, Therapy, Presence, Booking, DueGroup, DueItem, SupplierOrder, SupplierProduct, TableBlock, TableCombo, VenueData
+  PublicRoster, RequestKind, RosterRequest, Reservation, Role, Room, RosterSettings, Service, Shift, ShiftTemplate, Staff, Station, StatusConfig, QrWindow, Stay, PassCall, Supplier, HotelResource, Therapy, Presence, Booking, DueGroup, DueItem, SupplierOrder, SupplierProduct, TableBlock, TableCombo, VenueData
 } from '../domain/types';
 import type { GuestMenuData } from '../domain/guestMenu';
 
@@ -15,6 +15,8 @@ export interface EntityMap {
   menuChoices: MenuChoice;
   departments: Department; positions: Position; staff: Staff; shiftTemplates: ShiftTemplate;
   shifts: Shift; absences: Absence; publications: Publication;
+  /** Anfragen vom Mitarbeiter-Link (nicht in ENTITY_KEYS: werden beim Einspielen einer Sicherung nicht übernommen) */
+  requests: RosterRequest;
   /** Modul Bestellliste */
   suppliers: Supplier; supplierProducts: SupplierProduct; supplierOrders: SupplierOrder;
   /** Modul Pass + Chef (nicht in ENTITY_KEYS: Abrufe werden beim Einspielen einer Sicherung nicht übernommen) */
@@ -80,6 +82,16 @@ export interface Repo {
   setRosterSettings(venueId: string, settings: Partial<RosterSettings>): Promise<void>;
   /** Lesezugang ohne Anmeldung (Mitarbeiter-Link); null = Link ungültig */
   publicRoster(token: string): Promise<PublicRoster | null>;
+  // Anfragen über den Mitarbeiter-Link (ohne Anmeldung, nur mit dem persönlichen Schlüssel)
+  requestCreate(token: string, kind: Exclude<RequestKind, 'tausch'>, from: string, to: string, note: string): Promise<void>;
+  /** eigene offene Anfrage / eigenes Tauschangebot zurücknehmen */
+  requestCancel(token: string, id: string): Promise<void>;
+  /** eigenen (veröffentlichten, künftigen) Dienst zum Tausch anbieten */
+  swapOffer(token: string, shiftId: string, note: string): Promise<void>;
+  /** Tauschangebot übernehmen (take) oder wieder zurückgeben */
+  swapTake(token: string, id: string, take: boolean): Promise<void>;
+  /** Leitung: genehmigen/ablehnen – Abwesenheit bzw. Umtragung passiert in der DB atomar */
+  decideRequest(venueId: string, id: string, approve: boolean, answer: string): Promise<void>;
   /** Veröffentlichte Dienste eines Tages */
   onDuty(venueId: string, date: string): Promise<OnDuty[]>;
   members(venueId: string): Promise<Member[]>;

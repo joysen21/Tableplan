@@ -37,6 +37,7 @@ export function remapIds(d: VenueData, newId: () => string): VenueData {
     shifts: (d.shifts ?? []).map(x => ({ ...x, id: m(x.id)!, departmentId: m(x.departmentId)!, staffId: m(x.staffId), positionId: m(x.positionId), templateId: m(x.templateId) })),
     absences: (d.absences ?? []).map(x => ({ ...x, id: m(x.id)!, staffId: m(x.staffId)! })),
     publications: (d.publications ?? []).map(x => ({ ...x, id: m(x.id)!, departmentId: m(x.departmentId)! })),
+    requests: [], // Anfragen werden beim Kopieren nicht übernommen
     positions: (d.positions ?? []).map(x => ({ ...x, id: m(x.id)!, departmentId: m(x.departmentId)! })),
     // neue Links: die alten gehören zum anderen Betrieb
     staff: (d.staff ?? []).map(x => ({ ...x, id: m(x.id)!, departmentId: m(x.departmentId), positionIds: mm(x.positionIds), shareToken: newId() })),

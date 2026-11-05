@@ -17,6 +17,7 @@ import { useThemeStore } from '../ui/theme';
 import { Dialogs } from '../forms/Dialogs';
 import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { dueAlertCount, dueDashboard } from '../domain/due';
+import { pendingFor } from '../domain/requests';
 
 const VIEW_ICON: Record<ViewKey, LucideIcon> = {
   live: Utensils, zeit: ChartGantt, res: CalendarDays, hotel: BedDouble, menue: ChefHat, dienst: CalendarClock, pass: ConciergeBell, chef: CookingPot, garage: SquareParking, massage: HandHeart, fahrrad: Bike, faellig: CalendarCheck, bestell: ShoppingCart, berichte: ChartColumn, editor: PencilRuler, settings: Settings
@@ -82,7 +83,10 @@ export function Shell() {
   const bottom = views.length > 1 ? views.slice(0, BOTTOM_MAX) : [];
   // Fälligkeiten: Hinweiszahl im Menü (überfällig, heute, demnächst) und einmal am Tag eine Meldung
   const dueN = views.includes('faellig') ? dueAlertCount(data.dueItems ?? [], today()) : 0;
-  const badge = (v: ViewKey) => (v === 'faellig' && dueN > 0 ? <span className="nav-badge" aria-label={`${dueN} fällig`}>{dueN}</span> : null);
+  // Dienstplan: offene Anfragen vom Mitarbeiter-Link, die diese Person entscheiden darf
+  const reqN = views.includes('dienst') ? pendingFor(data, user.role, user.id).length : 0;
+  const badge = (v: ViewKey) => (v === 'faellig' && dueN > 0 ? <span className="nav-badge" aria-label={`${dueN} fällig`}>{dueN}</span>
+    : v === 'dienst' && reqN > 0 ? <span className="nav-badge" aria-label={`${reqN} offene Anfragen`}>{reqN}</span> : null);
   // Meldung oben (bis zum Schließen; danach erst am nächsten Tag wieder)
   const dueKey = `tischplan.faellig.meldung.${data.venue.id}`;
   const [dueHidden, setDueHidden] = useState(() => { try { return localStorage.getItem(dueKey) === today(); } catch { return false; } });

@@ -15,6 +15,8 @@ import { confirmDialog, toast } from '../ui/notify';
 import { RosterPlan } from './RosterPlan';
 import { ABSENCE_LABEL, vacationUsed } from '../domain/rosterPlan';
 import { DeptIcon, StaffMark } from '../ui/DeptIcon';
+import { pendingFor } from '../domain/requests';
+import { RequestList } from './RosterRequests';
 
 /** "JJJJ-MM-TT" → "TT.MM.JJJJ" */
 const dmy = (s: string) => s.split('-').reverse().join('.');
@@ -32,11 +34,13 @@ export function RosterView() {
   // Filter auf einen gelöschten Bereich zurücksetzen
   const dept = depts.some(x => x.id === ui.rosterDept) ? ui.rosterDept : '';
   const preset = mine.some(x => x.id === dept) ? dept : mine[0]?.id;
+  const pending = pendingFor(d, role, userId).length;
   return (
     <div className="panel roster-view">
       <div className="row" style={{ padding: '10px 14px', borderBottom: '1px solid var(--line)' }}>
         <div className="seg roster-tabs" role="group" aria-label="Bereich">
           <button className="btn" aria-pressed={tab === 'plan'} onClick={() => ui.set({ rosterTab: 'plan' })}>Dienstplan</button>
+          <button className="btn" aria-pressed={tab === 'requests'} onClick={() => ui.set({ rosterTab: 'requests' })}>Anfragen{pending > 0 && <span className="nav-badge" aria-label={`${pending} offen`}>{pending}</span>}</button>
           <button className="btn" aria-pressed={tab === 'absences'} onClick={() => ui.set({ rosterTab: 'absences' })}>Abwesenheiten</button>
           <button className="btn" aria-pressed={tab === 'staff'} onClick={() => ui.set({ rosterTab: 'staff' })}>Mitarbeitende <span className="count">{d.staff.filter(x => x.active).length}</span></button>
           <button className="btn" aria-pressed={tab === 'positions'} onClick={() => ui.set({ rosterTab: 'positions' })}>Positionen</button>
@@ -53,6 +57,7 @@ export function RosterView() {
       </div>
       {!depts.length ? <NoDepartments admin={role === 'admin'} />
         : tab === 'plan' ? <RosterPlan dept={dept} />
+        : tab === 'requests' ? <RequestList dept={dept} />
         : tab === 'absences' ? <AbsenceList dept={dept} />
         : tab === 'staff' ? <StaffList dept={dept} />
         : tab === 'positions' ? <PositionList depts={dept ? depts.filter(x => x.id === dept) : depts} />

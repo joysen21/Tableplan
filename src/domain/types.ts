@@ -183,12 +183,39 @@ export interface Publication { id: string; departmentId: string; weekStart: stri
 /** Prüfregeln (Warnungen) – Standard nach D.Lgs. 66/2003 / CCNL Turismo, je Betrieb anpassbar */
 export interface RosterSettings {
   restHours: number; maxWeekHours: number; breakAfterHours: number; minBreakMin: number; freeDaysPerWeek: number;
+  /** Saisonzeiträume, in denen der Betrieb geöffnet hat (leer = ganzjährig) */
+  seasons?: Season[];
+}
+/** Saison: Zeitraum, in dem der Betrieb geöffnet hat (je Jahr neu, mehrere möglich) */
+export interface Season { id: string; name: string; from: string; to: string }
+
+/** Anfrage vom Mitarbeiter-Link: Frei-Wunsch, Urlaub, Krankmeldung oder Dienst-Tausch.
+ *  Status: offen (neu) → genehmigt/abgelehnt; Tausch: offen (angeboten) → uebernommen (Kollege vorgemerkt) → genehmigt/abgelehnt.
+ *  Krankmeldung ist sofort eingetragen – „genehmigt“ heißt hier: von der Leitung zur Kenntnis genommen. */
+export type RequestKind = 'frei' | 'urlaub' | 'krank' | 'tausch';
+export type RequestStatus = 'offen' | 'uebernommen' | 'genehmigt' | 'abgelehnt';
+export interface RosterRequest {
+  id: string; staffId: string; departmentId: string | null; kind: RequestKind; from: string; to: string;
+  shiftId: string | null; takerId: string | null; note: string; status: RequestStatus;
+  answer: string; decidedBy: string; decidedAt: string | null; createdAt: string;
+}
+/** Eigene Anfrage auf dem Mitarbeiter-Link */
+export interface PubRequest {
+  id: string; kind: RequestKind; from: string; to: string; shiftId: string | null; note: string; status: RequestStatus;
+  answer: string; decidedAt: string | null; createdAt: string; takerName: string | null;
+}
+/** Tauschangebot von Kolleg:innen (gleicher Bereich) auf dem Mitarbeiter-Link */
+export interface PubOffer {
+  id: string; staffName: string; departmentName: string; color: string; date: string; start: string; end: string;
+  start2: string | null; end2: string | null; note: string; status: RequestStatus; takenByMe: boolean;
 }
 /** Lesezugang einer Mitarbeiterin / eines Mitarbeiters (öffentliche Seite, Kalender-Abo) */
 export interface PublicRoster {
   venueName: string; staffName: string; from: string; to: string;
   shifts: (Shift & { staffName: string; departmentName: string; color: string; mine: boolean; changed: boolean })[];
   absences: Absence[]; publishedAt: string | null;
+  /** ab Migration 20261105000000 (Anfragen); fehlt sie, gibt es keine Anfragen auf dem Link */
+  requests?: PubRequest[]; offers?: PubOffer[]; seasons?: Season[];
 }
 /** „Heute im Dienst“ (nur veröffentlichte Dienste) */
 export interface OnDuty { staffName: string; departmentName: string; color: string; start: string; end: string; start2: string | null; end2: string | null }
@@ -208,7 +235,7 @@ export interface VenueData {
   stays: Stay[]; reservations: Reservation[]; audit: AuditEntry[];
   ingredients: Ingredient[]; dishes: Dish[]; menus: Menu[]; menuChoices: MenuChoice[];
   departments: Department[]; positions: Position[]; staff: Staff[]; shiftTemplates: ShiftTemplate[];
-  shifts: Shift[]; absences: Absence[]; publications: Publication[];
+  shifts: Shift[]; absences: Absence[]; publications: Publication[]; requests: RosterRequest[];
   suppliers: Supplier[]; supplierProducts: SupplierProduct[]; supplierOrders: SupplierOrder[];
   passCalls: PassCall[];
   hotelResources: HotelResource[]; therapies: Therapy[]; presence: Presence[]; bookings: Booking[];

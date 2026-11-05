@@ -1,5 +1,5 @@
 /** Dienstplan – Planung (reine Fachlogik): Wochen, Dienste, Prüfregeln, Abwesenheiten, Feiertage, Besetzung, Export */
-import type { Absence, AbsenceKind, Department, Publication, RosterSettings, Shift, ShiftTemplate, Staff, Venue, VenueData } from './types';
+import type { Absence, AbsenceKind, Department, Publication, RosterSettings, Season, Shift, ShiftTemplate, Staff, Venue, VenueData } from './types';
 import { contractActive, isSplit, presenceMin, spanMin, workMin } from './roster';
 import { addDays, pad, toMin } from '../lib/time';
 
@@ -95,7 +95,9 @@ export const absenceErrors = (x: Absence, d: Pick<VenueData, 'absences'>): strin
 
 /* ---------- Prüfregeln ---------- */
 
-export type WarnKind = 'overlap' | 'absence' | 'contract' | 'inactive' | 'qualification' | 'rest' | 'break' | 'weekHours' | 'freeDay';
+export type WarnKind = 'overlap' | 'absence' | 'contract' | 'inactive' | 'qualification' | 'rest' | 'break' | 'weekHours' | 'freeDay' | 'season';
+/** Liegt der Tag in einer Saison? Ohne eingetragene Saison: immer (ganzjährig geöffnet) */
+export const inSeason = (seasons: Season[] | undefined, day: string) => !seasons?.length || seasons.some(s => day >= s.from && day <= s.to);
 export interface RosterWarning { kind: WarnKind; staffId: string; date: string; shiftId: string | null; text: string; severe: boolean }
 
 const hours = (min: number) => (Math.round(min / 6) / 10).toLocaleString('de-DE');
@@ -114,6 +116,7 @@ export function rosterWarnings(d: VenueData, date: string, settings: RosterSetti
     const week = all.filter(s => inRange(s.date, from, to));
     const w = (kind: WarnKind, s: Shift | null, text: string, severe = false, day = s?.date ?? from) => out.push({ kind, staffId: sid, date: day, shiftId: s?.id ?? null, text, severe });
     for (const s of week) {
+      if (!inSeason(settings.seasons, s.date)) w('season', s, `${st?.name ?? 'Person'}: Dienst außerhalb der Saison (Betrieb geschlossen).`);
       if (!st) continue;
       if (!st.active) w('inactive', s, `${st.name} ist als ausgeschieden markiert.`);
       else if (!contractActive(st, s.date)) w('contract', s, `${st.name}: Dienst außerhalb der Vertragszeit.`);

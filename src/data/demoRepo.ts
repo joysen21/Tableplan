@@ -8,7 +8,8 @@ import { MAX_ROOMS_PER_TABLE } from '../domain/constants';
 import { occupies, tableConflicts, resEnd, resStart } from '../domain/logic';
 import { canPlanDept } from '../domain/roster';
 import { shiftsOverlap, weekStart } from '../domain/rosterPlan';
-import type { BoardDef, Branding, Member, MenuChoice, ModuleKey, OnDuty, PublicRoster, QrWindow, Reservation, Role, RosterSettings, Shift, StatusConfig, Stay, VenueData } from '../domain/types';
+import type { BoardDef, Branding, Member, MenuChoice, ModuleKey, OnDuty, PublicRoster, QrWindow, RequestKind, Reservation, Role, RosterRequest, RosterSettings, Shift, StatusConfig, Stay, VenueData } from '../domain/types';
+import { decideRequest as decideRequestFx, inSeason, REQUEST_ERROR_TEXT, requestErrors, sickEffects, takeError } from '../domain/requests';
 import { buildGuestMenu, cleanCounts, newQrToken, partyKey } from '../domain/guestMenu';
 import { moduleAllowed } from '../domain/modules';
 import { addDays, today } from '../lib/time';
@@ -193,10 +194,110 @@ export class DemoRepo implements Repo {
             changed: !!(s.updatedAt && s.updatedAt > pubOf(s)!.publishedAt) };
         });
       const pubs = d.publications.filter(p => deps.has(p.departmentId)).map(p => p.publishedAt).sort();
+      const t0 = today(), since = new Date(Date.now() - 60 * 86400000).toISOString();
+      const nameOf = (id: string | null) => d.staff.find(x => x.id === id)?.name ?? null;
+      const requests = d.requests.filter(r => r.staffId === st.id && (r.status === 'offen' || r.status === 'uebernommen' || (r.decidedAt ?? r.createdAt) >= since))
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .map(r => ({ id: r.id, kind: r.kind, from: r.from, to: r.to, shiftId: r.shiftId, note: r.note, status: r.status, answer: r.answer, decidedAt: r.decidedAt, createdAt: r.createdAt, takerName: nameOf(r.takerId) }));
+      const offers = d.requests.filter(r => r.kind === 'tausch' && r.staffId !== st.id && r.departmentId === st.departmentId && (r.status === 'offen' || (r.status === 'uebernommen' && r.takerId === st.id)))
+        .flatMap(r => {
+          const s = d.shifts.find(x => x.id === r.shiftId); if (!s || s.date < t0) return [];
+          const dep = d.departments.find(x => x.id === s.departmentId);
+          return [{ id: r.id, staffName: nameOf(r.staffId) ?? '', departmentName: dep?.name ?? '', color: d.shiftTemplates.find(t => t.id === s.templateId)?.color ?? dep?.color ?? '#4F7BD1',
+            date: s.date, start: s.start, end: s.end, start2: s.start2, end2: s.end2, note: r.note, status: r.status, takenByMe: r.takerId === st.id }];
+        }).sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start));
       return { venueName: d.venue.name, staffName: st.name, from, to, shifts,
-        absences: d.absences.filter(a => a.staffId === st.id && a.to >= from && a.from <= to).map(a => ({ ...a, note: '' })), publishedAt: pubs.at(-1) ?? null };
+        absences: d.absences.filter(a => a.staffId === st.id && a.to >= from && a.from <= to).map(a => ({ ...a, note: '' })), publishedAt: pubs.at(-1) ?? null,
+        requests, offers, seasons: d.venue.rosterSettings?.seasons ?? [] };
     }
     return null;
+  }
+
+  /* ---------- Anfragen über den Mitarbeiter-Link (wie roster_request* / roster_swap_* in der DB) ---------- */
+  private linkStaff(token: string) {
+    const db = this.read();
+    for (const [vid, d] of Object.entries(db.data)) {
+      const st = (d.staff ?? []).find(s => s.shareToken === token && s.active);
+      if (st) { d.requests ??= []; return { db, vid, d, st }; }
+    }
+    throw new RepoError('forbidden', 'Dieser Link ist ungültig oder wurde erneuert.');
+  }
+  private emitRows(rows: [EntityKey, { id: string }[]][]) {
+    this.emit(rows.flatMap(([kind, list]) => list.map(row => ({ kind, type: 'upsert' as const, row: row as any }))));
+  }
+  async requestCreate(token: string, kind: Exclude<RequestKind, 'tausch'>, from: string, to: string, note: string) {
+    const { db, d, st } = this.linkStaff(token);
+    const t0 = today();
+    const err = requestErrors({ kind, from, to }, t0, d.venue.rosterSettings?.seasons, d.absences.filter(a => a.staffId === st.id), d.requests.filter(r => r.staffId === st.id));
+    if (err.length) throw new RepoError('other', REQUEST_ERROR_TEXT.de[err[0]]);
+    const r: RosterRequest = { id: newId(), staffId: st.id, departmentId: st.departmentId, kind, from, to, shiftId: null, takerId: null, note: note.trim().slice(0, 500),
+      status: 'offen', answer: '', decidedBy: '', decidedAt: null, createdAt: new Date().toISOString() };
+    d.requests.push(r);
+    const out: [EntityKey, { id: string }[]][] = [['requests', [r]]];
+    if (kind === 'krank') {
+      const fx = sickEffects(d.shifts, st.id, st.name, from, to, t0, newId, note);
+      d.absences.push(fx.absence);
+      d.shifts = d.shifts.map(s => fx.opened.find(o => o.id === s.id) ?? s);
+      out.push(['absences', [fx.absence]], ['shifts', fx.opened]);
+    }
+    this.write(db); this.emitRows(out);
+  }
+  async requestCancel(token: string, id: string) {
+    const { db, d, st } = this.linkStaff(token);
+    const r = d.requests.find(x => x.id === id && x.staffId === st.id && x.kind !== 'krank' && (x.status === 'offen' || x.status === 'uebernommen'));
+    if (!r) throw new RepoError('other', 'Diese Anfrage kann nicht mehr zurückgenommen werden.');
+    d.requests = d.requests.filter(x => x.id !== id);
+    this.write(db); this.emit([{ kind: 'requests', type: 'delete', id }]);
+  }
+  async swapOffer(token: string, shiftId: string, note: string) {
+    const { db, d, st } = this.linkStaff(token);
+    const s = d.shifts.find(x => x.id === shiftId && x.staffId === st.id && x.date >= today());
+    if (!s) throw new RepoError('other', 'Diesen Dienst kannst du nicht (mehr) anbieten.');
+    if (!d.publications.some(p => p.departmentId === s.departmentId && p.weekStart === weekStart(s.date))) throw new RepoError('other', 'Dieser Dienst ist noch nicht veröffentlicht.');
+    if (!inSeason(d.venue.rosterSettings?.seasons, s.date)) throw new RepoError('other', REQUEST_ERROR_TEXT.de.season);
+    if (d.requests.some(r => r.shiftId === s.id && (r.status === 'offen' || r.status === 'uebernommen'))) throw new RepoError('other', 'Dieser Dienst wird schon zum Tausch angeboten.');
+    const r: RosterRequest = { id: newId(), staffId: st.id, departmentId: s.departmentId, kind: 'tausch', from: s.date, to: s.date, shiftId: s.id, takerId: null,
+      note: note.trim().slice(0, 500), status: 'offen', answer: '', decidedBy: '', decidedAt: null, createdAt: new Date().toISOString() };
+    d.requests.push(r);
+    this.write(db); this.emitRows([['requests', [r]]]);
+  }
+  async swapTake(token: string, id: string, take: boolean) {
+    const { db, d, st } = this.linkStaff(token);
+    const i = d.requests.findIndex(x => x.id === id && x.kind === 'tausch');
+    const r = d.requests[i];
+    if (!r) throw new RepoError('other', 'Dieses Angebot gibt es nicht mehr.');
+    let next: RosterRequest;
+    if (!take) {
+      if (r.takerId !== st.id || r.status !== 'uebernommen') throw new RepoError('other', 'Dieses Angebot kannst du nicht zurückgeben.');
+      next = { ...r, status: 'offen', takerId: null };
+    } else {
+      if (r.status !== 'offen') throw new RepoError('other', 'Dieses Angebot hat schon jemand übernommen.');
+      if (r.staffId === st.id) throw new RepoError('other', 'Das ist dein eigenes Angebot.');
+      if (st.departmentId !== r.departmentId) throw new RepoError('other', 'Nur Kolleg:innen des gleichen Bereichs können übernehmen.');
+      const s = d.shifts.find(x => x.id === r.shiftId);
+      if (!s || s.date < today()) throw new RepoError('other', 'Dieser Dienst ist nicht mehr verfügbar.');
+      const e = takeError(d, s, st.id);
+      if (e) throw new RepoError('other', e === 'absent' ? 'Du bist an diesem Tag abwesend.' : 'Du hast zu dieser Zeit schon einen Dienst.');
+      next = { ...r, status: 'uebernommen', takerId: st.id };
+    }
+    d.requests[i] = next;
+    this.write(db); this.emitRows([['requests', [next]]]);
+  }
+  async decideRequest(venueId: string, id: string, approve: boolean, answer: string) {
+    const u = this.user(); const db = this.read(); const d = db.data[venueId];
+    const m = u && db.members.find(x => x.venueId === venueId && x.email === u.email);
+    d.requests ??= [];
+    const r = d.requests.find(x => x.id === id);
+    if (!m || !d) throw new RepoError('forbidden', 'Keine Berechtigung');
+    if (!r) throw new RepoError('other', 'Diese Anfrage gibt es nicht mehr.');
+    if (!canPlanDept(m.role, d.departments, m.userId, r.departmentId)) throw new RepoError('forbidden', 'Keine Berechtigung: Diese Anfrage gehört zu einem Bereich, den Sie nicht leiten.');
+    const res = decideRequestFx(d, r, approve, answer, m.name, new Date().toISOString(), newId);
+    if (res.error) throw new RepoError(res.error.includes('schon einen Dienst') ? 'overlap' : 'other', res.error);
+    d.requests = d.requests.map(x => (x.id === id ? res.request : x));
+    const out: [EntityKey, { id: string }[]][] = [['requests', [res.request]]];
+    if (res.absence) { d.absences.push(res.absence); out.push(['absences', [res.absence]]); }
+    if (res.shift) { d.shifts = d.shifts.map(x => (x.id === res.shift!.id ? { ...res.shift!, updatedAt: new Date().toISOString() } : x)); out.push(['shifts', [res.shift]]); }
+    this.write(db); this.emitRows(out);
   }
   async onDuty(venueId: string, date: string): Promise<OnDuty[]> {
     const d = this.read().data[venueId]; if (!d) return [];

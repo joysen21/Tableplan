@@ -976,3 +976,77 @@ table.boards select{min-width:118px}
   .due-list .due-staff{grid-area:staff;text-align:right}
   .due-list .due-row{flex-wrap:nowrap}
 }
+/* Dienstplan-Anfragen: Mitarbeiter-Link */
+.pub-bar{justify-content:space-between;gap:10px;margin-bottom:12px}
+.pub-bar .pub-mode{margin:0;flex:0 1 280px}
+.pub-msg{margin:0 0 12px;padding:10px 12px;border-radius:10px;background:rgba(45,164,78,.12);color:#1f7a3a;font-weight:600}
+.pub-swap{display:inline-flex;align-items:center;gap:3px;margin:3px 0 0;padding:1px 7px;font:inherit;font-size:11px;font-weight:600;border:1px dashed var(--line);border-radius:999px;background:transparent;color:var(--muted);cursor:pointer}
+.pub-swap:hover{border-color:var(--hl);color:var(--text,inherit)}
+.pub-swap svg,.pub-swap-state svg{width:12px;height:12px}
+.pub-swap-state{display:inline-flex;align-items:center;gap:3px;margin-top:3px;font-size:11px;font-weight:600;color:#9a6700}
+.pub-shift.big .pub-swap,.pub-shift.big .pub-swap-state{font-size:12px}
+table.pub-team th.closed,table.pub-team td.closed,.pub-cal-d.closed,.pub-days>li.closed{background:repeating-linear-gradient(135deg,var(--panel2) 0 6px,transparent 6px 12px);color:var(--muted)}
+.pub-days>li.closed .pub-day-h{flex-wrap:wrap}
+.pub-modal{position:fixed;inset:0;z-index:50;background:rgba(10,20,40,.45);display:flex;align-items:center;justify-content:center;padding:16px}
+.pub-modal-box{width:min(480px,100%);max-height:calc(100vh - 32px);overflow:auto;background:var(--panel);border-radius:14px;padding:14px 16px 16px;box-shadow:0 12px 40px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:10px}
+.pub-modal-h{justify-content:space-between}
+.pub-modal-h h3{margin:0;border:0;padding:0;font-size:18px}
+.pub-modal-box label{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600}
+.pub-modal-box textarea{resize:vertical}
+.pub-kinds .btn{min-width:0;padding-left:6px;padding-right:6px}
+.pub-dates{gap:10px;flex-wrap:nowrap}.pub-dates label{flex:1;min-width:0}
+.pub-hint{font-size:12px;margin:0}
+.pub-err{margin:0;padding:8px 10px;border-radius:8px;background:rgba(207,34,46,.1);color:#b42330;font-size:13px}
+.pub-modal-actions{justify-content:flex-end;gap:8px}
+.pub-offer-shift{margin:0}
+.pub-offers h3 svg{width:18px;height:18px;margin-right:6px;vertical-align:-3px}
+.pub-req-list{list-style:none;margin:0;padding:0 12px 12px;display:flex;flex-direction:column;gap:8px}
+.pub-req-list>li{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.pub-req-list>li.new{border-color:#d4a72c;box-shadow:inset 3px 0 0 #d4a72c}
+.pub-req-list>li.mine{border-color:var(--hl);background:var(--accent-soft)}
+.pub-req-main{min-width:0;flex:1}
+.pub-req-main .muted{font-size:13px}
+.pub-req-kind{display:inline-block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:1px 7px;border-radius:999px;background:var(--panel2)}
+.pub-req-kind.urlaub,.req-kind.urlaub{background:rgba(45,164,78,.14);color:#1f7a3a}
+.pub-req-kind.krank,.req-kind.krank{background:rgba(207,34,46,.12);color:#b42330}
+.pub-req-kind.frei,.req-kind.frei{background:rgba(79,123,209,.14);color:#2f5bb0}
+.pub-req-kind.tausch,.req-kind.tausch{background:rgba(212,167,44,.18);color:#8a6100}
+.pub-req-status{font-size:13px;font-weight:600;margin-top:3px}
+.pub-req-status.genehmigt{color:#1f7a3a}.pub-req-status.abgelehnt{color:#b42330}.pub-req-status.uebernommen{color:#9a6700}
+.pub-req-answer{font-size:13px;margin-top:2px;font-style:italic}
+@media (max-width:760px){
+  .pub-bar{flex-wrap:wrap}.pub-bar .pub-mode{flex:1 1 100%}.pub-ask{flex:1 1 100%;justify-content:center}
+  .pub-req-list>li{flex-wrap:wrap}.pub-req-list>li .btn{flex:1 1 100%}
+  .pub-modal{align-items:flex-end;padding:0}.pub-modal-box{border-radius:14px 14px 0 0;max-height:92vh}
+}
+/* Dienstplan-Anfragen: Leitung */
+.req-h{margin:4px 0 8px;display:flex;align-items:center;gap:8px}
+.req-view section+section{margin-top:18px}
+.req-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+.req-card{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--panel);display:flex;flex-direction:column;gap:6px}
+.req-card.closed{opacity:.8}
+.req-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.req-kind{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;padding:2px 9px;border-radius:999px}
+.req-kind svg{width:13px;height:13px}
+.req-status{font-size:12px;font-weight:600;color:var(--muted)}
+.req-status.genehmigt{color:#1f7a3a}.req-status.abgelehnt{color:#b42330}.req-status.uebernommen{color:#9a6700}
+.req-who{display:flex;align-items:center;gap:6px}
+.req-when{font-size:14px}.req-when .muted{font-size:12px;margin-top:2px}
+.req-taker{margin-top:2px}
+.req-note{margin:0;font-style:italic;font-size:13px}
+.req-warn{margin:0;font-size:12px;color:#9a6700}
+.req-meta{font-size:11px}
+.req-answer{margin:0;font-size:13px}
+.req-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.req-actions input{flex:1 1 100%;margin:0}
+.req-actions .btn{flex:1}
+.wish-chip{display:block;width:100%;margin:1px 0;padding:1px 4px;font:inherit;font-size:11px;font-weight:600;border:1px dashed #d4a72c;border-radius:6px;background:rgba(212,167,44,.1);color:#8a6100;cursor:pointer;text-align:left}
+.rg-cell.off-season,.rg-head.off-season{background:repeating-linear-gradient(135deg,var(--panel2) 0 6px,transparent 6px 12px)}
+.season-year{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:8px}
+.season-row{gap:8px;margin-top:8px;flex-wrap:wrap;align-items:flex-end}
+.season-row>input{flex:1 1 160px;margin:0}
+.season-row label{display:flex;flex-direction:column;font-size:12px;gap:2px}
+.season-row label input{margin:0}
+.roster-tabs .nav-badge{margin-left:6px}
+.pub-shift .pub-swap,.pub-shift .pub-swap-state{display:flex;width:fit-content}
+table.pub-team .pub-shift{white-space:normal}
